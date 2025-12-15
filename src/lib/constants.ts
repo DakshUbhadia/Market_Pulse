@@ -126,7 +126,7 @@ export const MARKET_DATA = {
 }
 
 export const MARKET_HEATMAP = {
-        "dataSource": "SENSEX",
+        "dataSource": "SPX500",
         "blockSize": "market_cap_basic",
         "blockColor": "change",
         "grouping": "sector",
