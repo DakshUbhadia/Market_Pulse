@@ -345,6 +345,16 @@ interface TradingLoaderProps {
 }
 
 const TradingLoader: React.FC<TradingLoaderProps> = ({ size = 80, className = "" }) => {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className={`trading-loader ${className}`} style={{ width: size, height: size }} />;
+  }
+
   return (
     <div className={`trading-loader ${className}`} style={{ width: size, height: size }}>
       <Lottie
