@@ -2,7 +2,6 @@
 import React, { useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
-// @ts-expect-error CSS side-effect import is valid in Next.js
 import "./auth.css";
 
 // Pre-generated candle data to avoid impure function calls during render

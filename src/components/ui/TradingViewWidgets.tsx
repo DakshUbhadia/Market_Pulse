@@ -1,6 +1,6 @@
 'use client';
 import useTradingViewChart from '@/hooks/useTradingViewWidgets';
-import React, { useRef, memo } from 'react';
+import { memo } from 'react';
 
 interface TradingViewWidgetProps {
   title?: string;
@@ -10,7 +10,7 @@ interface TradingViewWidgetProps {
   className?: string;
 }
 
-const TradingViewWidget = ({title, scriptURL, config, height, className} : TradingViewWidgetProps) => {
+const TradingViewWidget = ({ scriptURL, config, height, className } : TradingViewWidgetProps) => {
   const containerRef = useTradingViewChart(scriptURL, config, height);
   return (
     <div 

@@ -1244,3 +1244,141 @@
 .auth-form > *:nth-child(6) { animation-delay: 0.35s; }
 .auth-form > *:nth-child(7) { animation-delay: 0.4s; }
 .auth-form > *:nth-child(8) { animation-delay: 0.45s; }
+.auth-form > *:nth-child(9) { animation-delay: 0.5s; }
+.auth-form > *:nth-child(10) { animation-delay: 0.55s; }
+.auth-form > *:nth-child(11) { animation-delay: 0.6s; }
+.auth-form > *:nth-child(12) { animation-delay: 0.65s; }
+
+/* ==========================================
+   SELECT FIELDS - Investment Profile
+   ========================================== */
+.investment-profile-section {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  color: #9ca3af;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.3), transparent);
+}
+
+.select-group {
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.select-label {
+  display: block;
+  color: #e5e7eb;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+.select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.select-icon {
+  position: absolute;
+  left: 16px;
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.select-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.country-flag {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.auth-select {
+  width: 100%;
+  padding: 14px 45px 14px 48px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #e5e7eb;
+  font-size: 0.95rem;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: all 0.3s ease;
+}
+
+.auth-select:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.auth-select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.auth-select option {
+  background: #1a1a2e;
+  color: #e5e7eb;
+  padding: 12px;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 16px;
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  pointer-events: none;
+  transition: transform 0.3s ease;
+}
+
+.select-arrow svg {
+  width: 20px;
+  height: 20px;
+}
+
+.select-wrapper:focus-within .select-arrow {
+  color: #10b981;
+  transform: rotate(180deg);
+}
+
+.select-wrapper:focus-within .select-icon {
+  color: #10b981;
+}
+
+.select-hint {
+  color: #6b7280;
+  font-size: 0.75rem;
+  margin-top: 6px;
+  line-height: 1.4;
+}
