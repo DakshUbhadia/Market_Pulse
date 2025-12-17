@@ -1,24 +1,12 @@
 'use server';
 
 import { cache } from 'react';
+import { BSE_STOCKS, DEFAULT_SEARCH_STOCKS, US_DEFAULT_STOCKS } from '@/lib/constants';
 
 const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
 
 const FINNHUB_TOKEN = NEXT_PUBLIC_FINNHUB_API_KEY;
-
-const POPULAR_STOCK_SYMBOLS: string[] = [
-  'AAPL',
-  'MSFT',
-  'NVDA',
-  'AMZN',
-  'GOOGL',
-  'META',
-  'TSLA',
-  'JPM',
-  'V',
-  'XOM',
-];
 
 type FinnhubSearchResult = {
   description: string;
@@ -39,11 +27,6 @@ type StockWithWatchlistStatus = {
   exchange: string;
   type: string;
   isInWatchlist: boolean;
-};
-
-type FinnhubProfile2Response = {
-  name?: string;
-  exchange?: string;
 };
 
 type FetchJSONOptions = {
@@ -127,64 +110,78 @@ export const fetchJSON = async <T>(
 
 export const searchStocks = cache(async (query?: string): Promise<StockWithWatchlistStatus[]> => {
   try {
-    if (!FINNHUB_TOKEN) return [];
-
     const trimmedQuery = typeof query === 'string' ? query.trim() : '';
 
-    let results: FinnhubSearchResult[] = [];
+    const normalizedQuery = trimmedQuery.toUpperCase();
 
-    if (!trimmedQuery) {
-      const symbols = POPULAR_STOCK_SYMBOLS.slice(0, 10)
-        .map((s) => s.trim().toUpperCase())
-        .filter((s) => s.length > 0);
+    const curatedUniverse = [...BSE_STOCKS, ...US_DEFAULT_STOCKS];
 
-      results = await Promise.all(
-        symbols.map(async (symbol) => {
-          const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(
-            symbol
-          )}&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
+    // Always support searching within the curated BSE list.
+    const curatedMatches = curatedUniverse.filter((s) => {
+      if (!normalizedQuery) return true;
+      return (
+        s.symbol.toUpperCase().includes(normalizedQuery) ||
+        s.name.toUpperCase().includes(normalizedQuery)
+      );
+    }).map(
+      (s): StockWithWatchlistStatus => ({
+        symbol: s.symbol,
+        name: s.name,
+        exchange: s.exchange,
+        type: 'Stock',
+        isInWatchlist: false,
+      })
+    );
 
-          const profile = await fetchJSON<FinnhubProfile2Response>(url, {
-            revalidateSeconds: 3600,
-          });
-
-          const exchange = isNonEmptyString(profile.exchange) ? profile.exchange : 'US';
-          const description = isNonEmptyString(profile.name) ? profile.name : symbol;
-
-          return {
-            symbol,
-            description,
-            displaySymbol: symbol,
-            type: 'Common Stock',
-            exchange,
-          };
+    // For empty query, show the requested default list.
+    if (!normalizedQuery) {
+      return DEFAULT_SEARCH_STOCKS.map(
+        (s): StockWithWatchlistStatus => ({
+          symbol: s.symbol,
+          name: s.name,
+          exchange: s.exchange,
+          type: 'Stock',
+          isInWatchlist: false,
         })
       );
-    } else {
-      const url = `${FINNHUB_BASE_URL}/search?q=${encodeURIComponent(
-        trimmedQuery
-      )}&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
-
-      const response = await fetchJSON<FinnhubSearchResponse>(url, {
-        revalidateSeconds: 1800,
-      });
-
-      results = Array.isArray(response.result) ? response.result : [];
     }
 
-    return results
+    // If Finnhub isn't configured, fall back to curated matches only.
+    if (!FINNHUB_TOKEN) {
+      return curatedMatches.slice(0, 15);
+    }
+
+    const url = `${FINNHUB_BASE_URL}/search?q=${encodeURIComponent(
+      trimmedQuery
+    )}&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
+
+    const response = await fetchJSON<FinnhubSearchResponse>(url, {
+      revalidateSeconds: 1800,
+    });
+
+    const results = Array.isArray(response.result) ? response.result : [];
+
+    const finnhubMatches = results
       .map((result): StockWithWatchlistStatus => {
-        const symbol = String(result.symbol ?? '').toUpperCase();
+        const symbol = String(result.symbol ?? '').trim().toUpperCase();
         return {
           symbol,
           name: String(result.description ?? ''),
-          exchange: isNonEmptyString(result.displaySymbol) ? result.displaySymbol : 'US',
+          exchange: isNonEmptyString(result.exchange) ? result.exchange : 'US',
           type: isNonEmptyString(result.type) ? result.type : 'Stock',
           isInWatchlist: false,
         };
       })
-      .filter((item) => item.symbol.length > 0)
-      .slice(0, 15);
+      .filter((item) => item.symbol.length > 0);
+
+    const seen = new Set<string>();
+    const merged = [...curatedMatches, ...finnhubMatches].filter((item) => {
+      if (seen.has(item.symbol)) return false;
+      seen.add(item.symbol);
+      return true;
+    });
+
+    return merged.slice(0, 15);
   } catch (error) {
     console.error('Error in stock search:', error);
     return [];

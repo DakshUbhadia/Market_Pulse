@@ -19,6 +19,7 @@ import { searchStocks } from "@/lib/actions/finnhub.actions"
 type MockStock = {
   symbol: string;
   name: string;
+  exchange: string;
 };
 
 type StockWithWatchlistStatus = {
@@ -37,10 +38,15 @@ type SearchCommandProps = {
 }
 
 const MOCK_STOCKS: MockStock[] = [
-  { symbol: "AAPL", name: "Apple" },
-  { symbol: "GOOGL", name: "Alphabet" },
-  { symbol: "MSFT", name: "Microsoft" },
-  { symbol: "AMZN", name: "Amazon" },
+  { symbol: "AAPL", name: "Apple", exchange: "NASDAQ" },
+  { symbol: "RELIANCE", name: "Reliance Industries", exchange: "BSE" },
+  { symbol: "NVDA", name: "NVIDIA", exchange: "NASDAQ" },
+  { symbol: "TSLA", name: "Tesla", exchange: "NASDAQ" },
+  { symbol: "HDFCBANK", name: "HDFC Bank", exchange: "BSE" },
+  { symbol: "TATASTEEL", name: "Tata Steel", exchange: "BSE" },
+  { symbol: "GOOGL", name: "Alphabet (Google)", exchange: "NASDAQ" },
+  { symbol: "AMZN", name: "Amazon", exchange: "NASDAQ" },
+  { symbol: "META", name: "Meta", exchange: "NASDAQ" },
 ];
 
 const SearchCommand = ({
@@ -141,7 +147,7 @@ const SearchCommand = ({
   const handleSelectStock = (value: string) => {
     console.log(value)
     setOpen(false)
-    router.push(`/stock/${value.toUpperCase()}`)
+    router.push(`/stock/${encodeURIComponent(value.toUpperCase())}`)
   };
 
   const filtered = useMemo(() => {
@@ -153,7 +159,7 @@ const SearchCommand = ({
         : MOCK_STOCKS.map((s) => ({
             symbol: s.symbol,
             name: s.name,
-            exchange: "US",
+            exchange: s.exchange,
             type: "Stock",
             isInWatchlist: false,
           }))

@@ -10,47 +10,253 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/watchlist", label: "Watchlist" },
 ]
 
-export const STOCK_SYMBOL_APPL = {
-          "symbol": "NASDAQ:AAPL",
+export type StockListItem = {
+  symbol: string
+  name: string
+  exchange: string
+}
+
+export const US_DEFAULT_STOCKS: StockListItem[] = [
+{ symbol: "AAPL", name: "Apple", exchange: "NASDAQ" },
+{ symbol: "MSFT", name: "Microsoft", exchange: "NASDAQ" },
+{ symbol: "GOOGL", name: "Alphabet Class A", exchange: "NASDAQ" },
+{ symbol: "GOOG", name: "Alphabet Class C", exchange: "NASDAQ" },
+{ symbol: "AMZN", name: "Amazon", exchange: "NASDAQ" },
+{ symbol: "NVDA", name: "NVIDIA", exchange: "NASDAQ" },
+{ symbol: "META", name: "Meta Platforms", exchange: "NASDAQ" },
+{ symbol: "TSLA", name: "Tesla", exchange: "NASDAQ" },
+{ symbol: "BRK.B", name: "Berkshire Hathaway", exchange: "NYSE" },
+{ symbol: "JPM", name: "JPMorgan Chase", exchange: "NYSE" },
+{ symbol: "V", name: "Visa", exchange: "NYSE" },
+{ symbol: "MA", name: "Mastercard", exchange: "NYSE" },
+{ symbol: "UNH", name: "UnitedHealth Group", exchange: "NYSE" },
+{ symbol: "XOM", name: "Exxon Mobil", exchange: "NYSE" },
+{ symbol: "LLY", name: "Eli Lilly", exchange: "NYSE" },
+{ symbol: "AVGO", name: "Broadcom", exchange: "NASDAQ" },
+{ symbol: "JNJ", name: "Johnson & Johnson", exchange: "NYSE" },
+{ symbol: "WMT", name: "Walmart", exchange: "NYSE" },
+{ symbol: "PG", name: "Procter & Gamble", exchange: "NYSE" },
+{ symbol: "HD", name: "Home Depot", exchange: "NYSE" },
+{ symbol: "ORCL", name: "Oracle", exchange: "NYSE" },
+{ symbol: "COST", name: "Costco", exchange: "NASDAQ" },
+{ symbol: "MRK", name: "Merck & Co.", exchange: "NYSE" },
+{ symbol: "KO", name: "Coca-Cola", exchange: "NYSE" },
+{ symbol: "PEP", name: "PepsiCo", exchange: "NASDAQ" },
+{ symbol: "ABBV", name: "AbbVie", exchange: "NYSE" },
+{ symbol: "BAC", name: "Bank of America", exchange: "NYSE" },
+{ symbol: "NFLX", name: "Netflix", exchange: "NASDAQ" },
+{ symbol: "TMO", name: "Thermo Fisher Scientific", exchange: "NYSE" },
+{ symbol: "CSCO", name: "Cisco Systems", exchange: "NASDAQ" },
+{ symbol: "ACN", name: "Accenture", exchange: "NYSE" },
+{ symbol: "MCD", name: "McDonald's", exchange: "NYSE" },
+{ symbol: "ADBE", name: "Adobe", exchange: "NASDAQ" },
+{ symbol: "AMD", name: "Advanced Micro Devices", exchange: "NASDAQ" },
+{ symbol: "INTC", name: "Intel", exchange: "NASDAQ" },
+{ symbol: "CRM", name: "Salesforce", exchange: "NYSE" },
+{ symbol: "QCOM", name: "Qualcomm", exchange: "NASDAQ" },
+{ symbol: "IBM", name: "IBM", exchange: "NYSE" },
+{ symbol: "TXN", name: "Texas Instruments", exchange: "NASDAQ" },
+{ symbol: "AMAT", name: "Applied Materials", exchange: "NASDAQ" },
+{ symbol: "NOW", name: "ServiceNow", exchange: "NYSE" },
+{ symbol: "GE", name: "General Electric", exchange: "NYSE" },
+{ symbol: "DIS", name: "Walt Disney", exchange: "NYSE" },
+{ symbol: "BA", name: "Boeing", exchange: "NYSE" },
+{ symbol: "CAT", name: "Caterpillar", exchange: "NYSE" },
+{ symbol: "LOW", name: "Lowe's", exchange: "NYSE" },
+{ symbol: "GS", name: "Goldman Sachs", exchange: "NYSE" },
+{ symbol: "MS", name: "Morgan Stanley", exchange: "NYSE" },
+{ symbol: "BLK", name: "BlackRock", exchange: "NYSE" },
+{ symbol: "SPGI", name: "S&P Global", exchange: "NYSE" },
+{ symbol: "UBER", name: "Uber Technologies", exchange: "NYSE" },
+{ symbol: "PYPL", name: "PayPal", exchange: "NASDAQ" },
+{ symbol: "SHOP", name: "Shopify", exchange: "NYSE" },
+{ symbol: "SONY", name: "Sony Group", exchange: "NYSE" },
+{ symbol: "TM", name: "Toyota Motor", exchange: "NYSE" },
+{ symbol: "TSM", name: "Taiwan Semiconductor", exchange: "NYSE" },
+{ symbol: "BABA", name: "Alibaba Group", exchange: "NYSE" },
+{ symbol: "TCEHY", name: "Tencent Holdings", exchange: "OTC" },
+{ symbol: "NVO", name: "Novo Nordisk", exchange: "NYSE" },
+{ symbol: "ASML", name: "ASML Holding", exchange: "NASDAQ" },
+{ symbol: "SAP", name: "SAP", exchange: "NYSE" },
+{ symbol: "RDS.A", name: "Shell", exchange: "NYSE" },
+{ symbol: "HSBC", name: "HSBC Holdings", exchange: "NYSE" },
+{ symbol: "BP", name: "BP", exchange: "NYSE" },
+{ symbol: "RIO", name: "Rio Tinto", exchange: "NYSE" },
+{ symbol: "BHP", name: "BHP Group", exchange: "NYSE" },
+{ symbol: "UL", name: "Unilever", exchange: "NYSE" },
+{ symbol: "TTE", name: "TotalEnergies", exchange: "NYSE" },
+{ symbol: "PFE", name: "Pfizer", exchange: "NYSE" },
+{ symbol: "AZN", name: "AstraZeneca", exchange: "NASDAQ" },
+{ symbol: "SNY", name: "Sanofi", exchange: "NASDAQ" },
+{ symbol: "VOD", name: "Vodafone Group", exchange: "NASDAQ" },
+{ symbol: "INFY", name: "Infosys", exchange: "NYSE" },
+{ symbol: "SHEL", name: "Shell plc", exchange: "NYSE" },
+{ symbol: "ZM", name: "Zoom Video Communications", exchange: "NASDAQ" },
+{ symbol: "SNOW", name: "Snowflake", exchange: "NYSE" },
+{ symbol: "PLTR", name: "Palantir Technologies", exchange: "NYSE" },
+{ symbol: "COIN", name: "Coinbase Global", exchange: "NASDAQ" },
+{ symbol: "ARM", name: "Arm Holdings", exchange: "NASDAQ" }
+]
+
+// Default stocks shown when the search box is empty.
+export const DEFAULT_SEARCH_STOCKS: StockListItem[] = [
+  { symbol: "AAPL", name: "Apple", exchange: "NASDAQ" },
+  { symbol: "RELIANCE", name: "Reliance Industries", exchange: "BSE" },
+  { symbol: "NVDA", name: "NVIDIA", exchange: "NASDAQ" },
+  { symbol: "TSLA", name: "Tesla", exchange: "NASDAQ" },
+  { symbol: "HDFCBANK", name: "HDFC Bank", exchange: "BSE" },
+  { symbol: "TATASTEEL", name: "Tata Steel", exchange: "BSE" },
+  { symbol: "GOOGL", name: "Alphabet (Google)", exchange: "NASDAQ" },
+  { symbol: "AMZN", name: "Amazon", exchange: "NASDAQ" },
+  { symbol: "META", name: "Meta", exchange: "NASDAQ" },
+]
+
+export const BSE_STOCKS: StockListItem[] = [
+{ symbol: "RELIANCE", name: "Reliance Industries Ltd.", exchange: "BSE" },
+{ symbol: "HDFCBANK", name: "HDFC Bank Ltd.", exchange: "BSE" },
+{ symbol: "BHARTIARTL", name: "Bharti Airtel Ltd.", exchange: "BSE" },
+{ symbol: "TCS", name: "Tata Consultancy Services Ltd.", exchange: "BSE" },
+{ symbol: "INFY", name: "Infosys Ltd.", exchange: "BSE" },
+{ symbol: "HINDUNILVR", name: "Hindustan Unilever Ltd.", exchange: "BSE" },
+{ symbol: "ICICIBANK", name: "ICICI Bank Ltd.", exchange: "BSE" },
+{ symbol: "LT", name: "Larsen & Toubro Ltd.", exchange: "BSE" },
+{ symbol: "SUNPHARMA", name: "Sun Pharmaceutical Industries Ltd.", exchange: "BSE" },
+{ symbol: "ITC", name: "ITC Ltd.", exchange: "BSE" },
+{ symbol: "SBIN", name: "State Bank of India", exchange: "BSE" },
+{ symbol: "TATAMOTORS", name: "Tata Motors Ltd.", exchange: "BSE" },
+{ symbol: "MARUTI", name: "Maruti Suzuki India Ltd.", exchange: "BSE" },
+{ symbol: "AXISBANK", name: "Axis Bank Ltd.", exchange: "BSE" },
+{ symbol: "KOTAKBANK", name: "Kotak Mahindra Bank Ltd.", exchange: "BSE" },
+{ symbol: "BAJFINANCE", name: "Bajaj Finance Ltd.", exchange: "BSE" },
+{ symbol: "BAJAJFINSV", name: "Bajaj Finserv Ltd.", exchange: "BSE" },
+{ symbol: "ULTRACEMCO", name: "UltraTech Cement Ltd.", exchange: "BSE" },
+{ symbol: "TITAN", name: "Titan Company Ltd.", exchange: "BSE" },
+{ symbol: "WIPRO", name: "Wipro Ltd.", exchange: "BSE" },
+{ symbol: "TECHM", name: "Tech Mahindra Ltd.", exchange: "BSE" },
+{ symbol: "POWERGRID", name: "Power Grid Corporation of India Ltd.", exchange: "BSE" },
+{ symbol: "HCLTECH", name: "HCL Technologies Ltd.", exchange: "BSE" },
+{ symbol: "BPCL", name: "Bharat Petroleum Corporation Ltd.", exchange: "BSE" },
+{ symbol: "IOC", name: "Indian Oil Corporation Ltd.", exchange: "BSE" },
+{ symbol: "COALINDIA", name: "Coal India Ltd.", exchange: "BSE" },
+{ symbol: "VEDL", name: "Vedanta Ltd.", exchange: "BSE" },
+{ symbol: "NTPC", name: "NTPC Ltd.", exchange: "BSE" },
+{ symbol: "INDUSINDBK", name: "IndusInd Bank Ltd.", exchange: "BSE" },
+{ symbol: "BRITANNIA", name: "Britannia Industries Ltd.", exchange: "BSE" },
+{ symbol: "NESTLEIND", name: "Nestlé India Ltd.", exchange: "BSE" },
+{ symbol: "SHREECEM", name: "Shriram Cement Ltd.", exchange: "BSE" },
+{ symbol: "GRASIM", name: "Grasim Industries Ltd.", exchange: "BSE" },
+{ symbol: "HINDALCO", name: "Hindalco Industries Ltd.", exchange: "BSE" },
+{ symbol: "CIPLA", name: "Cipla Ltd.", exchange: "BSE" },
+{ symbol: "BPCLS", name: "BPCL Ltd.", exchange: "BSE" },
+{ symbol: "MOTHERSON", name: "Samvardhana Motherson International Ltd.", exchange: "BSE" },
+{ symbol: "TVSMOTOR", name: "TVS Motor Company Ltd.", exchange: "BSE" },
+{ symbol: "ADANIGREEN", name: "Adani Green Energy Ltd.", exchange: "BSE" },
+{ symbol: "TORNTPHARM", name: "Torrent Pharmaceuticals Ltd.", exchange: "BSE" },
+{ symbol: "AMBUJACEM", name: "Ambuja Cements Ltd.", exchange: "BSE" },
+{ symbol: "PNB", name: "Punjab National Bank", exchange: "BSE" },
+{ symbol: "CANBK", name: "Canara Bank", exchange: "BSE" },
+{ symbol: "IDEA", name: "Vodafone Idea Ltd.", exchange: "BSE" },
+{ symbol: "TATAPOWER", name: "Tata Power Company Ltd.", exchange: "BSE" },
+{ symbol: "SHRIRAMFIN", name: "Shriram Transport Finance Co. Ltd.", exchange: "BSE" },
+{ symbol: "PIDILITIND", name: "Pidilite Industries Ltd.", exchange: "BSE" },
+{ symbol: "BOSCHLTD", name: "Bosch Ltd.", exchange: "BSE" },
+{ symbol: "SIEMENS", name: "Siemens India Ltd.", exchange: "BSE" },
+{ symbol: "ABB", name: "ABB India Ltd.", exchange: "BSE" },
+{ symbol: "SOLARINDS", name: "Solar Industries India Ltd.", exchange: "BSE" },
+{ symbol: "BSE", name: "BSE Ltd.", exchange: "BSE" },
+{ symbol: "GMRAIRPORT", name: "GMR Airports Ltd.", exchange: "BSE" },
+{ symbol: "POLYCAB", name: "Polycab India Ltd.", exchange: "BSE" },
+{ symbol: "INDUSTOWER", name: "Indus Towers Ltd.", exchange: "BSE" },
+{ symbol: "HDFCAMC", name: "HDFC Asset Management Company Ltd.", exchange: "BSE" },
+{ symbol: "PFC", name: "Power Finance Corporation Ltd.", exchange: "BSE" },
+{ symbol: "GAIL", name: "GAIL (India) Ltd.", exchange: "BSE" },
+{ symbol: "IDBI", name: "IDBI Bank Ltd.", exchange: "BSE" },
+{ symbol: "LGEINDIA", name: "LG Electronics India Ltd.", exchange: "BSE" },
+{ symbol: "INDIANB", name: "Indian Bank", exchange: "BSE" },
+{ symbol: "HERO MOTOCORP", name: "Hero MotoCorp Ltd.", exchange: "BSE" },
+{ symbol: "GODREJCP", name: "Godrej Consumer Products Ltd.", exchange: "BSE" },
+{ symbol: "BANKBARODA", name: "Bank of Baroda", exchange: "BSE" },
+{ symbol: "TRENT", name: "Trent Ltd.", exchange: "BSE" },
+{ symbol: "JIOFIN", name: "Jio Financial Services Ltd.", exchange: "BSE" },
+{ symbol: "EICHERMOT", name: "Eicher Motors Ltd.", exchange: "BSE" },
+{ symbol: "LTIM", name: "LTI-Mindtree Ltd.", exchange: "BSE" },
+{ symbol: "BAJAJHLDNG", name: "Bajaj Holdings & Investment Ltd.", exchange: "BSE" },
+{ symbol: "MUTHOOTFIN", name: "Muthoot Finance Ltd.", exchange: "BSE" },
+{ symbol: "VARUNBEV", name: "Varun Beverages Ltd.", exchange: "BSE" },
+{ symbol: "TATACONSUM", name: "Tata Consumer Products Ltd.", exchange: "BSE" },
+{ symbol: "DRREDDY", name: "Dr. Reddy’s Laboratories Ltd.", exchange: "BSE" },
+{ symbol: "APOLLOHOSP", name: "Apollo Hospitals Enterprise Ltd.", exchange: "BSE" },
+{ symbol: "COLPAL", name: "Colgate-Palmolive (India) Ltd.", exchange: "BSE" },
+{ symbol: "BRITANNIA", name: "Britannia Industries Ltd.", exchange: "BSE" },
+{ symbol: "AUROPHARMA", name: "Aurobindo Pharma Ltd.", exchange: "BSE" },
+{ symbol: "ACC", name: "ACC Ltd.", exchange: "BSE" },
+{ symbol: "CADILAHC", name: "Cadila Healthcare Ltd.", exchange: "BSE" },
+{ symbol: "BANDHANBNK", name: "Bandhan Bank Ltd.", exchange: "BSE" },
+{ symbol: "CHOLAFIN", name: "Cholamandalam Investment & Finance Co. Ltd.", exchange: "BSE" },
+{ symbol: "BERGEPAINT", name: "Berger Paints India Ltd.", exchange: "BSE" },
+{ symbol: "AU SMALL FIN", name: "AU Small Finance Bank Ltd.", exchange: "BSE" },
+{ symbol: "TORNTPOWER", name: "Torrent Power Ltd.", exchange: "BSE" },
+{ symbol: "ADANIPOWER", name: "Adani Power Ltd.", exchange: "BSE" },
+{ symbol: "WAAREEENER", name: "Waaree Energies Ltd.", exchange: "BSE" },
+{ symbol: "SUZLON", name: "Suzlon Energy Ltd.", exchange: "BSE" },
+]
+
+const BSE_SYMBOL_SET = new Set(BSE_STOCKS.map((s) => s.symbol.toUpperCase()))
+
+export const toTradingViewSymbol = (raw: string) => {
+  const normalized = String(raw ?? "").trim().toUpperCase()
+  if (!normalized) return ""
+  if (normalized.includes(":")) return normalized
+
+  // Handle common Indian ticker suffixes from data providers.
+  if (normalized.endsWith(".BO")) return `BSE:${normalized.replace(/\.BO$/, "")}`
+  if (normalized.endsWith(".NS")) return `NSE:${normalized.replace(/\.NS$/, "")}`
+
+  if (BSE_SYMBOL_SET.has(normalized)) return `BSE:${normalized}`
+  return `NASDAQ:${normalized}`
+}
+
+export const STOCK_SYMBOL = (symbol:string) => ({
+          "symbol": toTradingViewSymbol(symbol),
           "colorTheme": "dark",
           "isTransparent": false,
           "locale": "en",
-          "width": 1015
-}
+          "width": "100%"
+});
 
-export const TECHNICAL_ANALYSIS_APPL = {
+export const TECHNICAL_ANALYSIS = (symbol:string) => ({
           "colorTheme": "dark",
           "displayMode": "single",
           "isTransparent": true,
           "locale": "en",
           "interval": "15m",
           "disableInterval": false,
-          "width": 425,
+          "width": "100%",
           "height": 440,
-          "symbol": "NASDAQ:AAPL",
+          "symbol": toTradingViewSymbol(symbol),
           "showIntervalTabs": true
-}
+});
 
-export const FUNDAMENTAL_DATA_APPL = {
-          "symbol": "NASDAQ:AAPL",
+export const FUNDAMENTAL_DATA = (symbol:string) => ({
+          "symbol": toTradingViewSymbol(symbol),
           "colorTheme": "dark",
           "displayMode": "regular",
           "isTransparent": true,
           "locale": "en",
-          "width": 425,
-          "height": 550
-}
+          "width": "100%",
+          "height": 520
+});
 
-export const COMPANY_PROFILE_APPL = {
-          "symbol": "NASDAQ:AAPL",
+export const COMPANY_PROFILE = (symbol:string) => ({
+          "symbol": toTradingViewSymbol(symbol),
           "colorTheme": "dark",
           "isTransparent": true,
           "locale": "en",
-          "width": 425,
-          "height": 480
-}
+          "width": "100%",
+          "height": 520
+});
 
-export const ADVANCED_CHART_1_APPL = {
+export const ADVANCED_CHART_1 = (symbol:string) => ({
           "allow_symbol_change": true,
           "calendar": false,
           "details": true,
@@ -63,7 +269,7 @@ export const ADVANCED_CHART_1_APPL = {
           "locale": "en",
           "save_image": true,
           "style": "1",
-          "symbol": "NASDAQ:AAPL",
+          "symbol": toTradingViewSymbol(symbol),
           "theme": "dark",
           "timezone": "Asia/Kolkata",
           "backgroundColor": "#0F0F0F",
@@ -74,11 +280,11 @@ export const ADVANCED_CHART_1_APPL = {
           "studies": [
             "STD;Supertrend"
           ],
-          "width": 980,
+          "width": "100%",
           "height": 700
-}
+});
 
-export const ADVANCED_CHART_2_APPL = {
+export const ADVANCED_CHART_2 = (symbol:string) => ({
           "allow_symbol_change": true,
           "calendar": false,
           "details": false,
@@ -91,7 +297,7 @@ export const ADVANCED_CHART_2_APPL = {
           "locale": "en",
           "save_image": true,
           "style": "3",
-          "symbol": "NASDAQ:AAPL",
+          "symbol": toTradingViewSymbol(symbol),
           "theme": "dark",
           "timezone": "Asia/Kolkata",
           "backgroundColor": "#0F0F0F",
@@ -100,9 +306,9 @@ export const ADVANCED_CHART_2_APPL = {
           "withdateranges": false,
           "compareSymbols": [],
           "studies": [],
-          "width": 980,
-          "height": 630
-}
+          "width": "100%",
+          "height": 640
+});
 
 export const CRYPTO_MARKETS = {
           "defaultColumn": "overview",
@@ -111,7 +317,7 @@ export const CRYPTO_MARKETS = {
           "colorTheme": "dark",
           "isTransparent": false,
           "locale": "en",
-          "width": 450,
+          "width": "100%",
           "height": 550
 }
 
@@ -123,7 +329,7 @@ export const MARKET_DATA = {
           "showSymbolLogo": true,
           "backgroundColor": "#0F0F0F",
           "support_host": "https://www.tradingview.com",
-          "width": 550,
+          "width": "100%",
           "height": 550,
           "symbolsGroups": [
             {
@@ -455,7 +661,7 @@ export const MARKET_OVERVIEW_CHART = {
           ],
           "support_host": "https://www.tradingview.com",
           "backgroundColor": "#0f0f0f",
-          "width": "400",
+          "width": "100%",
           "height": "550",
           "showSymbolLogo": true,
           "showChart": true
@@ -467,6 +673,6 @@ export const NEWS_WIDGET = {
         "colorTheme": "dark",
         "isTransparent": false,
         "locale": "en",
-        "width": 400,
+        "width": "100%",
         "height": 550
 }

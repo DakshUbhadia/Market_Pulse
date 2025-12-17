@@ -1,16 +1,17 @@
 "use client";
 
-import { useParams, notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Star } from "lucide-react";
 import { useState } from "react";
 import TradingViewWidget from "@/components/ui/TradingViewWidgets";
 import {
-  STOCK_SYMBOL_APPL,
-  TECHNICAL_ANALYSIS_APPL,
-  FUNDAMENTAL_DATA_APPL,
-  COMPANY_PROFILE_APPL,
-  ADVANCED_CHART_1_APPL,
-  ADVANCED_CHART_2_APPL,
+  ADVANCED_CHART_1,
+  ADVANCED_CHART_2,
+  COMPANY_PROFILE,
+  FUNDAMENTAL_DATA,
+  STOCK_SYMBOL,
+  TECHNICAL_ANALYSIS,
+  toTradingViewSymbol,
 } from "@/lib/constants";
 
 const SYMBOL_SCRIPT_URL =
@@ -24,46 +25,26 @@ const COMPANY_PROFILE_SCRIPT_URL =
 const ADVANCED_CHART_SCRIPT_URL =
   "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
 
-type SupportedSymbol = "AAPL";
-
-const STOCK_CONFIGS: Record<
-  SupportedSymbol,
-  {
-    name: string;
-    symbolInfo: typeof STOCK_SYMBOL_APPL;
-    technicalAnalysis: typeof TECHNICAL_ANALYSIS_APPL;
-    fundamentalData: typeof FUNDAMENTAL_DATA_APPL;
-    companyProfile: typeof COMPANY_PROFILE_APPL;
-    advancedChart1: typeof ADVANCED_CHART_1_APPL;
-    advancedChart2: typeof ADVANCED_CHART_2_APPL;
-  }
-> = {
-  AAPL: {
-    name: "Apple Inc.",
-    symbolInfo: STOCK_SYMBOL_APPL,
-    technicalAnalysis: TECHNICAL_ANALYSIS_APPL,
-    fundamentalData: FUNDAMENTAL_DATA_APPL,
-    companyProfile: COMPANY_PROFILE_APPL,
-    advancedChart1: ADVANCED_CHART_1_APPL,
-    advancedChart2: ADVANCED_CHART_2_APPL,
-  },
-};
-
 export default function StockDetailPage() {
   const params = useParams();
-  const symbol = (params.symbol as string)?.toUpperCase() as SupportedSymbol;
+  const rawSymbol = typeof params.symbol === "string" ? params.symbol : "";
+  const symbol = decodeURIComponent(rawSymbol);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
 
-  const config = STOCK_CONFIGS[symbol];
-
-  if (!config) {
-    notFound();
-  }
+  const tvSymbol = toTradingViewSymbol(symbol);
+  const config = {
+    symbolInfo: STOCK_SYMBOL(tvSymbol),
+    technicalAnalysis: TECHNICAL_ANALYSIS(tvSymbol),
+    fundamentalData: FUNDAMENTAL_DATA(tvSymbol),
+    companyProfile: COMPANY_PROFILE(tvSymbol),
+    advancedChart1: ADVANCED_CHART_1(tvSymbol),
+    advancedChart2: ADVANCED_CHART_2(tvSymbol),
+  };
 
   const handleToggleWatchlist = () => {
     setIsInWatchlist((prev) => {
       const next = !prev;
-      console.log("watchlist", symbol, next);
+      console.log("watchlist", tvSymbol, next);
       return next;
     });
   };
@@ -83,7 +64,7 @@ export default function StockDetailPage() {
           <TradingViewWidget
             scriptURL={ADVANCED_CHART_SCRIPT_URL}
             config={config.advancedChart1}
-            height={560}
+            height={700}
           />
         </div>
 
@@ -91,7 +72,7 @@ export default function StockDetailPage() {
           <TradingViewWidget
             scriptURL={ADVANCED_CHART_SCRIPT_URL}
             config={config.advancedChart2}
-            height={360}
+            height={640}
           />
         </div>
       </section>
