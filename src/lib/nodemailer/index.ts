@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import {WELCOME_EMAIL_TEMPLATE} from "@/lib/nodemailer/templates";
+import { NEWS_SUMMARY_EMAIL_TEMPLATE, WELCOME_EMAIL_TEMPLATE } from "@/lib/nodemailer/templates";
 
 interface WelcomeEmailData {
     email: string;
@@ -28,16 +28,6 @@ export const sendWelcomeEmail = async ({ email, name, intro, otp }: WelcomeEmail
     if (otp) {
         htmlTemplate = htmlTemplate.replace('{{otp}}', otp);
     } else {
-        // Remove the OTP section if no OTP is provided
-        // This regex looks for the OTP section div and removes it
-        // Note: This is a simple regex and assumes the structure matches exactly what's in the template
-        // A more robust way would be to have separate templates, but for now we'll use string replacement
-        // to hide the OTP section or replace {{otp}} with an empty string if we can't easily remove the div
-        
-        // Alternative: Replace the whole OTP section block with empty string
-        // We'll use a marker in the template or just replace the content
-        
-        // Let's try to replace the specific block we added
         const otpSectionStart = '<!-- OTP Section -->';
         const otpSectionEnd = '<!-- Feature List Label -->';
         const startIndex = htmlTemplate.indexOf(otpSectionStart);
@@ -58,3 +48,25 @@ export const sendWelcomeEmail = async ({ email, name, intro, otp }: WelcomeEmail
 
     await transporter.sendMail(mailOptions);
 }
+
+export const sendNewsSummaryEmail = async (
+    { email, date, newsContent }: { email: string; date: string; newsContent: string }
+): Promise<void> => {
+    if (!process.env.NODEMAILER_EMAIL || !process.env.NODEMAILER_PASSWORD) {
+        throw new Error("Email credentials are not configured");
+    }
+
+    const htmlTemplate = NEWS_SUMMARY_EMAIL_TEMPLATE
+        .replace('{{date}}', date)
+        .replace('{{newsContent}}', newsContent);
+
+    const mailOptions = {
+        from: `"Market Pulse News" <signalist@jsmastery.pro>`,
+        to: email,
+        subject: `📈 Market News Summary Today - ${date}`,
+        text: `Today's market news summary from Market Pulse`,
+        html: htmlTemplate,
+    };
+
+    await transporter.sendMail(mailOptions);
+};
