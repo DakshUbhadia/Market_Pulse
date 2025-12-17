@@ -1,8 +1,108 @@
-export const NAV_ITEMS = [
-    { href: "/", label: "Dashboard" },
-    { href: "/search", label: "Search" },
-    { href: "/watchlist", label: "Watchlist" },
+export type NavItem = {
+  href: string
+  label: string
+  variant?: "command"
+}
+
+export const NAV_ITEMS: NavItem[] = [
+  { href: "/", label: "Dashboard" },
+  { href: "/search", label: "Search", variant: "command" },
+  { href: "/watchlist", label: "Watchlist" },
 ]
+
+export const STOCK_SYMBOL_APPL = {
+          "symbol": "NASDAQ:AAPL",
+          "colorTheme": "dark",
+          "isTransparent": false,
+          "locale": "en",
+          "width": 1015
+}
+
+export const TECHNICAL_ANALYSIS_APPL = {
+          "colorTheme": "dark",
+          "displayMode": "single",
+          "isTransparent": true,
+          "locale": "en",
+          "interval": "15m",
+          "disableInterval": false,
+          "width": 425,
+          "height": 440,
+          "symbol": "NASDAQ:AAPL",
+          "showIntervalTabs": true
+}
+
+export const FUNDAMENTAL_DATA_APPL = {
+          "symbol": "NASDAQ:AAPL",
+          "colorTheme": "dark",
+          "displayMode": "regular",
+          "isTransparent": true,
+          "locale": "en",
+          "width": 425,
+          "height": 550
+}
+
+export const COMPANY_PROFILE_APPL = {
+          "symbol": "NASDAQ:AAPL",
+          "colorTheme": "dark",
+          "isTransparent": true,
+          "locale": "en",
+          "width": 425,
+          "height": 480
+}
+
+export const ADVANCED_CHART_1_APPL = {
+          "allow_symbol_change": true,
+          "calendar": false,
+          "details": true,
+          "hide_side_toolbar": true,
+          "hide_top_toolbar": false,
+          "hide_legend": false,
+          "hide_volume": false,
+          "hotlist": false,
+          "interval": "D",
+          "locale": "en",
+          "save_image": true,
+          "style": "1",
+          "symbol": "NASDAQ:AAPL",
+          "theme": "dark",
+          "timezone": "Asia/Kolkata",
+          "backgroundColor": "#0F0F0F",
+          "gridColor": "rgba(242, 242, 242, 0.06)",
+          "watchlist": [],
+          "withdateranges": false,
+          "compareSymbols": [],
+          "studies": [
+            "STD;Supertrend"
+          ],
+          "width": 980,
+          "height": 700
+}
+
+export const ADVANCED_CHART_2_APPL = {
+          "allow_symbol_change": true,
+          "calendar": false,
+          "details": false,
+          "hide_side_toolbar": false,
+          "hide_top_toolbar": true,
+          "hide_legend": false,
+          "hide_volume": false,
+          "hotlist": false,
+          "interval": "D",
+          "locale": "en",
+          "save_image": true,
+          "style": "3",
+          "symbol": "NASDAQ:AAPL",
+          "theme": "dark",
+          "timezone": "Asia/Kolkata",
+          "backgroundColor": "#0F0F0F",
+          "gridColor": "rgba(242, 242, 242, 0.06)",
+          "watchlist": [],
+          "withdateranges": false,
+          "compareSymbols": [],
+          "studies": [],
+          "width": 980,
+          "height": 630
+}
 
 export const CRYPTO_MARKETS = {
           "defaultColumn": "overview",
