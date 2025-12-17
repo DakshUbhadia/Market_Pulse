@@ -1,7 +1,50 @@
 'use server';
 
+import { cache } from 'react';
+
 const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
+
+const FINNHUB_TOKEN = NEXT_PUBLIC_FINNHUB_API_KEY;
+
+const POPULAR_STOCK_SYMBOLS: string[] = [
+  'AAPL',
+  'MSFT',
+  'NVDA',
+  'AMZN',
+  'GOOGL',
+  'META',
+  'TSLA',
+  'JPM',
+  'V',
+  'XOM',
+];
+
+type FinnhubSearchResult = {
+  description: string;
+  displaySymbol: string;
+  symbol: string;
+  type?: string;
+  exchange?: string;
+};
+
+type FinnhubSearchResponse = {
+  count: number;
+  result: FinnhubSearchResult[];
+};
+
+type StockWithWatchlistStatus = {
+  symbol: string;
+  name: string;
+  exchange: string;
+  type: string;
+  isInWatchlist: boolean;
+};
+
+type FinnhubProfile2Response = {
+  name?: string;
+  exchange?: string;
+};
 
 type FetchJSONOptions = {
   revalidateSeconds?: number;
@@ -81,6 +124,72 @@ export const fetchJSON = async <T>(
 
   return (await res.json()) as T;
 };
+
+export const searchStocks = cache(async (query?: string): Promise<StockWithWatchlistStatus[]> => {
+  try {
+    if (!FINNHUB_TOKEN) return [];
+
+    const trimmedQuery = typeof query === 'string' ? query.trim() : '';
+
+    let results: FinnhubSearchResult[] = [];
+
+    if (!trimmedQuery) {
+      const symbols = POPULAR_STOCK_SYMBOLS.slice(0, 10)
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s.length > 0);
+
+      results = await Promise.all(
+        symbols.map(async (symbol) => {
+          const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(
+            symbol
+          )}&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
+
+          const profile = await fetchJSON<FinnhubProfile2Response>(url, {
+            revalidateSeconds: 3600,
+          });
+
+          const exchange = isNonEmptyString(profile.exchange) ? profile.exchange : 'US';
+          const description = isNonEmptyString(profile.name) ? profile.name : symbol;
+
+          return {
+            symbol,
+            description,
+            displaySymbol: symbol,
+            type: 'Common Stock',
+            exchange,
+          };
+        })
+      );
+    } else {
+      const url = `${FINNHUB_BASE_URL}/search?q=${encodeURIComponent(
+        trimmedQuery
+      )}&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
+
+      const response = await fetchJSON<FinnhubSearchResponse>(url, {
+        revalidateSeconds: 1800,
+      });
+
+      results = Array.isArray(response.result) ? response.result : [];
+    }
+
+    return results
+      .map((result): StockWithWatchlistStatus => {
+        const symbol = String(result.symbol ?? '').toUpperCase();
+        return {
+          symbol,
+          name: String(result.description ?? ''),
+          exchange: isNonEmptyString(result.displaySymbol) ? result.displaySymbol : 'US',
+          type: isNonEmptyString(result.type) ? result.type : 'Stock',
+          isInWatchlist: false,
+        };
+      })
+      .filter((item) => item.symbol.length > 0)
+      .slice(0, 15);
+  } catch (error) {
+    console.error('Error in stock search:', error);
+    return [];
+  }
+});
 
 const toMarketNewsArticle = (a: FinnhubNewsArticle, relatedSymbol?: string): MarketNewsArticle => {
   // validate before calling this

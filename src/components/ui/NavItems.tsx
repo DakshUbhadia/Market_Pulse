@@ -1,31 +1,54 @@
 'use client'
-import { NAV_ITEMS } from '@/lib/constants'
+import { NAV_ITEMS, type NavItem } from '@/lib/constants'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const NavItems = () => {
+type NavItemsProps = {
+    onSearchClick?: () => void
+}
 
-    const pathname = usePathname();
+const NavItems = ({ onSearchClick }: NavItemsProps) => {
+    const pathname = usePathname()
 
     const isActive = (path: string) => {
-        if(path === '/') return pathname === '/';
+        if (path === '/') return pathname === '/'
 
-        return pathname.startsWith(path);
+        return pathname.startsWith(path)
     }
 
-  return (
-    <ul className="flex flex-col sm:flex-row p-2 gap-3 sm:gap-10 font-medium">
-        {NAV_ITEMS.map(({href, label}) => (  
-            <li key={href}>   
-                <Link href={href} className={`transition-colors ${
-                    isActive(href) ? 'text-yellow-500 font-semibold' : 'text-white hover:text-yellow-500'
-                }`}>
-                    {label}
-                </Link> 
-            </li>
-        ))}
-    </ul>
-  )
+    const getLinkClass = (active: boolean) =>
+        `transition-colors ${
+            active ? 'text-yellow-500 font-semibold' : 'text-white hover:text-yellow-500'
+        }`
+
+    return (
+        <ul className="flex flex-col sm:flex-row p-2 gap-3 sm:gap-10 font-medium">
+            {NAV_ITEMS.map(({ href, label, variant }: NavItem) => {
+                const linkClass = getLinkClass(variant !== 'command' && isActive(href))
+
+                return (
+                    <li key={href}>
+                        {variant === 'command' ? (
+                            <button
+                                type="button"
+                                className={`${linkClass} cursor-pointer`}
+                                onClick={(event) => {
+                                    event.preventDefault()
+                                    onSearchClick?.()
+                                }}
+                            >
+                                {label}
+                            </button>
+                        ) : (
+                            <Link href={href} className={linkClass}>
+                                {label}
+                            </Link>
+                        )}
+                    </li>
+                )
+            })}
+        </ul>
+    )
 }
 
 export default NavItems
