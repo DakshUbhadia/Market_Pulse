@@ -12,7 +12,6 @@ interface AlertsPanelProps {
   onCreateAlert: () => void
   onEditAlert: (alert: WatchlistAlert) => void
   onDeleteAlert: (alertId: string) => void
-  onTestAlert: (alert: WatchlistAlert) => void
 }
 
 export function AlertsPanel({
@@ -20,7 +19,6 @@ export function AlertsPanel({
   onCreateAlert,
   onEditAlert,
   onDeleteAlert,
-  onTestAlert,
 }: AlertsPanelProps) {
   const activeAlerts = alerts.filter((a) => a.isActive)
   const pausedAlerts = alerts.filter((a) => !a.isActive)
@@ -38,8 +36,8 @@ export function AlertsPanel({
         </Button>
       </div>
 
-      {/* Alerts List */}
-      <ScrollArea className="flex-1">
+      {/* Alerts List (show ~3 cards, scroll for more) */}
+      <ScrollArea className="h-[480px]">
         <div className="p-4 space-y-3">
           {alerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -61,7 +59,6 @@ export function AlertsPanel({
                           alert={alert}
                           onEdit={onEditAlert}
                           onDelete={onDeleteAlert}
-                          onTest={onTestAlert}
                         />
                       </div>
                     ))}
@@ -82,7 +79,6 @@ export function AlertsPanel({
                           alert={alert}
                           onEdit={onEditAlert}
                           onDelete={onDeleteAlert}
-                          onTest={onTestAlert}
                         />
                       </div>
                     ))}

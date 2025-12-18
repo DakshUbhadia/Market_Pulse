@@ -243,7 +243,45 @@ const getFinnhubSymbolCandidates = (symbol: string, exchange?: string): string[]
 /**
  * Fetch real-time quote data for a stock symbol
  */
-export const getStockQuote = cache(async (symbol: string, exchange?: string): Promise<StockQuoteData | null> => {
+type StockQuoteFetchPolicy = {
+  quoteRevalidateSeconds?: number;
+  profileRevalidateSeconds?: number;
+  metricRevalidateSeconds?: number;
+  includeMetrics: boolean;
+  /**
+   * When Finnhub is configured but a request fails (network/429/etc), returning mock
+   * data can be misleading. For realtime streaming we prefer returning null.
+   */
+  fallbackToMockOnError: boolean;
+  /**
+   * When no symbol candidate works, return mock for US equities only.
+   */
+  fallbackToMockOnNotFound: boolean;
+};
+
+const getStockQuoteImpl = async (
+  symbol: string,
+  exchange?: string,
+  policy?: Partial<StockQuoteFetchPolicy>
+): Promise<StockQuoteData | null> => {
+  const resolvedPolicy = {
+    quoteRevalidateSeconds: policy?.quoteRevalidateSeconds,
+    profileRevalidateSeconds: policy?.profileRevalidateSeconds,
+    metricRevalidateSeconds: policy?.metricRevalidateSeconds,
+    includeMetrics: policy?.includeMetrics ?? true,
+    fallbackToMockOnError: policy?.fallbackToMockOnError ?? true,
+    fallbackToMockOnNotFound: policy?.fallbackToMockOnNotFound ?? true,
+  } satisfies StockQuoteFetchPolicy;
+
+  const {
+    quoteRevalidateSeconds,
+    profileRevalidateSeconds,
+    metricRevalidateSeconds,
+    includeMetrics,
+    fallbackToMockOnError,
+    fallbackToMockOnNotFound,
+  } = resolvedPolicy;
+
   try {
     const normalizedSymbol = symbol.toUpperCase().trim();
     const ex = String(exchange ?? "").toUpperCase().trim();
@@ -264,9 +302,14 @@ export const getStockQuote = cache(async (symbol: string, exchange?: string): Pr
       const metricUrl = `${FINNHUB_BASE_URL}/stock/metric?symbol=${encodeURIComponent(candidate)}&metric=all&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
 
       const [quoteResponse, profileResponse, metricResponse] = await Promise.all([
-        fetchJSON<FinnhubQuote>(quoteUrl, { revalidateSeconds: 30 }).catch(() => null),
-        fetchJSON<FinnhubProfile>(profileUrl, { revalidateSeconds: 3600 }).catch(() => null),
-        fetchJSON<FinnhubMetricResponse>(metricUrl, { revalidateSeconds: 6 * 60 * 60 }).catch(() => null),
+        fetchJSON<FinnhubQuote>(quoteUrl, typeof quoteRevalidateSeconds === "number" ? { revalidateSeconds: quoteRevalidateSeconds } : undefined).catch(() => null),
+        fetchJSON<FinnhubProfile>(profileUrl, typeof profileRevalidateSeconds === "number" ? { revalidateSeconds: profileRevalidateSeconds } : undefined).catch(() => null),
+        includeMetrics
+          ? fetchJSON<FinnhubMetricResponse>(
+              metricUrl,
+              typeof metricRevalidateSeconds === "number" ? { revalidateSeconds: metricRevalidateSeconds } : undefined
+            ).catch(() => null)
+          : Promise.resolve(null),
       ]);
 
       if (!quoteResponse) continue;
@@ -279,7 +322,7 @@ export const getStockQuote = cache(async (symbol: string, exchange?: string): Pr
       const resolvedCurrency =
         ex === "BSE" || ex === "NSE" ? "INR" : (profileResponse?.currency || "USD");
 
-      const resolvedPe = resolvePeRatio({ currentPrice: quoteResponse.c, metricResponse });
+      const resolvedPe = includeMetrics ? resolvePeRatio({ currentPrice: quoteResponse.c, metricResponse }) : undefined;
 
       return {
         symbol: normalizedSymbol,
@@ -301,17 +344,48 @@ export const getStockQuote = cache(async (symbol: string, exchange?: string): Pr
 
     // If none of the candidates worked:
     // - For Indian equities, return null (avoid wrong random prices).
-    // - For US, fall back to mock.
+    // - For US, optionally fall back to mock.
     if (ex === "BSE" || ex === "NSE") return null;
 
-    return createMockQuote(symbol, undefined, undefined, exchange);
+    return fallbackToMockOnNotFound ? createMockQuote(symbol, undefined, undefined, exchange) : null;
   } catch (error) {
     console.error("Error fetching stock quote:", error);
     const ex = String(exchange ?? "").toUpperCase().trim();
     if (ex === "BSE" || ex === "NSE") return null;
-    return createMockQuote(symbol, undefined, undefined, exchange);
+    return fallbackToMockOnError ? createMockQuote(symbol, undefined, undefined, exchange) : null;
   }
+};
+
+export const getStockQuote = cache(async (symbol: string, exchange?: string): Promise<StockQuoteData | null> => {
+  return getStockQuoteImpl(symbol, exchange, {
+    quoteRevalidateSeconds: 30,
+    profileRevalidateSeconds: 3600,
+    metricRevalidateSeconds: 6 * 60 * 60,
+    includeMetrics: true,
+    fallbackToMockOnError: true,
+    fallbackToMockOnNotFound: true,
+  });
 });
+
+/**
+ * Realtime quote variant for live streaming.
+ * - Uses `cache: "no-store"` (no revalidate)
+ * - Avoids returning mock data on transient failures
+ */
+export const getStockQuoteRealtime = async (args: {
+  symbol: string;
+  exchange?: string;
+  includeMetrics?: boolean;
+}): Promise<StockQuoteData | null> => {
+  return getStockQuoteImpl(args.symbol, args.exchange, {
+    quoteRevalidateSeconds: undefined,
+    profileRevalidateSeconds: 3600,
+    metricRevalidateSeconds: 6 * 60 * 60,
+    includeMetrics: args.includeMetrics ?? false,
+    fallbackToMockOnError: false,
+    fallbackToMockOnNotFound: false,
+  });
+};
 
 function createMockQuote(symbol: string, name?: string, logo?: string, exchange?: string): StockQuoteData {
   // Generate consistent mock data based on symbol
@@ -350,6 +424,20 @@ export const getMultipleStockQuotes = async (requests: QuoteRequest[]): Promise<
     requests.map((r) => getStockQuote(r.symbol, r.exchange))
   );
   
+  return results.filter((quote): quote is StockQuoteData => quote !== null);
+};
+
+export const getMultipleStockQuotesRealtime = async (args: {
+  requests: QuoteRequest[];
+  includeMetrics?: boolean;
+}): Promise<StockQuoteData[]> => {
+  const { requests, includeMetrics } = args;
+  if (requests.length === 0) return [];
+
+  const results = await Promise.all(
+    requests.map((r) => getStockQuoteRealtime({ symbol: r.symbol, exchange: r.exchange, includeMetrics }))
+  );
+
   return results.filter((quote): quote is StockQuoteData => quote !== null);
 };
 
