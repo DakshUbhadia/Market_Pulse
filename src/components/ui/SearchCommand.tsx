@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, Search, Star } from "lucide-react"
+import { useWatchlist } from "@/context/WatchlistContext"
+import { getCuratedStockBySymbol } from "@/lib/constants"
 
 import {
   Command,
@@ -16,50 +18,42 @@ import {
 
 import { searchStocks } from "@/lib/actions/finnhub.actions"
 
-type MockStock = {
-  symbol: string;
-  name: string;
-  exchange: string;
-};
-
-type StockWithWatchlistStatus = {
+type StockResult = {
   symbol: string
   name: string
   exchange: string
   type: string
-  isInWatchlist: boolean
 }
 
 type SearchCommandProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   showTrigger?: boolean
-  initialStocks?: StockWithWatchlistStatus[]
 }
 
-const MOCK_STOCKS: MockStock[] = [
-  { symbol: "AAPL", name: "Apple", exchange: "NASDAQ" },
-  { symbol: "RELIANCE", name: "Reliance Industries", exchange: "BSE" },
-  { symbol: "NVDA", name: "NVIDIA", exchange: "NASDAQ" },
-  { symbol: "TSLA", name: "Tesla", exchange: "NASDAQ" },
-  { symbol: "HDFCBANK", name: "HDFC Bank", exchange: "BSE" },
-  { symbol: "TATASTEEL", name: "Tata Steel", exchange: "BSE" },
-  { symbol: "GOOGL", name: "Alphabet (Google)", exchange: "NASDAQ" },
-  { symbol: "AMZN", name: "Amazon", exchange: "NASDAQ" },
-  { symbol: "META", name: "Meta", exchange: "NASDAQ" },
+const MOCK_STOCKS: StockResult[] = [
+  { symbol: "AAPL", name: "Apple", exchange: "NASDAQ", type: "Stock" },
+  { symbol: "RELIANCE", name: "Reliance Industries", exchange: "BSE", type: "Stock" },
+  { symbol: "NVDA", name: "NVIDIA", exchange: "NASDAQ", type: "Stock" },
+  { symbol: "TSLA", name: "Tesla", exchange: "NASDAQ", type: "Stock" },
+  { symbol: "HDFCBANK", name: "HDFC Bank", exchange: "BSE", type: "Stock" },
+  { symbol: "TATASTEEL", name: "Tata Steel", exchange: "BSE", type: "Stock" },
+  { symbol: "GOOGL", name: "Alphabet (Google)", exchange: "NASDAQ", type: "Stock" },
+  { symbol: "AMZN", name: "Amazon", exchange: "NASDAQ", type: "Stock" },
+  { symbol: "META", name: "Meta", exchange: "NASDAQ", type: "Stock" },
 ];
 
 const SearchCommand = ({
   open: controlledOpen,
   onOpenChange,
   showTrigger = true,
-  initialStocks,
 }: SearchCommandProps = {}) => {
   const router = useRouter()
+  const { isInWatchlist, toggleWatchlist } = useWatchlist()
   const [openState, setOpenState] = useState(false)
   const [query, setQuery] = useState("")
   const [loading, setLoading] = useState(false)
-  const [stocks, setStocks] = useState<StockWithWatchlistStatus[]>(() => initialStocks ?? [])
+  const [stocks, setStocks] = useState<StockResult[]>([])
   const lastRequestId = useRef(0)
 
   const isControlled = controlledOpen !== undefined
@@ -98,6 +92,12 @@ const SearchCommand = ({
   }, [open, setOpen])
 
   useEffect(() => {
+    const onOpenSearch = () => setOpen(true)
+    window.addEventListener("marketpulse:open-search", onOpenSearch)
+    return () => window.removeEventListener("marketpulse:open-search", onOpenSearch)
+  }, [setOpen])
+
+  useEffect(() => {
     if (!open) return
 
     const requestId = ++lastRequestId.current
@@ -106,24 +106,14 @@ const SearchCommand = ({
 
     const timer = window.setTimeout(async () => {
       try {
-        if (!trimmed) {
-          if (Array.isArray(initialStocks) && initialStocks.length > 0) {
-            if (lastRequestId.current === requestId) {
-              setStocks(initialStocks)
-            }
-            return
-          }
-
-          const results = await searchStocks()
-          if (lastRequestId.current === requestId) {
-            setStocks(results)
-          }
-          return
-        }
-
-        const results = await searchStocks(trimmed)
+        const results = await searchStocks(trimmed || undefined)
         if (lastRequestId.current === requestId) {
-          setStocks(results)
+          setStocks(results.map(r => ({
+            symbol: r.symbol,
+            name: r.name,
+            exchange: r.exchange,
+            type: r.type,
+          })))
         }
       } catch (error) {
         console.error("Error in stock search:", error)
@@ -135,34 +125,38 @@ const SearchCommand = ({
           setLoading(false)
         }
       }
-    }, 500)
+    }, 300)
 
     return () => window.clearTimeout(timer)
-  }, [open, query, initialStocks])
+  }, [open, query])
 
   const handleQueryChange = (value: string) => {
     setQuery(value)
   };
 
   const handleSelectStock = (value: string) => {
-    console.log(value)
     setOpen(false)
     router.push(`/stock/${encodeURIComponent(value.toUpperCase())}`)
   };
 
+  const handleToggleWatchlist = (stock: StockResult, e: React.MouseEvent | React.KeyboardEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const curated = getCuratedStockBySymbol(stock.symbol)
+    toggleWatchlist({
+      symbol: stock.symbol,
+      name: curated?.name ?? stock.name,
+      exchange: curated?.exchange ?? stock.exchange,
+    })
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
 
-    const base: StockWithWatchlistStatus[] =
+    const base: StockResult[] =
       stocks.length > 0
         ? stocks
-        : MOCK_STOCKS.map((s) => ({
-            symbol: s.symbol,
-            name: s.name,
-            exchange: s.exchange,
-            type: "Stock",
-            isInWatchlist: false,
-          }))
+        : MOCK_STOCKS
 
     if (!q) return base
     return base.filter(
@@ -216,64 +210,48 @@ const SearchCommand = ({
                 <CommandEmpty>No results found.</CommandEmpty>
               ) : null}
               <CommandGroup heading="Stocks">
-                {filtered.map((stock) => (
-                  <CommandItem
-                    key={stock.symbol}
-                    value={stock.symbol}
-                    onSelect={handleSelectStock}
-                    className="group rounded-md px-3 py-2 hover:bg-yellow-500/10"
-                  >
-                    <span className="inline-flex h-7 w-12 items-center justify-center rounded-md border border-yellow-500/15 bg-yellow-500/10 text-xs font-semibold text-yellow-500">
-                      {stock.symbol}
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col text-left">
-                      <span className="truncate text-sm text-foreground">{stock.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {stock.exchange || "US"}
-                      </span>
-                    </span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      title="Add to watchlist"
-                      className="ml-2 inline-flex h-9 w-9 items-center justify-center rounded-md border border-yellow-500/10 bg-background/20 text-muted-foreground transition-colors hover:bg-yellow-500/10 hover:text-yellow-500"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setStocks((prev) => {
-                          const next = prev.map((s) =>
-                            s.symbol === stock.symbol
-                              ? { ...s, isInWatchlist: !s.isInWatchlist }
-                              : s
-                          )
-                          const nextStatus = next.find((s) => s.symbol === stock.symbol)?.isInWatchlist
-                          console.log("watchlist", stock.symbol, Boolean(nextStatus))
-                          return next
-                        })
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter" && e.key !== " ") return
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setStocks((prev) => {
-                          const next = prev.map((s) =>
-                            s.symbol === stock.symbol
-                              ? { ...s, isInWatchlist: !s.isInWatchlist }
-                              : s
-                          )
-                          const nextStatus = next.find((s) => s.symbol === stock.symbol)?.isInWatchlist
-                          console.log("watchlist", stock.symbol, Boolean(nextStatus))
-                          return next
-                        })
-                      }}
+                {filtered.map((stock) => {
+                  const inWatchlist = isInWatchlist(stock.symbol)
+                  return (
+                    <CommandItem
+                      key={stock.symbol}
+                      value={stock.symbol}
+                      onSelect={handleSelectStock}
+                      className="group rounded-md px-3 py-2 hover:bg-yellow-500/10"
                     >
-                      <Star
-                        className="h-4 w-4"
-                        fill={stock.isInWatchlist ? "currentColor" : "none"}
-                      />
-                    </span>
-                  </CommandItem>
-                ))}
+                      <span className="inline-flex h-7 w-12 items-center justify-center rounded-md border border-yellow-500/15 bg-yellow-500/10 text-xs font-semibold text-yellow-500">
+                        {stock.symbol}
+                      </span>
+                      <span className="flex min-w-0 flex-1 flex-col text-left">
+                        <span className="truncate text-sm text-foreground">{stock.name}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {stock.exchange || "US"}
+                        </span>
+                      </span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+                        className={`ml-2 inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors ${
+                          inWatchlist
+                            ? "border-yellow-500/30 bg-yellow-500/20 text-yellow-500"
+                            : "border-yellow-500/10 bg-background/20 text-muted-foreground hover:bg-yellow-500/10 hover:text-yellow-500"
+                        }`}
+                        onClick={(e) => handleToggleWatchlist(stock, e)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            handleToggleWatchlist(stock, e)
+                          }
+                        }}
+                      >
+                        <Star
+                          className="h-4 w-4"
+                          fill={inWatchlist ? "currentColor" : "none"}
+                        />
+                      </span>
+                    </CommandItem>
+                  )
+                })}
               </CommandGroup>
             </>
           )}

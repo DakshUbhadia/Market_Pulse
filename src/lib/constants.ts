@@ -201,7 +201,28 @@ export const BSE_STOCKS: StockListItem[] = [
 { symbol: "SUZLON", name: "Suzlon Energy Ltd.", exchange: "BSE" },
 ]
 
+const CURATED_STOCKS: StockListItem[] = [...US_DEFAULT_STOCKS, ...BSE_STOCKS]
+const CURATED_STOCK_MAP = new Map(
+  CURATED_STOCKS.map((s) => [s.symbol.toUpperCase().trim(), s])
+)
+
+export const getCuratedStockBySymbol = (symbol: string): StockListItem | undefined => {
+  const normalized = String(symbol ?? "").toUpperCase().trim()
+  if (!normalized) return undefined
+  return CURATED_STOCK_MAP.get(normalized)
+}
+
 const BSE_SYMBOL_SET = new Set(BSE_STOCKS.map((s) => s.symbol.toUpperCase()))
+
+const toTradingViewExchangePrefix = (exchange: string): string => {
+  const ex = String(exchange ?? "").toUpperCase().trim()
+  if (ex === "BSE") return "BSE"
+  if (ex === "NSE") return "NSE"
+  if (ex === "NYSE") return "NYSE"
+  if (ex === "NASDAQ") return "NASDAQ"
+  if (ex === "OTC") return "OTC"
+  return "NASDAQ"
+}
 
 export const toTradingViewSymbol = (raw: string) => {
   const normalized = String(raw ?? "").trim().toUpperCase()
@@ -213,6 +234,14 @@ export const toTradingViewSymbol = (raw: string) => {
   if (normalized.endsWith(".NS")) return `NSE:${normalized.replace(/\.NS$/, "")}`
 
   if (BSE_SYMBOL_SET.has(normalized)) return `BSE:${normalized}`
+
+  // Prefer curated metadata to pick the correct US exchange (NYSE/NASDAQ/OTC).
+  const curated = getCuratedStockBySymbol(normalized)
+  if (curated) {
+    const prefix = toTradingViewExchangePrefix(curated.exchange)
+    return `${prefix}:${normalized}`
+  }
+
   return `NASDAQ:${normalized}`
 }
 
