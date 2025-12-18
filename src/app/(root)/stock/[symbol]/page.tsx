@@ -2,8 +2,8 @@
 
 import { useParams } from "next/navigation";
 import { Star } from "lucide-react";
-import { useState } from "react";
 import TradingViewWidget from "@/components/ui/TradingViewWidgets";
+import { useWatchlist } from "@/context/WatchlistContext";
 import {
   ADVANCED_CHART_1,
   ADVANCED_CHART_2,
@@ -29,7 +29,7 @@ export default function StockDetailPage() {
   const params = useParams();
   const rawSymbol = typeof params.symbol === "string" ? params.symbol : "";
   const symbol = decodeURIComponent(rawSymbol);
-  const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const { isInWatchlist, toggleWatchlist } = useWatchlist();
 
   const tvSymbol = toTradingViewSymbol(symbol);
   const config = {
@@ -41,11 +41,16 @@ export default function StockDetailPage() {
     advancedChart2: ADVANCED_CHART_2(tvSymbol),
   };
 
+  // Extract display name from symbol (e.g., "NASDAQ:AAPL" -> "AAPL")
+  const displaySymbol = symbol.includes(":") ? symbol.split(":")[1] : symbol;
+  const exchange = symbol.includes(":") ? symbol.split(":")[0] : "US";
+  const inWatchlist = isInWatchlist(displaySymbol);
+
   const handleToggleWatchlist = () => {
-    setIsInWatchlist((prev) => {
-      const next = !prev;
-      console.log("watchlist", tvSymbol, next);
-      return next;
+    toggleWatchlist({
+      symbol: displaySymbol,
+      name: displaySymbol, // Will be updated with real name from API
+      exchange: exchange,
     });
   };
 
@@ -85,7 +90,7 @@ export default function StockDetailPage() {
             group flex w-full items-center justify-center gap-2 rounded-md px-6 py-3 text-sm font-semibold
             transition-all duration-300
             ${
-              isInWatchlist
+              inWatchlist
                 ? "border border-yellow-500 bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30"
                 : "border border-yellow-500/50 bg-linear-to-r from-yellow-600 to-yellow-500 text-black hover:from-yellow-500 hover:to-yellow-400 hover:shadow-lg hover:shadow-yellow-500/25"
             }
@@ -93,21 +98,13 @@ export default function StockDetailPage() {
         >
           <Star
             className={`h-5 w-5 transition-transform group-hover:scale-110 ${
-              isInWatchlist ? "fill-yellow-500" : ""
+              inWatchlist ? "fill-yellow-500" : ""
             }`}
           />
-          <span>{isInWatchlist ? "In Watchlist" : "Add to Watchlist"}</span>
+          <span>{inWatchlist ? "In Watchlist" : "Add to Watchlist"}</span>
         </button>
-
-        <div className="">
-          <TradingViewWidget
-            scriptURL={TECHNICAL_ANALYSIS_SCRIPT_URL}
-            config={config.technicalAnalysis}
-            height={460}
-          />
-        </div>
-
-        <div className="">
+        
+         <div className="">
           <TradingViewWidget
             scriptURL={COMPANY_PROFILE_SCRIPT_URL}
             config={config.companyProfile}
@@ -120,6 +117,14 @@ export default function StockDetailPage() {
             scriptURL={FUNDAMENTAL_DATA_SCRIPT_URL}
             config={config.fundamentalData}
             height={520}
+          />
+        </div>
+        
+        <div className="">
+          <TradingViewWidget
+            scriptURL={TECHNICAL_ANALYSIS_SCRIPT_URL}
+            config={config.technicalAnalysis}
+            height={460}
           />
         </div>
       </aside>

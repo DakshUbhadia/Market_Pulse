@@ -108,6 +108,251 @@ export const fetchJSON = async <T>(
   return (await res.json()) as T;
 };
 
+// Types for stock quote data
+type FinnhubQuote = {
+  c: number; // Current price
+  d: number; // Change
+  dp: number; // Percent change
+  h: number; // High price of the day
+  l: number; // Low price of the day
+  o: number; // Open price of the day
+  pc: number; // Previous close price
+  t: number; // Timestamp
+};
+
+type FinnhubProfile = {
+  country?: string;
+  currency?: string;
+  exchange?: string;
+  ipo?: string;
+  marketCapitalization?: number;
+  name?: string;
+  phone?: string;
+  shareOutstanding?: number;
+  ticker?: string;
+  weburl?: string;
+  logo?: string;
+  finnhubIndustry?: string;
+};
+
+type FinnhubMetricResponse = {
+  metric?: Record<string, unknown>;
+};
+
+export type StockQuoteData = {
+  symbol: string;
+  name: string;
+  exchange: string;
+  currency: string;
+  currentPrice: number;
+  openPrice: number;
+  highPrice: number;
+  lowPrice: number;
+  previousClose: number;
+  change: number;
+  percentChange: number;
+  logoUrl?: string;
+  peRatio: number;
+  timestamp: number;
+};
+
+type QuoteRequest = {
+  symbol: string;
+  exchange?: string;
+};
+
+const getFirstPositiveNumber = (values: unknown[]): number | undefined => {
+  for (const v of values) {
+    if (typeof v !== "number") continue;
+    if (!Number.isFinite(v)) continue;
+    if (v <= 0) continue;
+    return v;
+  }
+  return undefined;
+};
+
+const extractPeRatio = (metrics: FinnhubMetricResponse | null): number | undefined => {
+  const m = metrics?.metric;
+  if (!m) return undefined;
+
+  // Finnhub commonly exposes P/E as one of these fields (varies by plan/exchange).
+  // Prefer TTM values when present.
+  return getFirstPositiveNumber([
+    m.peTTM,
+    m.peBasicExclExtraTTM,
+    m.peInclExtraTTM,
+    m.peNormalizedAnnual,
+    m.peAnnual,
+  ]);
+};
+
+const extractEpsTtm = (metrics: FinnhubMetricResponse | null): number | undefined => {
+  const m = metrics?.metric;
+  if (!m) return undefined;
+
+  return getFirstPositiveNumber([
+    // Common Finnhub metric keys (vary by plan/exchange)
+    m.epsTTM,
+    m.epsBasicExclExtraItemsTTM,
+    m.epsInclExtraItemsTTM,
+    m.epsNormalizedAnnual,
+    m.epsAnnual,
+  ]);
+};
+
+const resolvePeRatio = (args: {
+  currentPrice: number;
+  metricResponse: FinnhubMetricResponse | null;
+}): number | undefined => {
+  const { currentPrice, metricResponse } = args;
+
+  const epsTtm = extractEpsTtm(metricResponse);
+  if (Number.isFinite(currentPrice) && currentPrice > 0 && typeof epsTtm === "number" && epsTtm > 0) {
+    const computed = currentPrice / epsTtm;
+    if (Number.isFinite(computed) && computed > 0) return computed;
+  }
+
+  return extractPeRatio(metricResponse);
+};
+
+const getFinnhubSymbolCandidates = (symbol: string, exchange?: string): string[] => {
+  const normalized = symbol.toUpperCase().trim();
+  const ex = String(exchange ?? "").toUpperCase().trim();
+  if (!normalized) return [];
+
+  const candidates: string[] = [normalized];
+
+  // Finnhub symbol formats vary across exchanges. For Indian equities, different
+  // deployments commonly accept one of: RELIANCE.NS, RELIANCE.BO, NSE:RELIANCE, BSE:RELIANCE.
+  if (ex === "BSE") {
+    candidates.unshift(`${normalized}.BO`, `BSE:${normalized}`, `${normalized}.NS`, `NSE:${normalized}`);
+  } else if (ex === "NSE") {
+    candidates.unshift(`${normalized}.NS`, `NSE:${normalized}`, `${normalized}.BO`, `BSE:${normalized}`);
+  }
+
+  // De-dupe while preserving order.
+  const seen = new Set<string>();
+  return candidates.filter((c) => {
+    const key = c.toUpperCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+/**
+ * Fetch real-time quote data for a stock symbol
+ */
+export const getStockQuote = cache(async (symbol: string, exchange?: string): Promise<StockQuoteData | null> => {
+  try {
+    const normalizedSymbol = symbol.toUpperCase().trim();
+    const ex = String(exchange ?? "").toUpperCase().trim();
+
+    if (!FINNHUB_TOKEN) {
+      // Don't show misleading mock prices for Indian equities.
+      if (ex === "BSE" || ex === "NSE") return null;
+
+      console.warn("FINNHUB_TOKEN not set, returning mock data");
+      return createMockQuote(symbol, undefined, undefined, exchange);
+    }
+
+    const candidates = getFinnhubSymbolCandidates(normalizedSymbol, exchange);
+
+    for (const candidate of candidates) {
+      const quoteUrl = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(candidate)}&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
+      const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(candidate)}&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
+      const metricUrl = `${FINNHUB_BASE_URL}/stock/metric?symbol=${encodeURIComponent(candidate)}&metric=all&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
+
+      const [quoteResponse, profileResponse, metricResponse] = await Promise.all([
+        fetchJSON<FinnhubQuote>(quoteUrl, { revalidateSeconds: 30 }).catch(() => null),
+        fetchJSON<FinnhubProfile>(profileUrl, { revalidateSeconds: 3600 }).catch(() => null),
+        fetchJSON<FinnhubMetricResponse>(metricUrl, { revalidateSeconds: 6 * 60 * 60 }).catch(() => null),
+      ]);
+
+      if (!quoteResponse) continue;
+
+      // If quote returns all zeros, the symbol might not be supported.
+      if (quoteResponse.c === 0 && quoteResponse.o === 0 && quoteResponse.h === 0 && quoteResponse.l === 0) {
+        continue;
+      }
+
+      const resolvedCurrency =
+        ex === "BSE" || ex === "NSE" ? "INR" : (profileResponse?.currency || "USD");
+
+      const resolvedPe = resolvePeRatio({ currentPrice: quoteResponse.c, metricResponse });
+
+      return {
+        symbol: normalizedSymbol,
+        name: profileResponse?.name || normalizedSymbol,
+        exchange: exchange || profileResponse?.exchange || "US",
+        currency: resolvedCurrency,
+        currentPrice: quoteResponse.c,
+        openPrice: quoteResponse.o,
+        highPrice: quoteResponse.h,
+        lowPrice: quoteResponse.l,
+        previousClose: quoteResponse.pc,
+        change: quoteResponse.d,
+        percentChange: quoteResponse.dp,
+        logoUrl: profileResponse?.logo,
+        peRatio: typeof resolvedPe === "number" ? resolvedPe : Number.NaN,
+        timestamp: quoteResponse.t ? quoteResponse.t * 1000 : Date.now(),
+      };
+    }
+
+    // If none of the candidates worked:
+    // - For Indian equities, return null (avoid wrong random prices).
+    // - For US, fall back to mock.
+    if (ex === "BSE" || ex === "NSE") return null;
+
+    return createMockQuote(symbol, undefined, undefined, exchange);
+  } catch (error) {
+    console.error("Error fetching stock quote:", error);
+    const ex = String(exchange ?? "").toUpperCase().trim();
+    if (ex === "BSE" || ex === "NSE") return null;
+    return createMockQuote(symbol, undefined, undefined, exchange);
+  }
+});
+
+function createMockQuote(symbol: string, name?: string, logo?: string, exchange?: string): StockQuoteData {
+  // Generate consistent mock data based on symbol
+  const hash = symbol.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const basePrice = 50 + (hash % 250);
+  const change = ((hash % 20) - 10) * 0.5;
+
+  const ex = String(exchange ?? "US").toUpperCase();
+  const currency = ex === "BSE" || ex === "NSE" ? "INR" : "USD";
+  
+  return {
+    symbol: symbol.toUpperCase(),
+    name: name || symbol,
+    exchange: exchange || "US",
+    currency,
+    currentPrice: basePrice,
+    openPrice: basePrice - change,
+    highPrice: basePrice + Math.abs(change) + 2,
+    lowPrice: basePrice - Math.abs(change) - 2,
+    previousClose: basePrice - change,
+    change: change,
+    percentChange: (change / basePrice) * 100,
+    logoUrl: logo,
+    peRatio: 15 + (hash % 30),
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * Fetch quotes for multiple symbols
+ */
+export const getMultipleStockQuotes = async (requests: QuoteRequest[]): Promise<StockQuoteData[]> => {
+  if (requests.length === 0) return [];
+
+  const results = await Promise.all(
+    requests.map((r) => getStockQuote(r.symbol, r.exchange))
+  );
+  
+  return results.filter((quote): quote is StockQuoteData => quote !== null);
+};
+
 export const searchStocks = cache(async (query?: string): Promise<StockWithWatchlistStatus[]> => {
   try {
     const trimmedQuery = typeof query === 'string' ? query.trim() : '';
