@@ -36,6 +36,7 @@ export type WatchlistAlert = {
   isActive: boolean
   createdAt: Date
   lastTriggeredAt?: Date
+  deleteAt?: Date
 }
 
 export type SortConfig = {

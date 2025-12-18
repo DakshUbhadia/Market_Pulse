@@ -138,125 +138,246 @@ export function WatchlistTable({
 
   return (
     <div className="rounded-lg border border-gray-800 bg-gray-900/50 overflow-hidden">
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader className="bg-gray-800/30 border-b border-gray-800">
-            <TableRow className="hover:bg-transparent">
-              <SortHeader column="name" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
-                Company
-              </SortHeader>
-              <SortHeader column="symbol" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
-                Symbol
-              </SortHeader>
-              <SortHeader column="currentPrice" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
-                Price
-              </SortHeader>
-              <SortHeader column="change" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
-                Change
-              </SortHeader>
-              <SortHeader column="percentChange" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
-                % Change
-              </SortHeader>
-              <SortHeader column="peRatio" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
-                P/E
-              </SortHeader>
-              <TableHead className="text-gray-300 font-semibold">Day&apos;s Range</TableHead>
-              <TableHead className="text-gray-300 font-semibold">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <AnimatePresence>
-              {sortedStocks.map((stock) => {
-                const hasPrices = Number.isFinite(stock.currentPrice) && Number.isFinite(stock.openPrice)
-                const computedChange = hasPrices ? stock.currentPrice - stock.openPrice : Number.NaN
-                const computedPercentChange =
-                  hasPrices && stock.openPrice !== 0
-                    ? (computedChange / stock.openPrice) * 100
-                    : Number.NaN
+      {sortedStocks.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <p>No stocks in watchlist. Add one to get started.</p>
+        </div>
+      ) : (
+        <>
+          {/* Desktop Table */}
+          <div className="hidden sm:block overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-gray-800/30 border-b border-gray-800">
+                <TableRow className="hover:bg-transparent">
+                  <SortHeader column="name" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
+                    Company
+                  </SortHeader>
+                  <SortHeader column="symbol" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
+                    Symbol
+                  </SortHeader>
+                  <SortHeader column="currentPrice" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
+                    Price
+                  </SortHeader>
+                  <SortHeader column="change" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
+                    Change
+                  </SortHeader>
+                  <SortHeader column="percentChange" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
+                    % Change
+                  </SortHeader>
+                  <SortHeader column="peRatio" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
+                    P/E
+                  </SortHeader>
+                  <TableHead className="text-gray-300 font-semibold">Day&apos;s Range</TableHead>
+                  <TableHead className="text-gray-300 font-semibold">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <AnimatePresence>
+                  {sortedStocks.map((stock) => {
+                    const hasPrices = Number.isFinite(stock.currentPrice) && Number.isFinite(stock.openPrice)
+                    const computedChange = hasPrices ? stock.currentPrice - stock.openPrice : Number.NaN
+                    const computedPercentChange =
+                      hasPrices && stock.openPrice !== 0
+                        ? (computedChange / stock.openPrice) * 100
+                        : Number.NaN
 
-                // Prefer API values (Finnhub d/dp) when available.
-                const resolvedChange =
-                  typeof stock.change === "number" && Number.isFinite(stock.change)
-                    ? stock.change
-                    : computedChange
+                    // Prefer API values (Finnhub d/dp) when available.
+                    const resolvedChange =
+                      typeof stock.change === "number" && Number.isFinite(stock.change)
+                        ? stock.change
+                        : computedChange
 
-                const resolvedPercentChange =
-                  typeof stock.percentChange === "number" && Number.isFinite(stock.percentChange)
-                    ? stock.percentChange
-                    : computedPercentChange
-                const isPositive = Number.isFinite(resolvedChange) ? resolvedChange >= 0 : true
-                const currencySymbol = stock.currency === "INR" || stock.exchange === "BSE" || stock.exchange === "NSE" ? "₹" : "$"
+                    const resolvedPercentChange =
+                      typeof stock.percentChange === "number" && Number.isFinite(stock.percentChange)
+                        ? stock.percentChange
+                        : computedPercentChange
+                    const isPositive = Number.isFinite(resolvedChange) ? resolvedChange >= 0 : true
+                    const currencySymbol = stock.currency === "INR" || stock.exchange === "BSE" || stock.exchange === "NSE" ? "₹" : "$"
 
-                return (
-                  <motion.tr
-                    key={stock.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="border-b border-gray-800/50 hover:bg-gray-800/50 transition-colors group"
-                  >
-                    {/* Company */}
-                    <TableCell className="py-3 text-gray-100 font-medium">
-                      <div 
-                        className="flex items-center gap-2 cursor-pointer hover:text-yellow-400 transition-colors"
-                        onClick={() => onViewStock?.(stock.symbol)}
+                    return (
+                      <motion.tr
+                        key={stock.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="border-b border-gray-800/50 hover:bg-gray-800/50 transition-colors group"
                       >
-                        {stock.logoUrl ? (
-                          <Image
-                            src={stock.logoUrl}
-                            alt={stock.name}
-                            width={24}
-                            height={24}
-                            className="h-6 w-6 rounded-full"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="h-6 w-6 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-400">
-                            {stock.symbol.charAt(0)}
+                        {/* Company */}
+                        <TableCell className="py-3 text-gray-100 font-medium">
+                          <div 
+                            className="flex items-center gap-2 cursor-pointer hover:text-yellow-400 transition-colors"
+                            onClick={() => onViewStock?.(stock.symbol)}
+                          >
+                            {stock.logoUrl ? (
+                              <Image
+                                src={stock.logoUrl}
+                                alt={stock.name}
+                                width={24}
+                                height={24}
+                                className="h-6 w-6 rounded-full"
+                                unoptimized
+                              />
+                            ) : (
+                              <div className="h-6 w-6 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-400">
+                                {stock.symbol.charAt(0)}
+                              </div>
+                            )}
+                            <span className="truncate">{stock.name}</span>
                           </div>
-                        )}
-                        <span className="truncate">{stock.name}</span>
-                      </div>
-                    </TableCell>
+                        </TableCell>
 
-                    {/* Symbol */}
-                    <TableCell 
-                      className="py-3 font-mono text-sm cursor-pointer group-hover:text-yellow-400 transition-colors text-yellow-300"
-                      onClick={() => onViewStock?.(stock.symbol)}
-                    >
-                      {stock.symbol}
-                    </TableCell>
+                        {/* Symbol */}
+                        <TableCell 
+                          className="py-3 font-mono text-sm cursor-pointer group-hover:text-yellow-400 transition-colors text-yellow-300"
+                          onClick={() => onViewStock?.(stock.symbol)}
+                        >
+                          {stock.symbol}
+                        </TableCell>
 
-                    {/* Price */}
-                    <TableCell className="py-3 text-gray-100 font-semibold">
-                      {formatMoney(currencySymbol, stock.currentPrice)}
-                    </TableCell>
+                        {/* Price */}
+                        <TableCell className="py-3 text-gray-100 font-semibold">
+                          {formatMoney(currencySymbol, stock.currentPrice)}
+                        </TableCell>
 
-                    {/* Change */}
-                    <TableCell className="py-3">
-                      <div
-                        className={`flex items-center gap-1 font-semibold ${
-                          Number.isFinite(resolvedChange)
-                            ? (isPositive ? "text-green-400" : "text-red-400")
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {Number.isFinite(resolvedChange) ? (
-                          isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />
-                        ) : null}
-                        <span>
-                          {Number.isFinite(resolvedChange)
-                            ? formatMoney(currencySymbol, Math.abs(resolvedChange))
+                        {/* Change */}
+                        <TableCell className="py-3">
+                          <div
+                            className={`flex items-center gap-1 font-semibold ${
+                              Number.isFinite(resolvedChange)
+                                ? (isPositive ? "text-green-400" : "text-red-400")
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {Number.isFinite(resolvedChange) ? (
+                              isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />
+                            ) : null}
+                            <span>
+                              {Number.isFinite(resolvedChange)
+                                ? formatMoney(currencySymbol, Math.abs(resolvedChange))
+                                : EMPTY_VALUE}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        {/* % Change */}
+                        <TableCell className="py-3">
+                          <Badge
+                            variant={Number.isFinite(resolvedPercentChange) && isPositive ? "default" : "secondary"}
+                            className={`font-semibold ${
+                              Number.isFinite(resolvedPercentChange)
+                                ? (isPositive
+                                    ? "bg-green-900/50 text-green-300 border-green-700"
+                                    : "bg-red-900/50 text-red-300 border-red-700")
+                                : "bg-gray-800 text-gray-400 border-gray-700"
+                            }`}
+                          >
+                            {Number.isFinite(resolvedPercentChange)
+                              ? `${isPositive ? "+" : ""}${resolvedPercentChange.toFixed(2)}%`
+                              : EMPTY_VALUE}
+                          </Badge>
+                        </TableCell>
+
+                        {/* P/E Ratio */}
+                        <TableCell className="py-3 text-gray-300 text-sm">
+                          {Number.isFinite(stock.peRatio) && stock.peRatio > 0
+                            ? stock.peRatio.toFixed(2)
                             : EMPTY_VALUE}
-                        </span>
-                      </div>
-                    </TableCell>
+                        </TableCell>
 
-                    {/* % Change */}
-                    <TableCell className="py-3">
+                        {/* Day's Range */}
+                        <TableCell className="py-3 px-2">
+                          <div className="w-32">
+                            <DayRangeBar
+                              low={stock.lowPrice}
+                              high={stock.highPrice}
+                              current={stock.currentPrice}
+                              currencySymbol={currencySymbol}
+                            />
+                          </div>
+                        </TableCell>
+
+                        {/* Actions */}
+                        <TableCell className="py-3">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => onViewStock?.(stock.symbol)}
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10"
+                              title="View stock details"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onAddAlert(stock)}
+                              className="border-yellow-600/30 text-yellow-400 hover:bg-yellow-600/10 gap-1 h-8 px-2"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              <span className="text-xs hidden sm:inline">Alert</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => onRemoveStock?.(stock.symbol)}
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+                              title="Remove from watchlist"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </motion.tr>
+                    )
+                  })}
+                </AnimatePresence>
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="sm:hidden space-y-3 p-2">
+            {sortedStocks.map((stock) => {
+              const hasPrices = Number.isFinite(stock.currentPrice) && Number.isFinite(stock.openPrice)
+              const computedChange = hasPrices ? stock.currentPrice - stock.openPrice : Number.NaN
+              const computedPercentChange =
+                hasPrices && stock.openPrice !== 0
+                  ? (computedChange / stock.openPrice) * 100
+                  : Number.NaN
+
+              const resolvedChange =
+                typeof stock.change === "number" && Number.isFinite(stock.change)
+                  ? stock.change
+                  : computedChange
+
+              const resolvedPercentChange =
+                typeof stock.percentChange === "number" && Number.isFinite(stock.percentChange)
+                  ? stock.percentChange
+                  : computedPercentChange
+              const isPositive = Number.isFinite(resolvedChange) ? resolvedChange >= 0 : true
+              const currencySymbol = stock.currency === "INR" || stock.exchange === "BSE" || stock.exchange === "NSE" ? "₹" : "$"
+
+              return (
+                <motion.div
+                  key={`${stock.id}-mobile`}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="rounded-xl border border-gray-800/80 bg-gray-900/70 p-4 shadow-lg shadow-black/40"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-100 truncate">{stock.name}</p>
+                      <p className="text-xs uppercase tracking-wide text-gray-500">{stock.symbol}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-gray-100">
+                        {formatMoney(currencySymbol, stock.currentPrice)}
+                      </p>
                       <Badge
                         variant={Number.isFinite(resolvedPercentChange) && isPositive ? "default" : "secondary"}
-                        className={`font-semibold ${
+                        className={`text-xs font-semibold ${
                           Number.isFinite(resolvedPercentChange)
                             ? (isPositive
                                 ? "bg-green-900/50 text-green-300 border-green-700"
@@ -268,71 +389,68 @@ export function WatchlistTable({
                           ? `${isPositive ? "+" : ""}${resolvedPercentChange.toFixed(2)}%`
                           : EMPTY_VALUE}
                       </Badge>
-                    </TableCell>
+                    </div>
+                  </div>
 
-                    {/* P/E Ratio */}
-                    <TableCell className="py-3 text-gray-300 text-sm">
-                      {Number.isFinite(stock.peRatio) && stock.peRatio > 0
-                        ? stock.peRatio.toFixed(2)
-                        : EMPTY_VALUE}
-                    </TableCell>
+                  <div className="mt-3 grid grid-cols-3 gap-3 text-[11px] text-gray-400">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">Change</p>
+                      <p className={`text-sm font-medium ${isPositive ? "text-green-300" : "text-red-300"}`}>
+                        {Number.isFinite(resolvedChange)
+                          ? `${isPositive ? "+" : ""}${formatMoney(currencySymbol, Math.abs(resolvedChange))}`
+                          : EMPTY_VALUE}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">P/E</p>
+                      <p className="text-sm font-medium text-gray-100">
+                        {Number.isFinite(stock.peRatio) && stock.peRatio > 0
+                          ? stock.peRatio.toFixed(2)
+                          : EMPTY_VALUE}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-gray-500">Open</p>
+                      <p className="text-sm font-medium text-gray-100">
+                        {formatMoney(currencySymbol, stock.openPrice)}
+                      </p>
+                    </div>
+                  </div>
 
-                    {/* Day's Range */}
-                    <TableCell className="py-3 px-2">
-                      <div className="w-32">
-                        <DayRangeBar
-                          low={stock.lowPrice}
-                          high={stock.highPrice}
-                          current={stock.currentPrice}
-                          currencySymbol={currencySymbol}
-                        />
-                      </div>
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell className="py-3">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onViewStock?.(stock.symbol)}
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10"
-                          title="View stock details"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onAddAlert(stock)}
-                          className="border-yellow-600/30 text-yellow-400 hover:bg-yellow-600/10 gap-1 h-8 px-2"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          <span className="text-xs hidden sm:inline">Alert</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onRemoveStock?.(stock.symbol)}
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-red-400 hover:bg-red-500/10"
-                          title="Remove from watchlist"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </motion.tr>
-                )
-              })}
-            </AnimatePresence>
-          </TableBody>
-        </Table>
-      </div>
-
-      {sortedStocks.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          <p>No stocks in watchlist. Add one to get started.</p>
-        </div>
+                  <div className="mt-4 flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onViewStock?.(stock.symbol)}
+                      className="h-8 w-8 p-0 text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10"
+                      title="View stock details"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onAddAlert(stock)}
+                      className="border-yellow-600/30 text-yellow-400 hover:bg-yellow-600/10 gap-1 h-8 px-2"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span className="text-xs">Alert</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onRemoveStock?.(stock.symbol)}
+                      className="h-8 w-8 p-0 text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+                      title="Remove from watchlist"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )

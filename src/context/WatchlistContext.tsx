@@ -24,6 +24,8 @@ const WatchlistContext = createContext<WatchlistContextType | null>(null)
 const STORAGE_KEY = "market-pulse-watchlist"
 const WATCHLIST_EVENT = "marketpulse:watchlist-changed"
 
+const EMPTY_WATCHLIST: WatchlistItem[] = []
+
 function parseStoredWatchlist(raw: string | null): WatchlistItem[] {
   if (!raw) return []
   try {
@@ -36,7 +38,7 @@ function parseStoredWatchlist(raw: string | null): WatchlistItem[] {
 }
 
 function readStoredWatchlist(): WatchlistItem[] {
-  if (typeof window === "undefined") return []
+  if (typeof window === "undefined") return EMPTY_WATCHLIST
   return parseStoredWatchlist(localStorage.getItem(STORAGE_KEY))
 }
 
@@ -88,7 +90,7 @@ let cachedRaw: string | null = null
 let cachedSnapshot: WatchlistItem[] = []
 
 function getSnapshot(): WatchlistItem[] {
-  if (typeof window === "undefined") return []
+  if (typeof window === "undefined") return EMPTY_WATCHLIST
 
   const raw = localStorage.getItem(STORAGE_KEY) ?? ""
   // React requires getSnapshot to be referentially stable when the underlying
@@ -101,7 +103,8 @@ function getSnapshot(): WatchlistItem[] {
 }
 
 function getServerSnapshot(): WatchlistItem[] {
-  return []
+  // Must be referentially stable across calls.
+  return EMPTY_WATCHLIST
 }
 
 export function WatchlistProvider({ children }: { children: ReactNode }) {
