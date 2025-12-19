@@ -1,6 +1,15 @@
 "use client";
 import TradingViewWidget from "@/components/ui/TradingViewWidgets";
-import { MARKET_OVERVIEW_CHART, TICKER_TAPE, MARKET_HEATMAP, NEWS_WIDGET, MARKET_DATA, CRYPTO_MARKETS } from "@/lib/constants";
+import {
+  BSE_MARKET_DATA,
+  CRYPTO_MARKETS,
+  MARKET_DATA,
+  MARKET_HEATMAP,
+  MARKET_OVERVIEW_CHART,
+  NEWS_WIDGET,
+  TICKER_TAPE,
+  USA_MARKET_DATA,
+} from "@/lib/constants";
 
 const Home = () => {
   // TradingView Advanced Chart embed script URL
@@ -17,60 +26,71 @@ const Home = () => {
   const cryptoMarketsScriptURL =
     "https://s3.tradingview.com/external-embedding/embed-widget-screener.js";
 
+  const marketOverviewConfig = { ...MARKET_OVERVIEW_CHART, width: "100%", height: 600 };
+  const heatmapConfig = { ...MARKET_HEATMAP, width: "100%", height: 600 };
+
   return (
-    <main className="flex flex-col gap-4">
-      <div className="w-full">
-        <TradingViewWidget
-          title="Ticker Tape"
-          scriptURL={tickerTapeScriptURL}
-          config={TICKER_TAPE}
-          height={46}
-        />
-      </div>
-      <div className="flex flex-col lg:flex-row gap-4 w-full">
-        <div className="w-full lg:w-[400px]">
-          <TradingViewWidget
-            title="Market Overview"
-            scriptURL={marketOverviewScriptURL}
-            config={MARKET_OVERVIEW_CHART}
-            height={600}
-          />
+    <main className="flex flex-col gap-8">
+      <section>
+        <TradingViewWidget scriptURL={tickerTapeScriptURL} config={TICKER_TAPE} height={46} />
+      </section>
+
+      <section className="flex flex-col lg:flex-row gap-8 w-full">
+        <div className="w-full lg:w-[400px] rounded-lg border border-border bg-card p-4">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
+            <h2 className="text-xl font-semibold text-foreground">Market Overview</h2>
+          </div>
+          <TradingViewWidget scriptURL={marketOverviewScriptURL} config={marketOverviewConfig} height={600} />
         </div>
-        <div className="w-full lg:flex-1">
-          <TradingViewWidget
-            title="Stock Heatmap"
-            scriptURL={stockHeatmapScriptURL}
-            config={MARKET_HEATMAP}
-            height={600}
-          />
+        <div className="w-full lg:flex-1 rounded-lg border border-border bg-card p-4">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
+            <h2 className="text-xl font-semibold text-foreground">Stock Heatmap</h2>
+          </div>
+          <TradingViewWidget scriptURL={stockHeatmapScriptURL} config={heatmapConfig} height={600} />
         </div>
-      </div>
-      <div className="flex flex-col lg:flex-row gap-4 w-full">
-        <div className="w-full lg:flex-1">
-          <TradingViewWidget
-            title="Market Data"
-            scriptURL={marketDataScriptURL}
-            config={MARKET_DATA}
-            height={600}
-          />
+      </section>
+
+      <section className="flex flex-col lg:flex-row gap-8 w-full">
+        <div className="w-full lg:flex-1 rounded-lg border border-border bg-card p-4">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
+            <h2 className="text-xl font-semibold text-foreground">Sector-wise Overview</h2>
+          </div>
+          <TradingViewWidget scriptURL={marketDataScriptURL} config={MARKET_DATA} height={600} />
         </div>
-        <div className="w-full lg:w-[463px]">
-          <TradingViewWidget
-            title="Crypto Markets"
-            scriptURL={cryptoMarketsScriptURL}
-            config={CRYPTO_MARKETS}
-            height={600}
-          />
+        <div className="w-full lg:w-[463px] rounded-lg border border-border bg-card p-4">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
+            <h2 className="text-xl font-semibold text-foreground">Crypto Markets</h2>
+          </div>
+          <TradingViewWidget scriptURL={cryptoMarketsScriptURL} config={CRYPTO_MARKETS} height={600} />
         </div>
-        <div className="w-full lg:w-[400px]">
-          <TradingViewWidget
-            title="News"
-            scriptURL={newsScriptURL}
-            config={NEWS_WIDGET}
-            height={600}
-          />
+        <div className="w-full lg:w-[400px] rounded-lg border border-border bg-card p-4">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
+            <h2 className="text-xl font-semibold text-foreground">News</h2>
+          </div>
+          <TradingViewWidget scriptURL={newsScriptURL} config={NEWS_WIDGET} height={600} />
         </div>
-      </div>
+      </section>
+
+      <section className="w-full rounded-lg border border-border bg-card p-4">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
+          <h2 className="text-xl font-semibold text-foreground">USA Market Detailed Insights</h2>
+        </div>
+        <TradingViewWidget scriptURL={cryptoMarketsScriptURL} config={USA_MARKET_DATA} height={550} />
+      </section>
+
+      <section className="w-full rounded-lg border border-border bg-card p-4">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
+          <h2 className="text-xl font-semibold text-foreground">BSE Market Detailed Insights</h2>
+        </div>
+        <TradingViewWidget scriptURL={cryptoMarketsScriptURL} config={BSE_MARKET_DATA} height={550} />
+      </section>
     </main>
   );
 };
