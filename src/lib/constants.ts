@@ -358,102 +358,113 @@ export const MARKET_DATA = {
           "showSymbolLogo": true,
           "backgroundColor": "#0F0F0F",
           "support_host": "https://www.tradingview.com",
-          "width": "100%",
+          "width": 550,
           "height": 550,
           "symbolsGroups": [
             {
-              "name": "Indices",
+              "name": "Financial",
               "symbols": [
                 {
-                  "name": "FOREXCOM:SPXUSD",
-                  "displayName": "S&P 500 Index"
+                  "name": "NYSE:JPM",
+                  "displayName": " JP Morgan Chase & Co."
                 },
                 {
-                  "name": "FOREXCOM:NSXUSD",
-                  "displayName": "US 100 Cash CFD"
+                  "name": "NYSE:V",
+                  "displayName": " Visa Inc."
                 },
                 {
-                  "name": "FOREXCOM:DJI",
-                  "displayName": "Dow Jones Industrial Average Index"
+                  "name": "NASDAQ:HOOD",
+                  "displayName": " Robinhood Markets, Inc."
                 },
                 {
-                  "name": "INDEX:NKY",
-                  "displayName": "Japan 225"
+                  "name": "BSE:NSDL",
+                  "displayName": " National Securities Depository Limited"
                 },
                 {
-                  "name": "INDEX:DEU40",
-                  "displayName": "DAX Index"
+                  "name": "BSE:SBIN",
+                  "displayName": " State Bank of India"
                 },
                 {
-                  "name": "FOREXCOM:UKXGBP",
-                  "displayName": "FTSE 100 Index"
+                  "name": "BSE:HDFCBANK",
+                  "displayName": " HDFC Bank Limited"
+                },
+                {
+                  "name": "BSE:ICICIBANK",
+                  "displayName": " ICICI Bank Limited"
+                },
+                {
+                  "name": "NASDAQ:COIN",
+                  "displayName": " Coinbase Global, Inc."
+                },
+                {
+                  "name": "NYSE:BAC",
+                  "displayName": " Bank of America Corporation"
                 }
               ]
             },
             {
-              "name": "Futures",
+              "name": "Technology",
               "symbols": [
                 {
-                  "name": "BMFBOVESPA:ISP1!",
-                  "displayName": "S&P 500"
+                  "name": "NASDAQ:META",
+                  "displayName": " Meta Platforms, Inc."
                 },
                 {
-                  "name": "BMFBOVESPA:EUR1!",
-                  "displayName": "Euro"
+                  "name": "NASDAQ:MSFT",
+                  "displayName": " Microsoft Corporation"
                 },
                 {
-                  "name": "CMCMARKETS:GOLD",
-                  "displayName": "Gold"
+                  "name": "NASDAQ:GOOGL",
+                  "displayName": " Alphabet Inc."
                 },
                 {
-                  "name": "BMFBOVESPA:CCM1!",
-                  "displayName": "Corn"
+                  "name": "NYSE:ORCL",
+                  "displayName": " Oracle Corporation"
+                },
+                {
+                  "name": "NASDAQ:AAPL",
+                  "displayName": " Apple Inc."
+                },
+                {
+                  "name": "NASDAQ:NVDA",
+                  "displayName": " NVIDIA Corporation"
+                },
+                {
+                  "name": "BSE:TCS",
+                  "displayName": " Tata Consultancy Services Limited"
+                },
+                {
+                  "name": "NASDAQ:NFLX",
+                  "displayName": " Netflix, Inc."
                 }
               ]
             },
             {
-              "name": "Bonds",
+              "name": "Services",
               "symbols": [
                 {
-                  "name": "EUREX:FGBL1!",
-                  "displayName": "Euro Bund"
+                  "name": "NASDAQ:PYPL",
+                  "displayName": " PayPal Holdings, Inc."
                 },
                 {
-                  "name": "EUREX:FBTP1!",
-                  "displayName": "Euro BTP"
+                  "name": "NASDAQ:AMZN",
+                  "displayName": " Amazon.com, Inc."
                 },
                 {
-                  "name": "EUREX:FGBM1!",
-                  "displayName": "Euro BOBL"
-                }
-              ]
-            },
-            {
-              "name": "Forex",
-              "symbols": [
-                {
-                  "name": "FX:EURUSD",
-                  "displayName": "EUR to USD"
+                  "name": "NYSE:BABA",
+                  "displayName": " Alibaba Group Holding Limited Sponsored ADR"
                 },
                 {
-                  "name": "FX:GBPUSD",
-                  "displayName": "GBP to USD"
+                  "name": "NASDAQ:WMT",
+                  "displayName": " Walmart Inc."
                 },
                 {
-                  "name": "FX:USDJPY",
-                  "displayName": "USD to JPY"
+                  "name": "BSE:MEESHO",
+                  "displayName": " Meesho Limited"
                 },
                 {
-                  "name": "FX:USDCHF",
-                  "displayName": "USD to CHF"
-                },
-                {
-                  "name": "FX:AUDUSD",
-                  "displayName": "AUD to USD"
-                },
-                {
-                  "name": "FX:USDCAD",
-                  "displayName": "USD to CAD"
+                  "name": "BSE:DMART",
+                  "displayName": " Avenue Supermarts Ltd."
                 }
               ]
             }
@@ -700,8 +711,32 @@ export const NEWS_WIDGET = {
         "displayMode": "adaptive",
         "feedMode": "all_symbols",
         "colorTheme": "dark",
-        "isTransparent": false,
+        "isTransparent": true,
         "locale": "en",
         "width": "100%",
         "height": 550
+}
+
+export const BSE_MARKET_DATA = {
+          "market": "india",
+          "showToolbar": true,
+          "defaultColumn": "overview",
+          "defaultScreen": "most_capitalized",
+          "isTransparent": true,
+          "locale": "en",
+          "colorTheme": "dark",
+          "width": "100%",
+          "height": 550
+}
+
+export const USA_MARKET_DATA = {
+          "market": "america",
+          "showToolbar": true,
+          "defaultColumn": "overview",
+          "defaultScreen": "most_capitalized",
+          "isTransparent": true,
+          "locale": "en",
+          "colorTheme": "dark",
+          "width": "100%",
+          "height": 550
 }

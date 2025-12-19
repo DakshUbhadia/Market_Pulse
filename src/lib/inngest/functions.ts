@@ -5,6 +5,8 @@ import { sendNewsSummaryEmail, sendWelcomeEmail } from "@/lib/nodemailer";
 import { getAllUsersForNewsEmail } from "@/lib/actions/user.action";
 import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions";
 import { getNews, type MarketNewsArticle } from "@/lib/actions/finnhub.actions";
+import { connectToDatabase } from "@/database/mongoose";
+import EmailPreferences from "@/database/models/email-preferences.model";
 
 type UserForNewsEmail = {
     id: string;
@@ -71,6 +73,27 @@ export const sendDailyNewsSummary = inngest.createFunction(
 
         if(!users || users.length === 0) return { success: true };
 
+        // Step #1b: Filter to users who have Daily news summary enabled.
+        const optedInUsers = await step.run('filter-users-by-email-preferences', async () => {
+            await connectToDatabase();
+
+            const userIds = users.map((u) => u.id).filter(Boolean);
+            const prefs = await EmailPreferences.find({ userId: { $in: userIds } })
+                .select({ userId: 1, receiveDailyNewsSummary: 1 })
+                .lean<Array<{ userId?: string; receiveDailyNewsSummary?: boolean }>>();
+
+            const map = new Map<string, boolean>();
+            for (const p of prefs || []) {
+                if (typeof p.userId === 'string') {
+                    map.set(p.userId, p.receiveDailyNewsSummary !== false);
+                }
+            }
+
+            return users.filter((u) => (map.get(u.id) ?? true) === true);
+        }) as UserForNewsEmail[];
+
+        if (!optedInUsers || optedInUsers.length === 0) return { success: true };
+
         // Step #2: For each user, fetch market news + watchlist news.
         const results = await step.run('fetch-user-news', async () => {
             const perUser: Array<{ user: UserForNewsEmail; market: MarketNewsArticle[]; watchlist: { symbols: string[]; articles: MarketNewsArticle[] } }> = [];
@@ -84,7 +107,7 @@ export const sendDailyNewsSummary = inngest.createFunction(
                 marketArticles = [];
             }
 
-            for (const user of users as UserForNewsEmail[]) {
+            for (const user of optedInUsers as UserForNewsEmail[]) {
                 try {
                     const symbols = await getWatchlistSymbolsByEmail(user.email);
                     const watchlistArticles = symbols.length

@@ -5,25 +5,69 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
 import React from 'react'
 import { Button } from '../ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { LogOut } from "lucide-react"
+import { LogOut, Settings } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import NavItems from "./NavItems"
+import { getMyEmailPreferences, updateMyEmailPreferences, type EmailPreferencesDTO } from "@/lib/actions/email-preferences.actions"
+import { Switch } from "@/components/ui/switch"
 
 const UserDropdown = () => {
   const router = useRouter();
   const { data: session, isPending, isRefetching, refetch } = authClient.useSession();
+
+  const [emailPrefs, setEmailPrefs] = React.useState<EmailPreferencesDTO | null>(null);
+  const [isSavingPrefs, setIsSavingPrefs] = React.useState(false);
 
   React.useEffect(() => {
     // After sign-in/sign-up we often arrive here via a client-side navigation.
     // Force a session refresh so we don't show the fallback user.
     refetch().catch(() => null);
   }, [refetch]);
+
+  React.useEffect(() => {
+    if (!session?.user) {
+      setEmailPrefs(null);
+      return;
+    }
+
+    getMyEmailPreferences()
+      .then((prefs) => setEmailPrefs(prefs))
+      .catch(() => setEmailPrefs({ receiveDailyNewsSummary: true, receiveAlerts: true }));
+  }, [session?.user]);
+
+  const togglePref = async (key: keyof EmailPreferencesDTO, next: boolean) => {
+    if (!session?.user) return;
+
+    const prev = emailPrefs;
+    setEmailPrefs((p) => ({
+      receiveDailyNewsSummary: p?.receiveDailyNewsSummary ?? true,
+      receiveAlerts: p?.receiveAlerts ?? true,
+      [key]: next,
+    } as EmailPreferencesDTO));
+
+    setIsSavingPrefs(true);
+    try {
+      const res = await updateMyEmailPreferences({ [key]: next } as Partial<EmailPreferencesDTO>);
+      if (res.success && res.preferences) {
+        setEmailPrefs(res.preferences);
+      } else {
+        setEmailPrefs(prev ?? { receiveDailyNewsSummary: true, receiveAlerts: true });
+      }
+    } catch {
+      setEmailPrefs(prev ?? { receiveDailyNewsSummary: true, receiveAlerts: true });
+    } finally {
+      setIsSavingPrefs(false);
+    }
+  };
 
     const handleLogout = async () => {
         await authClient.signOut();
@@ -70,6 +114,44 @@ const UserDropdown = () => {
       </div>
     </DropdownMenuLabel>
     <DropdownMenuSeparator />
+
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="cursor-pointer">
+        <Settings className="mr-2 h-4 w-4" />
+        <span>Settings</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="text-gray-500">
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default">
+          <div className="flex w-full items-center justify-between gap-6">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-gray-300">Daily news summary</span>
+              <span className="text-xs text-gray-500">Turn on/off daily emails</span>
+            </div>
+            <Switch
+              checked={emailPrefs?.receiveDailyNewsSummary ?? true}
+              disabled={!session?.user || isSavingPrefs}
+              onCheckedChange={(checked) => togglePref("receiveDailyNewsSummary", Boolean(checked))}
+              className="data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+            />
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default">
+          <div className="flex w-full items-center justify-between gap-6">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-gray-300">Alerts</span>
+              <span className="text-xs text-gray-500">Turn on/off alert emails</span>
+            </div>
+            <Switch
+              checked={emailPrefs?.receiveAlerts ?? true}
+              disabled={!session?.user || isSavingPrefs}
+              onCheckedChange={(checked) => togglePref("receiveAlerts", Boolean(checked))}
+              className="data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+            />
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+
     <DropdownMenuItem className="cursor-pointer group text-red-500 focus:text-red-500" onClick={handleLogout}>
       <LogOut className="mr-2 h-4 w-4 group-hover:text-red-600" />
       <span>Log out</span>

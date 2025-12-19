@@ -4,6 +4,7 @@ import { sendAlertEmail, type AlertEmailData } from '@/lib/nodemailer';
 import { getCuratedStockBySymbol } from '@/lib/constants';
 import { connectToDatabase } from "@/database/mongoose";
 import Alert from "@/database/models/alert.model";
+import EmailPreferences from "@/database/models/email-preferences.model";
 import { requireCurrentUser } from "@/lib/actions/session.actions";
 import { Types } from "mongoose";
 
@@ -99,6 +100,17 @@ export async function checkAndTriggerAlert(
   params: CheckAlertParams
 ): Promise<CheckAlertResult> {
   try {
+    const { userId, email } = await requireCurrentUser();
+    await connectToDatabase();
+
+    const prefs = await EmailPreferences.findOne({ userId })
+      .select({ receiveAlerts: 1 })
+      .lean<{ receiveAlerts?: boolean }>();
+
+    if (prefs?.receiveAlerts === false) {
+      return { alertId: params.alertId, triggered: false };
+    }
+
     const currentValue = getCurrentValue(params);
 
     if (currentValue === null || !Number.isFinite(currentValue)) {
@@ -129,18 +141,7 @@ export async function checkAndTriggerAlert(
       timeZoneName: 'short',
     });
 
-    const resolvedEmail = ((): string => {
-      const explicit = typeof params.userEmail === 'string' ? params.userEmail.trim().toLowerCase() : '';
-      return explicit;
-    })();
-
-    if (!resolvedEmail) {
-      return {
-        alertId: params.alertId,
-        triggered: false,
-        error: 'Missing user email for alert delivery',
-      };
-    }
+    const resolvedEmail = email;
 
     const emailData: AlertEmailData = {
       email: resolvedEmail,
