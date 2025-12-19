@@ -72,7 +72,9 @@ const SearchCommand = ({
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toLowerCase().includes("mac")
+      const nav = navigator as Navigator & { userAgentData?: { platform?: string } }
+      const platform = (nav.userAgentData?.platform ?? nav.platform ?? "").toString()
+      const isMac = platform.toLowerCase().includes("mac")
       const isK = e.key.toLowerCase() === "k"
       const modifier = isMac ? e.metaKey : e.ctrlKey
 

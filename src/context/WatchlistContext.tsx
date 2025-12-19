@@ -1,7 +1,9 @@
 "use client"
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getCuratedStockBySymbol } from "@/lib/constants"
+import { authClient } from "@/lib/auth-client"
+import { addToMyWatchlist, clearMyWatchlist, getMyWatchlist, removeFromMyWatchlist } from "@/lib/actions/watchlist.actions"
 
 export type WatchlistItem = {
   symbol: string
@@ -21,25 +23,10 @@ type WatchlistContextType = {
 
 const WatchlistContext = createContext<WatchlistContextType | null>(null)
 
-const STORAGE_KEY = "market-pulse-watchlist"
-const WATCHLIST_EVENT = "marketpulse:watchlist-changed"
-
 const EMPTY_WATCHLIST: WatchlistItem[] = []
 
-function parseStoredWatchlist(raw: string | null): WatchlistItem[] {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) return parsed
-  } catch (error) {
-    console.error("Failed to parse watchlist from localStorage:", error)
-  }
-  return []
-}
-
-function readStoredWatchlist(): WatchlistItem[] {
-  if (typeof window === "undefined") return EMPTY_WATCHLIST
-  return parseStoredWatchlist(localStorage.getItem(STORAGE_KEY))
+function normalizeSymbol(symbol: string): string {
+  return String(symbol || "").toUpperCase().trim()
 }
 
 function normalizeWatchlist(items: WatchlistItem[]): WatchlistItem[] {
@@ -58,94 +45,83 @@ function normalizeWatchlist(items: WatchlistItem[]): WatchlistItem[] {
     })
 }
 
-function writeStoredWatchlist(next: WatchlistItem[]) {
-  if (typeof window === "undefined") return
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-    // storage events don't fire in the same tab; use a custom event.
-    window.dispatchEvent(new Event(WATCHLIST_EVENT))
-  } catch (error) {
-    console.error("Failed to save watchlist to localStorage:", error)
-  }
-}
-
-function subscribe(callback: () => void) {
-  if (typeof window === "undefined") return () => {}
-
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) callback()
-  }
-
-  const onLocal = () => callback()
-
-  window.addEventListener("storage", onStorage)
-  window.addEventListener(WATCHLIST_EVENT, onLocal)
-  return () => {
-    window.removeEventListener("storage", onStorage)
-    window.removeEventListener(WATCHLIST_EVENT, onLocal)
-  }
-}
-
-let cachedRaw: string | null = null
-let cachedSnapshot: WatchlistItem[] = []
-
-function getSnapshot(): WatchlistItem[] {
-  if (typeof window === "undefined") return EMPTY_WATCHLIST
-
-  const raw = localStorage.getItem(STORAGE_KEY) ?? ""
-  // React requires getSnapshot to be referentially stable when the underlying
-  // store hasn't changed, otherwise it can trigger an infinite update loop.
-  if (raw === cachedRaw) return cachedSnapshot
-
-  cachedRaw = raw
-  cachedSnapshot = normalizeWatchlist(parseStoredWatchlist(raw))
-  return cachedSnapshot
-}
-
-function getServerSnapshot(): WatchlistItem[] {
-  // Must be referentially stable across calls.
-  return EMPTY_WATCHLIST
-}
-
 export function WatchlistProvider({ children }: { children: ReactNode }) {
-  // localStorage is the source of truth.
-  // useSyncExternalStore also avoids SSR hydration mismatches.
-  const watchlist = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>(EMPTY_WATCHLIST)
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null)
+  const loadedRef = useRef(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const run = async () => {
+      try {
+        const session = await authClient.getSession()
+        const email = session?.data?.user?.email
+
+        if (!cancelled) setSessionEmail(typeof email === "string" ? email.trim().toLowerCase() : null)
+
+        if (!email) {
+          if (!cancelled) {
+            loadedRef.current = true
+            setWatchlist(EMPTY_WATCHLIST)
+          }
+          return
+        }
+
+        const items = await getMyWatchlist()
+        if (cancelled) return
+        loadedRef.current = true
+        setWatchlist(normalizeWatchlist(items))
+      } catch {
+        if (!cancelled) {
+          setSessionEmail(null)
+          loadedRef.current = true
+          setWatchlist(EMPTY_WATCHLIST)
+        }
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const isInWatchlist = useCallback(
     (symbol: string) => {
-      const normalized = symbol.toUpperCase()
+      const normalized = normalizeSymbol(symbol)
       return watchlist.some((item) => item.symbol.toUpperCase() === normalized)
     },
     [watchlist]
   )
 
   const addToWatchlist = useCallback((item: Omit<WatchlistItem, "addedAt">) => {
-    const prev = readStoredWatchlist()
-    const normalized = item.symbol.toUpperCase()
-    if (prev.some((i) => i.symbol.toUpperCase() === normalized)) return
-    const next: WatchlistItem[] = [
-      ...prev,
-      {
-        symbol: item.symbol.toUpperCase(),
-        name: item.name,
-        exchange: item.exchange,
-        addedAt: Date.now(),
-      },
-    ]
-    writeStoredWatchlist(next)
-  }, [])
+    if (!sessionEmail) return
+    const normalized = normalizeSymbol(item.symbol)
+    if (!normalized) return
+
+    setWatchlist((prev) => {
+      if (prev.some((i) => i.symbol.toUpperCase() === normalized)) return prev
+      return normalizeWatchlist([
+        ...prev,
+        { symbol: normalized, name: item.name, exchange: item.exchange, addedAt: Date.now() },
+      ])
+    })
+
+    void addToMyWatchlist({ symbol: normalized, name: item.name, exchange: item.exchange })
+  }, [sessionEmail])
 
   const removeFromWatchlist = useCallback((symbol: string) => {
-    const normalized = symbol.toUpperCase()
-    const prev = readStoredWatchlist()
-    const next = prev.filter((item) => item.symbol.toUpperCase() !== normalized)
-    writeStoredWatchlist(next)
-  }, [])
+    if (!sessionEmail) return
+    const normalized = normalizeSymbol(symbol)
+    if (!normalized) return
+    setWatchlist((prev) => prev.filter((item) => item.symbol.toUpperCase() !== normalized))
+    void removeFromMyWatchlist(normalized)
+  }, [sessionEmail])
 
   const toggleWatchlist = useCallback(
     (item: Omit<WatchlistItem, "addedAt">) => {
-      const normalized = item.symbol.toUpperCase()
+      const normalized = normalizeSymbol(item.symbol)
       const exists = watchlist.some((i) => i.symbol.toUpperCase() === normalized)
       if (exists) {
         removeFromWatchlist(item.symbol)
@@ -159,8 +135,10 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   )
 
   const clearWatchlist = useCallback(() => {
-    writeStoredWatchlist([])
-  }, [])
+    if (!sessionEmail) return
+    setWatchlist(EMPTY_WATCHLIST)
+    void clearMyWatchlist()
+  }, [sessionEmail])
 
   const value = useMemo(
     () => ({

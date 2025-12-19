@@ -8,15 +8,21 @@ import { WatchlistTable } from "./WatchlistTable"
 import { useToast } from "@/components/ui/use-toast"
 import { useWatchlist } from "@/context/WatchlistContext"
 import { getMultipleStockQuotes } from "@/lib/actions/finnhub.actions"
-import { checkAndTriggerMultipleAlerts, type CheckAlertParams } from "@/lib/actions/alerts.actions"
+import {
+  checkAndTriggerMultipleAlerts,
+  createMyAlert,
+  deleteMyAlert,
+  getMyAlerts,
+  markMyAlertsTriggered,
+  updateMyAlert,
+  updateMyAlertObservations,
+  type CheckAlertParams,
+} from "@/lib/actions/alerts.actions"
 import { getCuratedStockBySymbol } from "@/lib/constants"
 import { authClient } from "@/lib/auth-client"
 import type { WatchlistStock, WatchlistAlert } from "@/types/watchlist"
 import { Loader2, Plus, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
-
-const ALERTS_STORAGE_KEY = "marketpulse:watchlist-alerts:v1"
-const ALERT_LAST_VALUES_KEY = "marketpulse:watchlist-alerts:lastValues:v1"
 const QUOTE_STREAM_INTERVAL_MS = 10_000
 
 type StreamQuote = {
@@ -32,119 +38,6 @@ type StreamQuote = {
   percentChange: number
   peRatio: number
   logoUrl?: string
-}
-
-type StoredWatchlistAlert = Omit<WatchlistAlert, "createdAt" | "lastTriggeredAt" | "deleteAt"> & {
-  createdAt: string
-  lastTriggeredAt?: string
-  deleteAt?: string
-}
-
-const parseStoredAlerts = (raw: string | null): WatchlistAlert[] => {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-
-    const alerts: WatchlistAlert[] = []
-    for (const item of parsed) {
-      if (!item || typeof item !== "object") continue
-      const a = item as Partial<StoredWatchlistAlert>
-
-      if (typeof a.id !== "string" || !a.id) continue
-      if (typeof a.name !== "string") continue
-      if (typeof a.symbol !== "string") continue
-      if (typeof a.stockName !== "string") continue
-      if (typeof a.type !== "string") continue
-      if (typeof a.condition !== "string") continue
-      if (typeof a.threshold !== "number" || !Number.isFinite(a.threshold)) continue
-      if (typeof a.frequency !== "string") continue
-      if (typeof a.isActive !== "boolean") continue
-      if (typeof a.createdAt !== "string" || !a.createdAt) continue
-
-      const createdAt = new Date(a.createdAt)
-      if (Number.isNaN(createdAt.getTime())) continue
-
-      const lastTriggeredAt =
-        typeof a.lastTriggeredAt === "string" && a.lastTriggeredAt
-          ? new Date(a.lastTriggeredAt)
-          : undefined
-
-      const deleteAt =
-        typeof a.deleteAt === "string" && a.deleteAt
-          ? new Date(a.deleteAt)
-          : undefined
-
-      alerts.push({
-        id: a.id,
-        name: a.name,
-        symbol: a.symbol,
-        stockName: a.stockName,
-        type: a.type as WatchlistAlert["type"],
-        condition: a.condition as WatchlistAlert["condition"],
-        threshold: a.threshold,
-        frequency: a.frequency as WatchlistAlert["frequency"],
-        isActive: a.isActive,
-        createdAt,
-        lastTriggeredAt:
-          lastTriggeredAt && !Number.isNaN(lastTriggeredAt.getTime()) ? lastTriggeredAt : undefined,
-        deleteAt: deleteAt && !Number.isNaN(deleteAt.getTime()) ? deleteAt : undefined,
-      })
-    }
-
-    return alerts
-  } catch {
-    return []
-  }
-}
-
-const serializeAlerts = (alerts: WatchlistAlert[]): string => {
-  const payload: StoredWatchlistAlert[] = alerts.map((a) => ({
-    ...a,
-    createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : new Date(a.createdAt).toISOString(),
-    lastTriggeredAt:
-      a.lastTriggeredAt instanceof Date
-        ? a.lastTriggeredAt.toISOString()
-        : a.lastTriggeredAt
-          ? new Date(a.lastTriggeredAt).toISOString()
-          : undefined,
-    deleteAt:
-      a.deleteAt instanceof Date
-        ? a.deleteAt.toISOString()
-        : a.deleteAt
-          ? new Date(a.deleteAt).toISOString()
-          : undefined,
-  }))
-  return JSON.stringify(payload)
-}
-
-type AlertLastValues = Record<string, number>
-
-const readAlertLastValues = (): AlertLastValues => {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = window.localStorage.getItem(ALERT_LAST_VALUES_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== "object") return {}
-
-    const next: AlertLastValues = {}
-    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof value === "number" && Number.isFinite(value)) next[key] = value
-    }
-    return next
-  } catch {
-    return {}
-  }
-}
-
-const writeAlertLastValues = (values: AlertLastValues) => {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.setItem(ALERT_LAST_VALUES_KEY, JSON.stringify(values))
-  } catch {
-    // ignore
-  }
 }
 
 const getCooldownMs = (frequency: WatchlistAlert["frequency"]) => {
@@ -259,32 +152,59 @@ export function WatchlistPage() {
 
   const lastTriggeredRef = useRef<Map<string, number>>(new Map())
   const warnedNoSessionRef = useRef(false)
+  const alertsRef = useRef<WatchlistAlert[]>([])
 
-  // Restore persisted alerts once on mount.
   useEffect(() => {
-    if (typeof window === "undefined") return
-    const restored = parseStoredAlerts(window.localStorage.getItem(ALERTS_STORAGE_KEY))
-    setAlerts(restored)
-    setAlertsHydrated(true)
+    alertsRef.current = alerts
+  }, [alerts])
+
+  // Load alerts from MongoDB once on mount.
+  useEffect(() => {
+    let cancelled = false
+
+    const run = async () => {
+      try {
+        const session = await authClient.getSession()
+        const userEmail = session?.data?.user?.email
+        if (!userEmail) {
+          if (!cancelled) {
+            setAlerts([])
+            setAlertsHydrated(true)
+          }
+          return
+        }
+
+        const dbAlerts = await getMyAlerts()
+        if (!cancelled) {
+          setAlerts(dbAlerts as unknown as WatchlistAlert[])
+          setAlertsHydrated(true)
+        }
+      } catch (e) {
+        console.error("Failed to load alerts:", e)
+        if (!cancelled) {
+          setAlerts([])
+          setAlertsHydrated(true)
+        }
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  // Cleanup: remove ONCE alerts that reached deleteAt.
+  // Cleanup UI-only: remove alerts that reached deleteAt and delete them from DB.
   useEffect(() => {
-    if (typeof window === "undefined") return
     if (!alertsHydrated) return
-
     const now = Date.now()
-    const hasExpired = alerts.some((a) => a.deleteAt instanceof Date && a.deleteAt.getTime() <= now)
-    if (!hasExpired) return
+    const expired = alerts.filter((a) => a.deleteAt instanceof Date && a.deleteAt.getTime() <= now)
+    if (expired.length === 0) return
 
     setAlerts((prev) => prev.filter((a) => !(a.deleteAt instanceof Date && a.deleteAt.getTime() <= now)))
-  }, [alerts, alertsHydrated])
-
-  // Persist alerts whenever they change (after initial restore).
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    if (!alertsHydrated) return
-    window.localStorage.setItem(ALERTS_STORAGE_KEY, serializeAlerts(alerts))
+    for (const a of expired) {
+      void deleteMyAlert(a.id)
+    }
   }, [alerts, alertsHydrated])
 
   // Check alerts and send emails when stock data changes
@@ -327,22 +247,26 @@ export function WatchlistPage() {
 
     if (activeAlerts.length === 0) return
 
-    const lastValues = readAlertLastValues()
+    const observationUpdates: Array<{ alertId: string; lastObservedValue: number; lastObservedAt?: number }> = []
 
     // Build params for each alert (include prevValue for real crossing detection)
     const alertParams: CheckAlertParams[] = activeAlerts.map((alert) => {
       const stock = stockData.find((s) => s.symbol.toUpperCase() === alert.symbol.toUpperCase())
-      const prevValue = lastValues[alert.id]
+      const currentValue = getAlertCurrentValue(alert, stock)
+      if (Number.isFinite(currentValue)) {
+        observationUpdates.push({ alertId: alert.id, lastObservedValue: currentValue, lastObservedAt: now })
+      }
 
       return {
         alertId: alert.id,
         alertName: alert.name,
         symbol: alert.symbol,
         stockName: alert.stockName || stock?.name || alert.symbol,
+        exchange: stock?.exchange,
         alertType: alert.type,
         condition: alert.condition,
         threshold: alert.threshold,
-        prevValue,
+        prevValue: alert.lastObservedValue,
         currentPrice: stock?.currentPrice ?? Number.NaN,
         percentChange: stock?.percentChange,
         peRatio: stock?.peRatio,
@@ -351,27 +275,39 @@ export function WatchlistPage() {
     })
 
     try {
+      if (observationUpdates.length > 0) {
+        void updateMyAlertObservations(observationUpdates)
+        setAlerts((prev) =>
+          prev.map((a) => {
+            const u = observationUpdates.find((x) => x.alertId === a.id)
+            return u
+              ? { ...a, lastObservedValue: u.lastObservedValue, lastObservedAt: new Date(u.lastObservedAt ?? now) }
+              : a
+          })
+        )
+      }
+
       const results = await checkAndTriggerMultipleAlerts(alertParams)
 
       const errors = results.filter((r) => r.error)
       if (errors.length > 0) {
-        console.error("Alert check returned errors:", errors)
-        toast({
-          title: "Alert email failed",
-          description: errors[0]?.error || "Unable to send one or more alert emails.",
-        })
-      }
+        // Many "errors" are non-fatal (e.g., missing P/E for a symbol). Avoid spamming console/toasts.
+        const first = errors[0]?.error || ""
+        const isNonFatalValueMissing =
+          typeof first === "string" &&
+          (first.includes("Unable to get current") || first.includes("Missing user email") || first.includes("Unable to get current PE_RATIO"))
 
-      // Update last known values for cross detection.
-      for (const alert of activeAlerts) {
-        const stock = stockData.find((s) => s.symbol.toUpperCase() === alert.symbol.toUpperCase())
-        const currentValue = getAlertCurrentValue(alert, stock)
-        if (Number.isFinite(currentValue)) {
-          lastValues[alert.id] = currentValue
+        if (isNonFatalValueMissing) {
+          console.warn("Alert check skipped for some alerts:", errors)
+        } else {
+          console.error("Alert check returned errors:", errors)
+          toast({
+            title: "Alert email failed",
+            description: first || "Unable to send one or more alert emails.",
+          })
         }
       }
-      writeAlertLastValues(lastValues)
-      
+
       // Update lastTriggered for any alerts that fired
       const triggeredIds = results.filter((r) => r.triggered).map((r) => r.alertId)
       
@@ -397,6 +333,12 @@ export function WatchlistPage() {
 
           return next
         })
+
+        void markMyAlertsTriggered(
+          activeAlerts
+            .filter((a) => triggeredIds.includes(a.id))
+            .map((a) => ({ alertId: a.id, frequency: a.frequency }))
+        )
 
         // Schedule deletion for ONCE alerts (best-effort; persisted deleteAt also handles refresh).
         const triggeredOnceAlerts = currentAlerts.filter(
@@ -429,13 +371,11 @@ export function WatchlistPage() {
     let eventSource: EventSource | null = null
 
     const maybeCheckAlerts = (watchlistStocks: WatchlistStock[]) => {
-      if (typeof window === "undefined") return
       if (!alertsHydrated) return
 
       setTimeout(() => {
         if (cancelled) return
-        const currentAlerts = parseStoredAlerts(window.localStorage.getItem(ALERTS_STORAGE_KEY))
-        checkAlertsAndSendEmails(watchlistStocks, currentAlerts)
+        checkAlertsAndSendEmails(watchlistStocks, alertsRef.current)
       }, 100)
     }
 
@@ -568,6 +508,7 @@ export function WatchlistPage() {
 
   const handleDeleteAlert = useCallback((alertId: string) => {
     setAlerts((prev) => prev.filter((a) => a.id !== alertId))
+    void deleteMyAlert(alertId)
     toast({
       title: "Alert deleted",
       description: "The alert has been removed.",
@@ -577,30 +518,54 @@ export function WatchlistPage() {
 
   const handleSaveAlert = useCallback(
     (alertData: Omit<WatchlistAlert, "id" | "createdAt">) => {
-      if (editingAlert) {
-        setAlerts((prev) =>
-          prev.map((a) =>
-            a.id === editingAlert.id
-              ? { ...a, ...alertData, id: a.id, createdAt: a.createdAt }
-              : a
-          )
-        )
-        toast({
-          title: "Alert updated",
-          description: `${alertData.name} has been updated.`,
-        })
-      } else {
-        const newAlert: WatchlistAlert = {
-          id: `alert-${Date.now()}`,
-          ...alertData,
-          createdAt: new Date(),
+      const run = async () => {
+        const exchange = getCuratedStockBySymbol(alertData.symbol)?.exchange || "US"
+
+        if (editingAlert) {
+          const res = await updateMyAlert(editingAlert.id, {
+            name: alertData.name,
+            symbol: alertData.symbol,
+            stockName: alertData.stockName,
+            exchange,
+            type: alertData.type,
+            condition: alertData.condition,
+            threshold: alertData.threshold,
+            frequency: alertData.frequency,
+            isActive: alertData.isActive,
+          })
+
+          if (!res.success || !res.alert) {
+            toast({ title: "Failed to update alert", description: res.error || "Unknown error" })
+            return
+          }
+
+          setAlerts((prev) => prev.map((a) => (a.id === editingAlert.id ? (res.alert as unknown as WatchlistAlert) : a)))
+          toast({ title: "Alert updated", description: `${alertData.name} has been updated.` })
+          return
         }
-        setAlerts((prev) => [newAlert, ...prev])
-        toast({
-          title: "Alert created",
-          description: "We'll notify you when conditions match.",
+
+        const res = await createMyAlert({
+          name: alertData.name,
+          symbol: alertData.symbol,
+          stockName: alertData.stockName,
+          exchange,
+          type: alertData.type,
+          condition: alertData.condition,
+          threshold: alertData.threshold,
+          frequency: alertData.frequency,
+          isActive: alertData.isActive,
         })
+
+        if (!res.success || !res.alert) {
+          toast({ title: "Failed to create alert", description: res.error || "Unknown error" })
+          return
+        }
+
+        setAlerts((prev) => [res.alert as unknown as WatchlistAlert, ...prev])
+        toast({ title: "Alert created", description: "We'll notify you when conditions match." })
       }
+
+      void run()
     },
     [editingAlert, toast]
   )
