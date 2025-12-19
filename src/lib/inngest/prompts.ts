@@ -198,6 +198,34 @@ Apple Stock Jumped After Great Earnings Report
 </div>
 </div>`
 
+export const NEWS_SUMMARY_WITH_WATCHLIST_EMAIL_PROMPT = `Generate HTML content for a daily Market Pulse news email that will be inserted into the NEWS_SUMMARY_EMAIL_TEMPLATE at the {{newsContent}} placeholder.
+
+You MUST include BOTH sections in this order:
+1) A general market section using the Market News data
+2) A watchlist section using the Watchlist News data
+
+INPUT DATA:
+- User: {{userName}} (use their name once in a friendly opening line)
+- Market News: {{marketNewsData}}
+- Watchlist Symbols: {{watchlistSymbols}}
+- Watchlist News: {{watchlistNewsData}}
+
+CRITICAL FORMATTING REQUIREMENTS:
+- Return ONLY clean HTML content with NO markdown, NO code blocks, NO backticks
+- Use the same HTML structures/classes/styles as in NEWS_SUMMARY_EMAIL_PROMPT (headings, containers, bullets, bottom line, read more link)
+- Use EXACT section headings (same styles) like:
+  <h3 class="mobile-news-title dark-text" style="margin: 30px 0 15px 0; font-size: 18px; font-weight: 600; color: #f8f9fa; line-height: 1.3;">📊 Market Highlights</h3>
+  <h3 class="mobile-news-title dark-text" style="margin: 30px 0 15px 0; font-size: 18px; font-weight: 600; color: #f8f9fa; line-height: 1.3;">⭐ Your Watchlist News</h3>
+- Between the two major sections, include this divider:
+  <div style="border-top: 1px solid #374151; margin: 32px 0 24px 0;"></div>
+
+CONTENT RULES:
+- Market section: summarize up to 4 items (pick the most relevant)
+- Watchlist section: prioritize news that includes a relatedSymbol; if multiple symbols exist, cover as many distinct symbols as possible
+- If Watchlist Symbols is empty or Watchlist News is empty, say so briefly in the watchlist section (still include the section header)
+- Keep language simple and actionable; include at least 3 bullets per article container
+`;
+
 export const TRADINGVIEW_SYMBOL_MAPPING_PROMPT = `You are an expert in financial markets and trading platforms. Your task is to find the correct TradingView symbol that corresponds to a given Finnhub stock symbol.
 
 Stock information from Finnhub:

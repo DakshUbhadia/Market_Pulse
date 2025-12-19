@@ -544,15 +544,28 @@ const cleanSymbols = (symbols: string[]): string[] => {
   return Array.from(new Set(cleaned));
 };
 
-export const getNews = async (symbols?: string[]): Promise<MarketNewsArticle[]> => {
+export type GetNewsOptions = {
+  /** How many days back to look when fetching company news. Default: 5 */
+  daysBack?: number;
+  /** Max items to return. Default: 6 */
+  maxItems?: number;
+  /** Max round-robin fetches for watchlist/company news. Default: 6 */
+  maxRounds?: number;
+};
+
+export const getNews = async (symbols?: string[], options?: GetNewsOptions): Promise<MarketNewsArticle[]> => {
   try {
     if (!NEXT_PUBLIC_FINNHUB_API_KEY) {
       throw new Error("NEXT_PUBLIC_FINNHUB_API_KEY is not set");
     }
 
+    const daysBack = typeof options?.daysBack === "number" && options.daysBack > 0 ? options.daysBack : 5;
+    const maxItems = typeof options?.maxItems === "number" && options.maxItems > 0 ? options.maxItems : 6;
+    const maxRounds = typeof options?.maxRounds === "number" && options.maxRounds > 0 ? options.maxRounds : 6;
+
     const now = new Date();
     const from = new Date(now);
-    from.setUTCDate(from.getUTCDate() - 5);
+    from.setUTCDate(from.getUTCDate() - daysBack);
 
     const fromStr = formatDateYYYYMMDD(from);
     const toStr = formatDateYYYYMMDD(now);
@@ -566,8 +579,8 @@ export const getNews = async (symbols?: string[]): Promise<MarketNewsArticle[]> 
       const picked: MarketNewsArticle[] = [];
       const seen = new Set<string>();
 
-      // Round-robin, maximum 6 fetches/rounds
-      for (let i = 0; i < 6; i++) {
+      // Round-robin, limited fetches/rounds (keeps rate usage predictable)
+      for (let i = 0; i < maxRounds; i++) {
         const symbol = tickers[i % tickers.length];
         const url = `${FINNHUB_BASE_URL}/company-news?symbol=${encodeURIComponent(
           symbol
@@ -607,7 +620,7 @@ export const getNews = async (symbols?: string[]): Promise<MarketNewsArticle[]> 
       if (seen.has(key)) continue;
       seen.add(key);
       deduped.push(formatted);
-      if (deduped.length >= 6) break;
+      if (deduped.length >= maxItems) break;
     }
 
     return deduped.sort((a, b) => b.datetime - a.datetime);

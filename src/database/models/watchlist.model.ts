@@ -4,6 +4,7 @@ export interface WatchlistItem extends Document {
 	userId: string;
 	symbol: string;
 	company: string;
+	exchange: string;
 	addedAt: Date;
 }
 
@@ -23,6 +24,12 @@ const WatchlistSchema = new Schema<WatchlistItem>({
 		type: String,
 		required: true,
 		trim: true,
+	},
+	exchange: {
+		type: String,
+		required: true,
+		trim: true,
+		default: "US",
 	},
 	addedAt: {
 		type: Date,
