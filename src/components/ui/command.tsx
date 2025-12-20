@@ -33,9 +33,9 @@ function CommandDialog({ open, onOpenChange, children }: CommandDialogProps) {
       aria-modal="true"
       onMouseDown={() => onOpenChange(false)}
     >
-      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" />
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md" />
       <div
-        className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ring-1 ring-yellow-500/10"
+        className="fixed left-1/2 top-[76px] z-50 w-[92vw] max-w-4xl -translate-x-1/2 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ring-1 ring-yellow-500/10 sm:w-[80vw] lg:w-[60vw]"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {children}

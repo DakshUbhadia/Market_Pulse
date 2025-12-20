@@ -6,6 +6,7 @@ import {headers} from "next/headers";
 import Otp from "@/database/models/otp.model";
 import { connectToDatabase } from "@/database/mongoose";
 import { sendWelcomeEmail } from "@/lib/nodemailer";
+import { hashPassword } from "better-auth/crypto";
 
 interface SignUpFormData {
     email: string;
@@ -23,22 +24,49 @@ interface SignInFormData {
     password: string;
 }
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+const getExistingCollection = async (
+    db: NonNullable<Awaited<ReturnType<typeof connectToDatabase>>["connection"]["db"]>,
+    candidates: string[],
+) => {
+    const collections = await db.listCollections({}, { nameOnly: true }).toArray();
+    const existingNames = new Set(collections.map((c) => c.name));
+    const chosen = candidates.find((name) => existingNames.has(name)) ?? candidates[0];
+    return db.collection(chosen);
+};
+
 export const sendOtp = async ({ email, name }: { email: string; name: string }) => {
     try {
-        await connectToDatabase();
+        const mongoose = await connectToDatabase();
+        const db = mongoose.connection.db;
+        if (!db) {
+            return { success: false, error: "Database connection failed" };
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+
+        // Prevent duplicate sign-ups
+        const userCollection = await getExistingCollection(db, ["user", "users"]);
+        const existingUser =
+            (await userCollection.findOne({ email: normalizedEmail })) ??
+            (await userCollection.findOne({ email: { $regex: `^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, $options: "i" } }));
+        if (existingUser) {
+            return { success: false, error: "An account with this email already exists. Please sign in." };
+        }
         
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
         // Delete any existing OTP for this email
-        await Otp.deleteMany({ email });
+        await Otp.deleteMany({ email: normalizedEmail });
         
         // Create new OTP
-        await Otp.create({ email, otp });
+        await Otp.create({ email: normalizedEmail, otp });
         
         // Send email
         await sendWelcomeEmail({
-            email,
+            email: normalizedEmail,
             name: name || "User",
             intro: "Please verify your email address to complete your registration.",
             otp
@@ -54,20 +82,36 @@ export const sendOtp = async ({ email, name }: { email: string; name: string }) 
 
 export const sendPasswordResetOtp = async ({ email }: { email: string }) => {
     try {
-        await connectToDatabase();
+        const mongoose = await connectToDatabase();
+        const db = mongoose.connection.db;
+        if (!db) {
+            return { success: false, error: "Database connection failed" };
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+
+        // Only send reset OTP to existing users
+        const userCollection = await getExistingCollection(db, ["user", "users"]);
+        const user =
+            (await userCollection.findOne({ email: normalizedEmail })) ??
+            (await userCollection.findOne({ email: { $regex: `^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, $options: "i" } }));
+
+        if (!user) {
+            return { success: false, error: "No account found with that email" };
+        }
         
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
         // Delete any existing OTP for this email
-        await Otp.deleteMany({ email });
+        await Otp.deleteMany({ email: normalizedEmail });
         
         // Create new OTP
-        await Otp.create({ email, otp });
+        await Otp.create({ email: normalizedEmail, otp });
         
         // Send email
         await sendWelcomeEmail({
-            email,
+            email: normalizedEmail,
             name: "User",
             intro: "You requested to reset your password. Use the verification code below to continue.",
             otp
@@ -83,8 +127,10 @@ export const sendPasswordResetOtp = async ({ email }: { email: string }) => {
 export const verifyOtp = async ({ email, otp }: { email: string; otp: string }) => {
     try {
         await connectToDatabase();
+
+        const normalizedEmail = normalizeEmail(email);
         
-        const otpRecord = await Otp.findOne({ email, otp });
+        const otpRecord = await Otp.findOne({ email: normalizedEmail, otp });
         
         if (!otpRecord) {
             return { success: false, error: "Invalid or expired verification code" };
@@ -97,7 +143,7 @@ export const verifyOtp = async ({ email, otp }: { email: string; otp: string }) 
     }
 };
 
-export const resetPassword = async ({ email, newPassword }: { email: string; newPassword: string }) => {
+export const resetPassword = async ({ email, newPassword, token }: { email: string; newPassword: string; token: string }) => {
     try {
         const mongoose = await connectToDatabase();
         const db = mongoose.connection.db;
@@ -105,25 +151,60 @@ export const resetPassword = async ({ email, newPassword }: { email: string; new
         if (!db) {
             return { success: false, error: "Database connection failed" };
         }
+
+        const normalizedEmail = normalizeEmail(email);
+
+        // Verify token (OTP) server-side as well
+        const otpRecord = await Otp.findOne({ email: normalizedEmail, otp: token });
+        if (!otpRecord) {
+            return { success: false, error: "Invalid or expired reset link. Please request a new one." };
+        }
         
-        // Hash the new password using Node.js crypto scrypt (same algorithm as better-auth)
-        const crypto = await import("crypto");
-        const { promisify } = await import("util");
-        const scryptAsync = promisify(crypto.scrypt);
+        const hashedPassword = await hashPassword(newPassword);
         
-        const salt = crypto.randomBytes(16).toString("hex");
-        const derivedKey = await scryptAsync(newPassword, salt, 64) as Buffer;
-        const hashedPassword = `${salt}:${derivedKey.toString("hex")}`;
+        // First, find the user by email in the users collection
+        const userCollection = await getExistingCollection(db, ["user", "users"]);
+        const accountCollection = await getExistingCollection(db, ["account", "accounts"]);
+
+        const user =
+            (await userCollection.findOne({ email: normalizedEmail })) ??
+            (await userCollection.findOne({ email: { $regex: `^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, $options: "i" } }));
         
-        // Update the password in the accounts collection (better-auth stores passwords in accounts)
-        const result = await db.collection("accounts").updateOne(
-            { providerId: "credential", accountId: email },
+        if (!user) {
+            return { success: false, error: "User not found" };
+        }
+        
+        // Update the password in the accounts collection using the user's ID
+        const result = await accountCollection.updateOne(
+            { userId: user._id, providerId: "credential" },
             { $set: { password: hashedPassword } }
         );
         
         if (result.matchedCount === 0) {
-            return { success: false, error: "User not found" };
+            // Some DBs store userId as string
+            const stringUserIdResult = await accountCollection.updateOne(
+                { userId: user._id.toString(), providerId: "credential" },
+                { $set: { password: hashedPassword } }
+            );
+
+            if (stringUserIdResult.matchedCount > 0) {
+                await Otp.deleteMany({ email: normalizedEmail });
+                return { success: true };
+            }
+
+            // Try with the email as accountId (fallback for older accounts)
+            const fallbackResult = await accountCollection.updateOne(
+                { providerId: "credential", accountId: normalizedEmail },
+                { $set: { password: hashedPassword } }
+            );
+            
+            if (fallbackResult.matchedCount === 0) {
+                return { success: false, error: "Account not found. Please ensure you signed up with email." };
+            }
         }
+        
+        // Delete the OTP after successful password reset
+        await Otp.deleteMany({ email: normalizedEmail });
         
         return { success: true };
     } catch (error) {
@@ -134,17 +215,32 @@ export const resetPassword = async ({ email, newPassword }: { email: string; new
 
 export const signUpWithEmail = async ({ email, password, fullName, country, investmentGoals, riskTolerance, preferredIndustry, otp }: SignUpFormData) => {
     try {
-        await connectToDatabase();
+        const mongoose = await connectToDatabase();
+        const db = mongoose.connection.db;
+        if (!db) {
+            return { success: false, error: "Database connection failed" };
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+
+        // Prevent duplicate sign-ups
+        const userCollection = await getExistingCollection(db, ["user", "users"]);
+        const existingUser =
+            (await userCollection.findOne({ email: normalizedEmail })) ??
+            (await userCollection.findOne({ email: { $regex: `^${normalizedEmail.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`, $options: "i" } }));
+        if (existingUser) {
+            return { success: false, error: "Account already exists. Please sign in instead." };
+        }
         
         // Verify OTP
-        const otpRecord = await Otp.findOne({ email, otp });
+        const otpRecord = await Otp.findOne({ email: normalizedEmail, otp });
         
         if (!otpRecord) {
             return { success: false, error: "Invalid or expired verification code" };
         }
         
         const auth = await getAuth();
-        const response = await auth.api.signUpEmail({ body: { email, password, name: fullName } })
+        const response = await auth.api.signUpEmail({ body: { email: normalizedEmail, password, name: fullName } })
 
         if(response) {
             // Delete OTP after successful signup
@@ -152,21 +248,22 @@ export const signUpWithEmail = async ({ email, password, fullName, country, inve
             
             await inngest.send({
                 name: 'app/user.created',
-                data: { email, name: fullName, country, investmentGoals, riskTolerance, preferredIndustry }
+                data: { email: normalizedEmail, name: fullName, country, investmentGoals, riskTolerance, preferredIndustry }
             })
         }
 
         return { success: true, data: response }
     } catch (e) {
         console.log('Sign up failed', e)
-        return { success: false, error: 'Sign up failed' }
+        const message = e instanceof Error ? e.message : undefined;
+        return { success: false, error: message || 'Sign up failed' }
     }
 }
 
 export const signInWithEmail = async ({ email, password }: SignInFormData) => {
     try {
         const auth = await getAuth();
-        const response = await auth.api.signInEmail({ body: { email, password } })
+        const response = await auth.api.signInEmail({ body: { email: normalizeEmail(email), password } })
 
         return { success: true, data: response }
     } catch (e) {

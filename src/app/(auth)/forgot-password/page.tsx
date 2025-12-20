@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import TradingLoader from "@/components/ui/TradingLoader";
+import FullPageTradingLoader from "@/components/ui/FullPageTradingLoader";
 import { sendPasswordResetOtp } from "@/lib/actions/auth.actions";
 import { toast } from "sonner";
 
@@ -37,7 +38,9 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form">
+    <>
+      <FullPageTradingLoader show={isLoading} label="Sending verification code..." />
+      <form onSubmit={handleSubmit} className="auth-form">
       <div className="form-header">
         <div className="form-loader">
           <TradingLoader size={70} />
@@ -48,8 +51,8 @@ const ForgotPasswordPage = () => {
 
       {/* Info Box */}
       <div style={{
-        background: "rgba(16, 185, 129, 0.1)",
-        border: "1px solid rgba(16, 185, 129, 0.2)",
+        background: "rgba(212, 175, 55, 0.1)",
+        border: "1px solid rgba(212, 175, 55, 0.2)",
         borderRadius: "12px",
         padding: "16px",
         marginBottom: "24px"
@@ -58,7 +61,7 @@ const ForgotPasswordPage = () => {
           <svg 
             viewBox="0 0 24 24" 
             fill="none" 
-            stroke="#10b981" 
+            stroke="#D4AF37" 
             strokeWidth="2" 
             style={{ width: "18px", height: "18px", display: "inline", marginRight: "8px", verticalAlign: "middle" }}
           >
@@ -94,18 +97,12 @@ const ForgotPasswordPage = () => {
         className={`submit-btn ${isLoading ? "loading" : ""}`} 
         disabled={isLoading}
       >
-        {isLoading ? (
-          <div className="btn-loader">
-            <TradingLoader size={40} />
-          </div>
-        ) : (
-          <>
-            <span className="btn-text">Send Verification Code</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </>
-        )}
+        <>
+          <span className="btn-text">Send Verification Code</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </>
       </button>
 
       {/* Back to Sign In */}
@@ -113,7 +110,8 @@ const ForgotPasswordPage = () => {
         <p>Remember your password?</p>
         <Link href="/sign-in">Sign In</Link>
       </div>
-    </form>
+      </form>
+    </>
   );
 };
 

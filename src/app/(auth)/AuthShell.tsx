@@ -2,8 +2,11 @@
 import React, { useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
+import TradingViewWidget from "@/components/ui/TradingViewWidgets";
+import { authClient } from "@/lib/auth-client";
 
 // Pre-generated candle data to avoid impure function calls during render
+// For Gold & Obsidian theme: isGreen=true -> bright gold, isGreen=false -> dark gold
 const CANDLE_DATA = [
   { id: 0, isGreen: true, left: "5%", delay: "0s", duration: "14s", height: "55px" },
   { id: 1, isGreen: false, left: "12%", delay: "2s", duration: "16s", height: "70px" },
@@ -56,6 +59,12 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isSignUp = pathname === "/sign-up";
 
+  React.useEffect(() => {
+    // Per product requirement: visiting auth screens should behave like logout.
+    // This also helps prevent viewing cached protected pages via browser back.
+    void authClient.signOut();
+  }, []);
+
   const handleToggle = (toSignUp: boolean) => {
     router.push(toSignUp ? "/sign-up" : "/sign-in");
   };
@@ -67,6 +76,32 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
     <div className="auth-page">
       {/* Enhanced Animated Background */}
       <div className="auth-bg">
+        {/* Live Candlestick Chart (background) */}
+        <div className="auth-chart-bg" aria-hidden="true">
+          <TradingViewWidget
+            scriptURL="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"
+            height={900}
+            className="auth-chart-widget"
+            config={{
+              autosize: true,
+              symbol: "NASDAQ:SPY",
+              interval: "15",
+              timezone: "Etc/UTC",
+              theme: "dark",
+              style: "1",
+              locale: "en",
+              hide_top_toolbar: true,
+              hide_legend: true,
+              hide_side_toolbar: true,
+              allow_symbol_change: false,
+              save_image: false,
+              calendar: false,
+              withdateranges: false,
+              support_host: "https://www.tradingview.com",
+            }}
+          />
+        </div>
+
         {/* Animated Grid */}
         <div className="trading-grid"></div>
 
