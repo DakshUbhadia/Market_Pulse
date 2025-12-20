@@ -3,7 +3,8 @@ import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import TradingLoader from "@/components/ui/TradingLoader";
-import { resetPassword } from "@/lib/actions/auth.actions";
+import FullPageTradingLoader from "@/components/ui/FullPageTradingLoader";
+import { resetPassword, verifyOtp } from "@/lib/actions/auth.actions";
 import { toast } from "sonner";
 
 const ResetPasswordContent = () => {
@@ -20,12 +21,28 @@ const ResetPasswordContent = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(true);
 
   useEffect(() => {
-    if (!email || !token) {
-      toast.error("Invalid reset link. Please try again.");
-      router.push("/forgot-password");
-    }
+    const validateToken = async () => {
+      if (!email || !token) {
+        toast.error("Invalid reset link. Please try again.");
+        router.push("/forgot-password");
+        return;
+      }
+      
+      // Verify the OTP token is still valid
+      const result = await verifyOtp({ email, otp: token });
+      if (!result.success) {
+        toast.error("Reset link has expired. Please request a new one.");
+        router.push("/forgot-password");
+        return;
+      }
+      
+      setIsValidating(false);
+    };
+    
+    validateToken();
   }, [email, token, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +83,8 @@ const ResetPasswordContent = () => {
     try {
       const result = await resetPassword({
         email,
-        newPassword: formData.password
+        newPassword: formData.password,
+        token
       });
 
       if (result.success) {
@@ -82,8 +100,19 @@ const ResetPasswordContent = () => {
     }
   };
 
+  if (isValidating) {
+    return (
+      <>
+        <FullPageTradingLoader show={true} label="Validating reset link..." />
+        <div className="auth-form" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px" }} />
+      </>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="auth-form">
+    <>
+      <FullPageTradingLoader show={isLoading} label="Resetting password..." />
+      <form onSubmit={handleSubmit} className="auth-form">
       <div className="form-header">
         <div className="form-loader">
           <TradingLoader size={70} />
@@ -94,8 +123,8 @@ const ResetPasswordContent = () => {
 
       {/* Email Display */}
       <div style={{
-        background: "rgba(255, 255, 255, 0.03)",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
+        background: "rgba(212, 175, 55, 0.05)",
+        border: "1px solid rgba(212, 175, 55, 0.2)",
         borderRadius: "12px",
         padding: "14px 16px",
         marginBottom: "24px",
@@ -103,7 +132,7 @@ const ResetPasswordContent = () => {
         alignItems: "center",
         gap: "12px"
       }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" style={{ width: "20px", height: "20px", flexShrink: 0 }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2" style={{ width: "20px", height: "20px", flexShrink: 0 }}>
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
           <polyline points="22 4 12 14.01 9 11.01" />
         </svg>
@@ -206,7 +235,7 @@ const ResetPasswordContent = () => {
           alignItems: "center", 
           gap: "8px", 
           marginBottom: "20px",
-          color: formData.password === formData.confirmPassword ? "#10b981" : "#ef4444",
+          color: formData.password === formData.confirmPassword ? "#D4AF37" : "#ef4444",
           fontSize: "0.85rem"
         }}>
           {formData.password === formData.confirmPassword ? (
@@ -234,18 +263,12 @@ const ResetPasswordContent = () => {
         className={`submit-btn ${isLoading ? "loading" : ""}`} 
         disabled={isLoading || formData.password !== formData.confirmPassword}
       >
-        {isLoading ? (
-          <div className="btn-loader">
-            <TradingLoader size={40} />
-          </div>
-        ) : (
-          <>
-            <span className="btn-text">Reset Password</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </>
-        )}
+        <>
+          <span className="btn-text">Reset Password</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </>
       </button>
 
       {/* Back to Sign In */}
@@ -253,7 +276,8 @@ const ResetPasswordContent = () => {
         <p>Remember your password?</p>
         <Link href="/sign-in">Sign In</Link>
       </div>
-    </form>
+      </form>
+    </>
   );
 };
 

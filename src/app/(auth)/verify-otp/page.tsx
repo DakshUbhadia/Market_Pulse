@@ -3,6 +3,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import TradingLoader from "@/components/ui/TradingLoader";
+import FullPageTradingLoader from "@/components/ui/FullPageTradingLoader";
 import { sendOtp, signUpWithEmail, verifyOtp } from "@/lib/actions/auth.actions";
 import { toast } from "sonner";
 
@@ -148,7 +149,9 @@ const VerifyOtpContent = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form">
+    <>
+      <FullPageTradingLoader show={isLoading} label={type === "signup" ? "Creating account..." : "Verifying code..."} />
+      <form onSubmit={handleSubmit} className="auth-form">
       <div className="form-header">
         <div className="form-loader">
           <TradingLoader size={70} />
@@ -156,7 +159,7 @@ const VerifyOtpContent = () => {
         <h1>Verify Your Email</h1>
         <p>
           Enter the 6-digit code sent to<br />
-          <strong style={{ color: "#10b981" }}>{email}</strong>
+          <strong style={{ color: "#D4AF37" }}>{email}</strong>
         </p>
       </div>
 
@@ -184,10 +187,10 @@ const VerifyOtpContent = () => {
               textAlign: "center",
               fontSize: "1.5rem",
               fontWeight: "bold",
-              background: "rgba(255, 255, 255, 0.03)",
-              border: digit ? "2px solid #10b981" : "1px solid rgba(255, 255, 255, 0.1)",
+              background: "transparent",
+              border: digit ? "2px solid #D4AF37" : "1px solid rgba(212, 175, 55, 0.3)",
               borderRadius: "12px",
-              color: "#e5e7eb",
+              color: "#F1D27B",
               outline: "none",
               transition: "all 0.3s ease"
             }}
@@ -199,7 +202,7 @@ const VerifyOtpContent = () => {
       <div style={{ textAlign: "center", marginBottom: "30px" }}>
         {!canResend ? (
           <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>
-            Resend code in <span style={{ color: "#10b981", fontWeight: "600" }}>{timer}s</span>
+            Resend code in <span style={{ color: "#D4AF37", fontWeight: "600" }}>{timer}s</span>
           </p>
         ) : (
           <button
@@ -209,7 +212,7 @@ const VerifyOtpContent = () => {
             style={{
               background: "none",
               border: "none",
-              color: "#10b981",
+              color: "#D4AF37",
               cursor: "pointer",
               fontSize: "0.95rem",
               textDecoration: "underline",
@@ -227,20 +230,14 @@ const VerifyOtpContent = () => {
         className={`submit-btn ${isLoading ? "loading" : ""}`} 
         disabled={isLoading || otp.join("").length !== 6}
       >
-        {isLoading ? (
-          <div className="btn-loader">
-            <TradingLoader size={40} />
-          </div>
-        ) : (
-          <>
-            <span className="btn-text">
-              {type === "signup" ? "Verify & Create Account" : "Verify Email"}
-            </span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </>
-        )}
+        <>
+          <span className="btn-text">
+            {type === "signup" ? "Verify & Create Account" : "Verify Email"}
+          </span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </>
       </button>
 
       {/* Back Link */}
@@ -248,7 +245,8 @@ const VerifyOtpContent = () => {
         <p>Wrong email?</p>
         <Link href={type === "signup" ? "/sign-up" : "/forgot-password"}>Go Back</Link>
       </div>
-    </form>
+      </form>
+    </>
   );
 };
 

@@ -3,6 +3,7 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TradingLoader from "@/components/ui/TradingLoader";
+import FullPageTradingLoader from "@/components/ui/FullPageTradingLoader";
 import CountrySelect from "@/components/forms/CountrySelect";
 import InvestmentGoalsSelect from "@/components/forms/InvestmentGoalsSelect";
 import RiskToleranceSelect from "@/components/forms/RiskToleranceSelect";
@@ -97,18 +98,23 @@ const SignUpPage = () => {
   }, [formData.password]);
 
   return (
+  <>
+    {/* Full Screen Loader overlay (if needed) */}
+    <FullPageTradingLoader show={isLoading} label="Creating your account..." />
+
     <form onSubmit={handleSubmit} className="auth-form">
       <div className="form-header">
-        {/* Trading Loader Animation */}
+        {/* Trading Loader Animation - Positioned at top */}
         <div className="form-loader">
-          <TradingLoader size={70} />
+          {/* Ensure your TradingLoader component accepts width/height or uses styles */}
+          <TradingLoader size={70} /> 
         </div>
         <h1>Create Account</h1>
         <p>Start your trading journey today</p>
       </div>
 
       <div className="divider">
-        <span>Register with email</span>
+        <span>Register details</span>
       </div>
 
       {/* Full Name Field */}
@@ -243,25 +249,21 @@ const SignUpPage = () => {
           <span>Investment Profile</span>
         </div>
         
-        {/* Country Select */}
         <CountrySelect
           value={formData.country}
           onChange={handleSelectChange("country")}
         />
 
-        {/* Investment Goals Select */}
         <InvestmentGoalsSelect
           value={formData.investmentGoal}
           onChange={handleSelectChange("investmentGoal")}
         />
 
-        {/* Risk Tolerance Select */}
         <RiskToleranceSelect
           value={formData.riskTolerance}
           onChange={handleSelectChange("riskTolerance")}
         />
 
-        {/* Preferred Industry Select */}
         <PreferredIndustrySelect
           value={formData.preferredIndustry}
           onChange={handleSelectChange("preferredIndustry")}
@@ -286,16 +288,14 @@ const SignUpPage = () => {
       {/* Submit Button */}
       <button type="submit" className={`submit-btn ${isLoading ? "loading" : ""}`} disabled={isLoading}>
         {isLoading ? (
-          <div className="btn-loader">
-            <TradingLoader size={40} />
-          </div>
+           <span className="btn-text">Processing...</span>
         ) : (
-          <>
-            <span className="btn-text">Create Account</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </>
+           <>
+             <span className="btn-text">Create Account</span>
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+               <path d="M5 12h14M12 5l7 7-7 7" />
+             </svg>
+           </>
         )}
       </button>
 
@@ -305,6 +305,7 @@ const SignUpPage = () => {
         <Link href="/sign-in">Sign In</Link>
       </div>
     </form>
+  </>
   );
 };
 

@@ -1,8 +1,23 @@
 /* ==========================================
    MARKET PULSE - AUTH STYLES
    Trading-themed Authentication Pages
-   Enhanced with Visible Animations
+   Premium Gold & Obsidian Theme
    ========================================== */
+
+/* Gold Color Variables */
+:root {
+  --obsidian-black: #0B0B0B;
+  --obsidian-dark: #0a0a0a;
+  --gold-primary: #D4AF37;
+  --gold-light: #F1D27B;
+  --gold-dark: #B8860B;
+  --gold-accent: #C5A028;
+  --gold-muted: rgba(212, 175, 55, 0.2);
+  --gold-border: rgba(212, 175, 55, 0.5);
+  --gold-glow: rgba(212, 175, 55, 0.3);
+  --gold-gradient: linear-gradient(135deg, #D4AF37 0%, #F1D27B 50%, #B8860B 100%);
+  --gold-gradient-hover: linear-gradient(135deg, #F1D27B 0%, #D4AF37 50%, #C5A028 100%);
+}
 
 /* Base Page Styles */
 .auth-page {
@@ -11,7 +26,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #050508 0%, #0a0f14 50%, #0d1117 100%);
+  background: linear-gradient(135deg, var(--obsidian-black) 0%, #0d0d0d 50%, #111111 100%);
   overflow: hidden;
   padding: 20px;
 }
@@ -27,13 +42,34 @@
   overflow: hidden;
 }
 
-/* Animated Grid Pattern - More Visible */
+/* Live Candlestick Chart Layer */
+.auth-chart-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.22;
+  filter: saturate(0.95) contrast(1.05);
+}
+
+.auth-chart-bg .tradingview-widget-container {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100vh !important;
+}
+
+.auth-chart-bg .tradingview-widget-container__widget {
+  width: 100% !important;
+  height: 100vh !important;
+}
+
+/* Animated Grid Pattern - Gold Theme */
 .trading-grid {
   position: absolute;
   inset: 0;
   background-image: 
-    linear-gradient(rgba(16, 185, 129, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(16, 185, 129, 0.08) 1px, transparent 1px);
+    linear-gradient(rgba(212, 175, 55, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 175, 55, 0.06) 1px, transparent 1px);
   background-size: 60px 60px;
   animation: gridPulse 4s ease-in-out infinite, gridMove 20s linear infinite;
 }
@@ -84,20 +120,24 @@
   height: 15px;
 }
 
+/* --- UPDATED COLORS: GREEN (BULLISH) --- */
 .candle.green {
-  background: linear-gradient(to top, #10b981, #34d399);
+  /* Vibrant Trading Green Gradient */
+  background: linear-gradient(to top, #0ecb81, #21ef9a);
   box-shadow: 
-    0 0 20px rgba(16, 185, 129, 0.6),
-    0 0 40px rgba(16, 185, 129, 0.3),
-    0 0 60px rgba(16, 185, 129, 0.1);
+    0 0 20px rgba(14, 203, 129, 0.6),
+    0 0 40px rgba(14, 203, 129, 0.3),
+    0 0 60px rgba(14, 203, 129, 0.1);
 }
 
+/* --- UPDATED COLORS: RED (BEARISH) --- */
 .candle.red {
-  background: linear-gradient(to top, #ef4444, #f87171);
+  /* Vibrant Trading Red Gradient */
+  background: linear-gradient(to top, #f6465d, #ff7285);
   box-shadow: 
-    0 0 20px rgba(239, 68, 68, 0.6),
-    0 0 40px rgba(239, 68, 68, 0.3),
-    0 0 60px rgba(239, 68, 68, 0.1);
+    0 0 20px rgba(246, 70, 93, 0.6),
+    0 0 40px rgba(246, 70, 93, 0.3),
+    0 0 60px rgba(246, 70, 93, 0.1);
 }
 
 @keyframes floatUp {
@@ -121,7 +161,7 @@
   }
 }
 
-/* Pulse Rings - More Visible */
+/* Pulse Rings */
 .pulse-rings {
   position: absolute;
   top: 50%;
@@ -131,7 +171,7 @@
 
 .pulse-ring {
   position: absolute;
-  border: 2px solid rgba(16, 185, 129, 0.2);
+  border: 2px solid rgba(212, 175, 55, 0.2);
   border-radius: 50%;
   animation: pulseRing 5s ease-out infinite;
 }
@@ -163,7 +203,7 @@
   0% {
     transform: scale(0.5);
     opacity: 0.8;
-    border-color: rgba(16, 185, 129, 0.4);
+    border-color: rgba(212, 175, 55, 0.4);
   }
   50% {
     opacity: 0.4;
@@ -171,7 +211,7 @@
   100% {
     transform: scale(1.5);
     opacity: 0;
-    border-color: rgba(16, 185, 129, 0);
+    border-color: rgba(212, 175, 55, 0);
   }
 }
 
@@ -191,7 +231,7 @@
 .glow-orb-1 {
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.25) 0%, transparent 70%);
   top: -10%;
   left: -10%;
   animation-delay: 0s;
@@ -200,7 +240,7 @@
 .glow-orb-2 {
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(241, 210, 123, 0.2) 0%, transparent 70%);
   top: 60%;
   right: -5%;
   animation-delay: -7s;
@@ -209,7 +249,7 @@
 .glow-orb-3 {
   width: 350px;
   height: 350px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(197, 160, 40, 0.18) 0%, transparent 70%);
   bottom: -15%;
   left: 30%;
   animation-delay: -14s;
@@ -238,14 +278,16 @@
   opacity: 0;
 }
 
+/* --- UPDATED COLORS: GREEN NUMBERS --- */
 .price-number.green {
-  color: #10b981;
-  text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  color: #0ecb81;
+  text-shadow: 0 0 10px rgba(14, 203, 129, 0.5);
 }
 
+/* --- UPDATED COLORS: RED NUMBERS --- */
 .price-number.red {
-  color: #ef4444;
-  text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  color: #f6465d;
+  text-shadow: 0 0 10px rgba(246, 70, 93, 0.5);
 }
 
 @keyframes priceFloat {
@@ -269,13 +311,13 @@
   width: 100%;
   max-width: 900px;
   min-height: 700px;
-  background: rgba(10, 15, 20, 0.85);
+  background: rgba(11, 11, 11, 0.9);
   border-radius: 24px;
   box-shadow: 
     0 25px 80px -12px rgba(0, 0, 0, 0.9),
-    0 0 0 1px rgba(16, 185, 129, 0.15),
-    0 0 100px rgba(16, 185, 129, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 0 0 1px rgba(212, 175, 55, 0.15),
+    0 0 50px rgba(212, 175, 55, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
   overflow: hidden;
   z-index: 1;
   backdrop-filter: blur(30px);
@@ -295,7 +337,7 @@
   padding: 20px;
   transition: all 0.6s ease-in-out;
   overflow-y: auto;
-  background: rgba(5, 10, 15, 0.5);
+  background: rgba(11, 11, 11, 0.6);
 }
 
 .sign-in-container {
@@ -345,7 +387,20 @@
   left: -100%;
   height: 100%;
   width: 200%;
-  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  
+  /* MASTERPIECE CHANGE: Dual Radial Glows */
+  /* 1. Base color is Deep Emerald (#022c22) */
+  background-color: #022c22;
+  background-image: 
+    /* 2. Leftmost Corner Glow (Visible on Sign In) - Light & Transparent */
+    radial-gradient(circle at bottom left, rgba(212, 175, 55, 0.25) 0%, transparent 40%),
+    
+    /* 3. Rightmost Corner Glow (Visible on Sign Up) - Light & Transparent */
+    radial-gradient(circle at bottom right, rgba(212, 175, 55, 0.25) 0%, transparent 40%),
+    
+    /* 4. Subtle texture gradient to blend the emeralds */
+    linear-gradient(to bottom, #022c22 0%, #064e3b 100%);
+    
   transition: transform 0.6s ease-in-out;
   overflow: hidden;
 }
@@ -354,15 +409,20 @@
   transform: translateX(50%);
 }
 
-/* Trading Background Image in Overlay */
+/* Glassmorphism overlay effect - UPDATED FOR GOLDEN STRINGS */
 .overlay::before {
   content: '';
   position: absolute;
   inset: 0;
   background: 
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Cpath d='M0 200 Q50 180 100 190 T200 150 T300 170 T400 120' stroke='rgba(255,255,255,0.1)' fill='none' stroke-width='2'/%3E%3Cpath d='M0 220 Q80 200 150 210 T250 180 T350 190 T400 160' stroke='rgba(255,255,255,0.08)' fill='none' stroke-width='2'/%3E%3C/svg%3E") center/cover,
-    linear-gradient(45deg, rgba(0,0,0,0.3) 0%, transparent 50%, rgba(0,0,0,0.3) 100%);
-  opacity: 0.6;
+    /* UPDATED SVG: Golden Strings */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Cpath d='M0 200 Q50 180 100 190 T200 150 T300 170 T400 120' stroke='%23F1D27B' fill='none' stroke-width='1.5' opacity='0.8'/%3E%3Cpath d='M0 220 Q80 200 150 210 T250 180 T350 190 T400 160' stroke='%23D4AF37' fill='none' stroke-width='1.5' opacity='0.8'/%3E%3C/svg%3E") center/cover,
+    linear-gradient(45deg, rgba(0,0,0,0.1) 0%, transparent 50%, rgba(212,175,55,0.05) 100%);
+  
+  /* Increased opacity so the gold strings are visible */
+  opacity: 0.3; 
+  /* Added a gold glow to make the strings look 'shiny' */
+  filter: drop-shadow(0 0 2px rgba(212, 175, 55, 0.3)) blur(0.5px);
   animation: overlayShift 10s ease-in-out infinite;
 }
 
@@ -403,7 +463,7 @@
 
 /* Panel Content */
 .panel-content {
-  color: white;
+  color: #FFFFFF;
   position: relative;
   z-index: 2;
 }
@@ -413,14 +473,17 @@
   position: relative;
   width: 160px;
   height: 110px;
-  margin: 0 auto 15px;
+  /* FIX: Increased margin-bottom to 25px to allow room for the float animation */
+  margin: 0 auto 25px; 
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 
     0 20px 40px rgba(0, 0, 0, 0.4),
-    0 0 30px rgba(255, 255, 255, 0.1);
+    0 0 30px rgba(16, 185, 129, 0.15); 
   animation: visualFloat 4s ease-in-out infinite;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  /* FIX: Explicit Z-Index to establish stacking order */
+  z-index: 10;
 }
 
 .trading-visual img {
@@ -433,7 +496,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, transparent 50%, rgba(5, 150, 105, 0.2) 100%);
+  background: linear-gradient(135deg, rgba(2, 44, 34, 0.2) 0%, transparent 50%, rgba(212, 175, 55, 0.1) 100%);
   pointer-events: none;
 }
 
@@ -448,20 +511,26 @@
   height: 80px;
   margin: 0 auto 15px;
   position: relative;
+  /* FIX: Higher Z-Index ensures the graph sits ON TOP of the image if they overlap */
+  z-index: 20; 
+  /* FIX: Pointer events none allows clicks to pass through if it overlaps buttons */
+  pointer-events: none;
 }
 
 .chart-visual svg {
   width: 100%;
   height: 100%;
+  overflow: visible; /* Ensure stroke doesn't get clipped by SVG bounds */
 }
 
 .chart-path {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.8);
+  stroke: #F1D27B; 
   stroke-width: 3;
   stroke-linecap: round;
   stroke-dasharray: 500;
   stroke-dashoffset: 500;
+  filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.4));
   animation: drawChart 3s ease-out forwards infinite;
 }
 
@@ -513,12 +582,16 @@
   background: inherit;
 }
 
+/* Green Candles - Crisp Emerald */
 .mini-candle.green {
-  background: rgba(255, 255, 255, 0.9);
+  background: #10B981; 
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5); 
 }
 
+/* Red Candles */
 .mini-candle.red {
-  background: rgba(255, 255, 255, 0.5);
+  background: #E11D48; 
+  box-shadow: 0 0 12px rgba(225, 29, 72, 0.4);
 }
 
 @keyframes candleGrow {
@@ -546,7 +619,8 @@
 .logo-icon {
   width: 70px;
   height: 70px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(4, 120, 87, 0.25);
+  border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 18px;
   display: flex;
   align-items: center;
@@ -558,23 +632,24 @@
 
 @keyframes logoPulse {
   0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
-  50% { transform: scale(1.05); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 15px 40px rgba(16, 185, 129, 0.15); }
 }
 
 .logo-icon svg {
   width: 36px;
   height: 36px;
-  color: white;
+  color: #F1D27B;
 }
 
 .logo-text {
   font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: -0.5px;
+  color: #FFFFFF;
 }
 
 .logo-text span {
-  color: rgba(255, 255, 255, 0.8);
+  color: #D4AF37;
   font-weight: 400;
 }
 
@@ -590,6 +665,7 @@
   opacity: 0.9;
   line-height: 1.5;
   margin-bottom: 15px;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Stats Preview */
@@ -618,6 +694,7 @@
 .stat-value {
   font-size: 1.75rem;
   font-weight: 700;
+  color: #F1D27B;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
@@ -641,7 +718,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(6, 78, 59, 0.4); 
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 10px 16px;
   border-radius: 25px;
   font-size: 0.85rem;
@@ -650,13 +728,15 @@
 }
 
 .feature:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #D4AF37;
   transform: translateY(-2px);
 }
 
 .feature svg {
   width: 18px;
   height: 18px;
+  color: #D4AF37;
 }
 
 /* Ghost Button */
@@ -666,35 +746,55 @@
   gap: 10px;
   padding: 12px 28px;
   background: transparent;
-  border: 2px solid white;
+  border: 2px solid #D4AF37;
   border-radius: 35px;
-  color: white;
+  color: #D4AF37;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  z-index: 1;
 }
 
 .ghost-btn::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: white;
+  background: #D4AF37;
   transform: translateX(-100%);
   transition: transform 0.3s ease;
   z-index: -1;
 }
 
+.ghost-btn::after {
+  content: '';
+  position: absolute;
+  top: -70%;
+  left: -120%;
+  width: 200%;
+  height: 240%;
+  background: linear-gradient(120deg, transparent 35%, rgba(255, 255, 255, 0.8) 50%, transparent 65%);
+  transform: rotate(20deg);
+  opacity: 0;
+  transition: opacity 0.25s ease, left 0.65s ease;
+  pointer-events: none;
+}
+
 .ghost-btn:hover {
-  color: #059669;
+  color: #022c22;
   transform: translateY(-3px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 15px 40px rgba(212, 175, 55, 0.25);
 }
 
 .ghost-btn:hover::before {
   transform: translateX(0);
+}
+
+.ghost-btn:hover::after {
+  opacity: 0.8;
+  left: 100%;
 }
 
 .ghost-btn svg {
@@ -710,14 +810,44 @@
 /* ==========================================
    AUTH FORM STYLES
    ========================================== */
+
+   /* --- AUTH FORM CONTAINER --- */
 .auth-form {
   width: 100%;
-  max-width: 340px;
+  max-width: 380px;
+  height: 100%;
+  /* Default: Top align for tall forms (Sign Up) */
+  justify-content: flex-start; 
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 20px;
+  overflow-y: auto; 
+  
+  /* Hide Scrollbar */
+  &::-webkit-scrollbar { display: none; }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
+/* --- CENTERED MODIFIER (For Sign In Page) --- */
+.auth-form.centered {
+  justify-content: center;
+}
+
+/* Ensure centering doesn't crop on small screens */
+@media (max-height: 600px) {
+  .auth-form.centered {
+    justify-content: flex-start;
+  }
+}
+
+/* Header */
 .form-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 .form-header h1 {
@@ -725,93 +855,32 @@
   font-weight: 700;
   color: white;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #10b981 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #D4AF37 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .form-header p {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #9ca3af;
 }
 
-/* Trading Loader in Form */
+/* Trading Loader */
 .form-loader {
   display: flex;
   justify-content: center;
+  align-items: center;
   margin-bottom: 20px;
-}
-
-.trading-loader {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Social Login */
-.social-login {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 15px;
-}
-
-.social-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  color: white;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.social-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(16, 185, 129, 0.5);
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.social-btn svg {
-  width: 22px;
-  height: 22px;
-}
-
-/* Divider */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 15px;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-}
-
-.divider span {
-  font-size: 0.75rem;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  height: 70px; 
+  width: 100%;
 }
 
 /* Input Groups */
 .input-group {
   position: relative;
-  margin-bottom: 12px;
+  margin-bottom: 15px; /* Slightly more spacing since social buttons are gone */
+  width: 100%;
 }
 
 .input-icon {
@@ -832,9 +901,9 @@
 .input-group input {
   width: 100%;
   padding: 12px 16px 12px 45px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  background: rgba(2, 44, 34, 0.4);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
   color: white;
   font-size: 0.9rem;
   transition: all 0.3s ease;
@@ -842,9 +911,9 @@
 
 .input-group input:focus {
   outline: none;
-  border-color: #10b981;
-  background: rgba(16, 185, 129, 0.05);
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+  border-color: #D4AF37;
+  background: rgba(212, 175, 55, 0.05);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
 }
 
 .input-group input:focus + .input-highlight {
@@ -852,7 +921,7 @@
 }
 
 .input-group:focus-within .input-icon {
-  color: #10b981;
+  color: #D4AF37;
 }
 
 .input-group input::placeholder {
@@ -866,9 +935,10 @@
   transform: translateX(-50%);
   width: 0;
   height: 2px;
-  background: linear-gradient(90deg, #10b981, #34d399);
+  background: linear-gradient(90deg, #D4AF37, #F1D27B);
   transition: width 0.3s ease;
   opacity: 0;
+  pointer-events: none;
 }
 
 .input-group input:focus ~ .input-highlight {
@@ -888,62 +958,65 @@
   cursor: pointer;
   padding: 5px;
   transition: color 0.3s ease;
+  z-index: 3;
 }
 
 .password-toggle:hover {
-  color: #10b981;
+  color: #D4AF37;
 }
 
 .password-toggle svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
-/* Form Options Row */
+/* Form Options (Remember Me / Forgot Password) */
 .form-options {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+  width: 100%;
   font-size: 0.85rem;
 }
 
 .remember-me {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: #9ca3af;
   cursor: pointer;
 }
 
 .remember-me input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: #10b981;
+  width: 16px;
+  height: 16px;
+  accent-color: #D4AF37;
   cursor: pointer;
 }
 
 .forgot-password {
-  color: #10b981;
+  color: #D4AF37;
   text-decoration: none;
   font-weight: 500;
   transition: all 0.3s ease;
 }
 
 .forgot-password:hover {
-  color: #34d399;
+  color: #F1D27B;
   text-decoration: underline;
 }
 
 /* Submit Button */
 .submit-btn {
   width: 100%;
-  padding: 12px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  margin-top: 5px;
+  padding: 10px;
+  font-size: 0.9rem;
+  background: linear-gradient(135deg, #D4AF37 0%, #C5A028 100%);
   border: none;
-  border-radius: 14px;
-  color: white;
-  font-size: 1rem;
+  border-radius: 12px;
+  color: #000000;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -952,27 +1025,46 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+  flex-shrink: 0;
 }
 
 .submit-btn::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  background: linear-gradient(135deg, #F1D27B 0%, #D4AF37 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
+.submit-btn::after {
+  content: '';
+  position: absolute;
+  top: -70%;
+  left: -120%;
+  width: 200%;
+  height: 240%;
+  background: linear-gradient(120deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  transform: rotate(20deg);
+  opacity: 0;
+  transition: opacity 0.25s ease, left 0.65s ease;
+  pointer-events: none;
+}
+
 .submit-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 
-    0 15px 40px rgba(16, 185, 129, 0.4),
-    0 0 30px rgba(16, 185, 129, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4);
 }
 
 .submit-btn:hover::before {
   opacity: 1;
+}
+
+.submit-btn:hover::after {
+  opacity: 0.9;
+  left: 100%;
 }
 
 .submit-btn span,
@@ -982,107 +1074,20 @@
 }
 
 .submit-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   transition: transform 0.3s ease;
 }
 
 .submit-btn:hover svg {
-  transform: translateX(5px);
+  transform: translateX(4px);
 }
 
-/* Loading State */
 .submit-btn.loading {
   pointer-events: none;
+  opacity: 0.9;
+  transform: none;
 }
-
-.submit-btn.loading .btn-text {
-  opacity: 0;
-}
-
-.btn-loader {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Terms Agreement */
-.terms-agreement {
-  margin-top: 10px;
-  margin-bottom: 15px;
-}
-
-.terms-agreement label {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  font-size: 0.85rem;
-  color: #9ca3af;
-  cursor: pointer;
-  line-height: 1.5;
-}
-
-.terms-agreement input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
-  accent-color: #10b981;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.terms-agreement a {
-  color: #10b981;
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.terms-agreement a:hover {
-  color: #34d399;
-  text-decoration: underline;
-}
-
-/* Password Strength Indicator */
-.password-strength {
-  margin-top: 8px;
-  margin-bottom: 10px;
-}
-
-.strength-bars {
-  display: flex;
-  gap: 5px;
-  margin-bottom: 6px;
-}
-
-.strength-bar {
-  flex: 1;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  transition: all 0.3s ease;
-}
-
-.strength-bar.active {
-  background: #ef4444;
-}
-
-.strength-bar.active.medium {
-  background: #f59e0b;
-}
-
-.strength-bar.active.strong {
-  background: #10b981;
-}
-
-.strength-text {
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.strength-text.weak { color: #ef4444; }
-.strength-text.medium { color: #f59e0b; }
-.strength-text.strong { color: #10b981; }
 
 /* ==========================================
    TICKER TAPE FOOTER
@@ -1094,7 +1099,7 @@
   right: 0;
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(16, 185, 129, 0.2);
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
   padding: 12px 0;
   overflow: hidden;
   z-index: 1000;
@@ -1124,21 +1129,21 @@
 }
 
 .ticker-item.up {
-  color: #10b981;
+  color: #F1D27B;
 }
 
 .ticker-item.up::before {
-  background: #10b981;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  background: #F1D27B;
+  box-shadow: 0 0 10px rgba(241, 210, 123, 0.5);
 }
 
 .ticker-item.down {
-  color: #ef4444;
+  color: #D4AF37;
 }
 
 .ticker-item.down::before {
-  background: #ef4444;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  background: #D4AF37;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
 }
 
 @keyframes tickerScroll {
@@ -1207,14 +1212,14 @@
 }
 
 .mobile-toggle a {
-  color: #10b981;
+  color: #D4AF37;
   font-weight: 600;
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
 .mobile-toggle a:hover {
-  color: #34d399;
+  color: #F1D27B;
   text-decoration: underline;
 }
 
@@ -1273,7 +1278,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
 }
 
 .select-group {
@@ -1322,8 +1327,8 @@
 .auth-select {
   width: 100%;
   padding: 14px 45px 14px 48px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.3);
   border-radius: 12px;
   color: #e5e7eb;
   font-size: 0.95rem;
@@ -1335,15 +1340,15 @@
 }
 
 .auth-select:hover {
-  border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(212, 175, 55, 0.5);
+  background: rgba(212, 175, 55, 0.03);
 }
 
 .auth-select:focus {
   outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: #D4AF37;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+  background: rgba(212, 175, 55, 0.03);
 }
 
 .auth-select option {
@@ -1368,12 +1373,12 @@
 }
 
 .select-wrapper:focus-within .select-arrow {
-  color: #10b981;
+  color: #D4AF37;
   transform: rotate(180deg);
 }
 
 .select-wrapper:focus-within .select-icon {
-  color: #10b981;
+  color: #D4AF37;
 }
 
 .select-hint {

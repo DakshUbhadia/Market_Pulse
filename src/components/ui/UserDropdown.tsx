@@ -76,12 +76,26 @@ const UserDropdown = () => {
 
     const showLoading = !session?.user && (isPending || isRefetching);
 
-    const viewUser: { name: string; email: string; image?: string | null } = session?.user
-      ? { name: session.user.name, email: session.user.email, image: session.user.image ?? null }
-      : showLoading
-        ? { name: "Loading…", email: "", image: null }
-        : { name: "Guest", email: "", image: null };
-    const userInitials = viewUser.name ? viewUser.name[0].toUpperCase() : "G";
+    if (!session?.user) {
+      return (
+        <Button
+          variant="ghost"
+          className="flex items-center gap-3 text-gray-400 hover:text-yellow-500"
+          onClick={() => router.push('/sign-in')}
+          disabled={showLoading}
+        >
+          {showLoading ? "Loading…" : "Sign in"}
+        </Button>
+      );
+    }
+
+    const viewUser: { name: string; email: string; image?: string | null } = {
+      name: session.user.name,
+      email: session.user.email,
+      image: session.user.image ?? null,
+    };
+
+    const userInitials = viewUser.name ? viewUser.name[0].toUpperCase() : "U";
 
   return (
   <DropdownMenu>
