@@ -1,0 +1,12 @@
+export { default as HeroSection } from './HeroSection';
+export { default as MarketSnapshotSection } from './MarketSnapshotSection';
+export { default as FeatureAlerts } from './FeatureAlerts';
+export { default as FeatureAnalysis } from './FeatureAnalysis';
+export { default as DetailedStockAnalysisSection } from './DetailedStockAnalysisSection';
+export { default as DailyNewsSummarySection } from './DailyNewsSummarySection';
+export { default as PortfolioSection } from './PortfolioSection';
+export { default as WatchlistSection } from './WatchlistSection';
+export { default as CTASection } from './CTASection';
+export { default as LandingHeader } from './LandingHeader';
+export { default as LandingFooter } from './LandingFooter';
+export { default as GoldParticles } from './GoldParticles';
