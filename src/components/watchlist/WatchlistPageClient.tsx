@@ -585,58 +585,67 @@ export function WatchlistPage() {
   // Empty state
   if (!loading && watchlist.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-yellow-500/10">
-          <Star className="h-10 w-10 text-yellow-500" />
+      <div className="mx-auto w-full max-w-3xl py-10">
+        <div className="rounded-xl border border-border bg-card p-8 text-center">
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-yellow-500/10">
+            <Star className="h-10 w-10 text-yellow-500" />
+          </div>
+          <h2 className="mb-2 text-2xl font-semibold text-foreground">Your Watchlist is Empty</h2>
+          <p className="mx-auto mb-6 max-w-md text-sm text-muted-foreground">
+            Start tracking your favorite stocks by adding them to your watchlist.
+            Search for stocks using the search bar or browse stock pages.
+          </p>
+          <Button
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("marketpulse:open-search"))
+              }
+            }}
+            className="gap-2 bg-yellow-600 font-semibold text-black hover:bg-yellow-700"
+          >
+            <Plus className="h-4 w-4" />
+            Browse Stocks
+          </Button>
         </div>
-        <h2 className="mb-2 text-2xl font-bold text-gray-100">Your Watchlist is Empty</h2>
-        <p className="mb-6 max-w-md text-gray-500">
-          Start tracking your favorite stocks by adding them to your watchlist.
-          Search for stocks using the search bar or browse stock pages.
-        </p>
-        <Button
-          onClick={() => {
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new Event("marketpulse:open-search"))
-            }
-          }}
-          className="bg-yellow-600 hover:bg-yellow-700 text-black font-semibold gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Browse Stocks
-        </Button>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 h-full min-h-0">
-      {/* Main Watchlist Table */}
-      <div className="flex flex-col min-h-0">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-100">Watchlist</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {watchlist.length} stock{watchlist.length !== 1 ? "s" : ""} in your watchlist
-          </p>
-        </div>
-        
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
-            <span className="ml-3 text-gray-400">Loading stock data...</span>
+    <div className="grid h-full min-h-0 grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+      {/* Watchlist Table */}
+      <div className="flex min-h-0 flex-col">
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">Watchlist</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {watchlist.length} stock{watchlist.length !== 1 ? "s" : ""} in your watchlist
+              </p>
+            </div>
           </div>
-        ) : (
-          <WatchlistTable
-            stocks={stocks}
-            onAddAlert={handleAddAlert}
-            onRemoveStock={handleRemoveFromWatchlist}
-            onViewStock={handleViewStock}
-          />
-        )}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
+              <span className="ml-3 text-sm text-muted-foreground">Loading stock data...</span>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-border/60 bg-background/40">
+              <WatchlistTable
+                stocks={stocks}
+                onAddAlert={handleAddAlert}
+                onRemoveStock={handleRemoveFromWatchlist}
+                onViewStock={handleViewStock}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Alerts Panel */}
-      <div className="flex flex-col min-h-0">
+      <div className="flex min-h-0 flex-col">
         <AlertsPanel
           alerts={alerts}
           onCreateAlert={handleCreateAlertFromPanel}

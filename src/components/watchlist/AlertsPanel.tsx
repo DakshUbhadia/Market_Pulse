@@ -24,12 +24,16 @@ export function AlertsPanel({
   const pausedAlerts = alerts.filter((a) => !a.isActive)
 
   return (
-    <div className="flex flex-col h-full bg-linear-to-br from-gray-900 via-gray-900 to-gray-800/50 rounded-lg border border-gray-800 shadow-lg shadow-black/20 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
       {/* Header */}
-      <div className="p-4 border-b border-gray-800">
+      <div className="border-b border-border p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
+          <h2 className="text-xl font-semibold text-foreground">Alerts</h2>
+        </div>
         <Button
           onClick={onCreateAlert}
-          className="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-semibold gap-2 h-10"
+          className="h-10 w-full gap-2 bg-yellow-600 font-semibold text-black hover:bg-yellow-700"
         >
           <Plus className="h-4 w-4" />
           Create Alert
@@ -37,19 +41,19 @@ export function AlertsPanel({
       </div>
 
       {/* Alerts List (show ~3 cards, scroll for more) */}
-      <ScrollArea className="h-[480px]">
+      <ScrollArea className="h-[420px]">
         <div className="p-4 space-y-3">
           {alerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <p className="text-gray-500 text-sm">No alerts yet.</p>
-              <p className="text-gray-600 text-xs mt-1">Create one to stay updated.</p>
+              <p className="text-sm text-muted-foreground">No alerts yet.</p>
+              <p className="mt-1 text-xs text-muted-foreground/80">Create one to stay updated.</p>
             </div>
           ) : (
             <>
               {/* Active Alerts */}
               {activeAlerts.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Active ({activeAlerts.length})
                   </p>
                   <AnimatePresence>
@@ -68,8 +72,8 @@ export function AlertsPanel({
 
               {/* Paused Alerts */}
               {pausedAlerts.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-800">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                <div className="mt-4 border-t border-border pt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
                     Paused ({pausedAlerts.length})
                   </p>
                   <AnimatePresence>
@@ -92,7 +96,7 @@ export function AlertsPanel({
 
       {/* Footer Stats */}
       {alerts.length > 0 && (
-        <div className="px-4 py-3 border-t border-gray-800 bg-gray-800/20 text-xs text-gray-500">
+        <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
           <div className="flex justify-between">
             <span>{activeAlerts.length} active</span>
             <span>{pausedAlerts.length} paused</span>

@@ -261,7 +261,7 @@ export const TECHNICAL_ANALYSIS = (symbol:string) => ({
           "interval": "15m",
           "disableInterval": false,
           "width": "100%",
-          "height": 440,
+          "height": 395,
           "symbol": toTradingViewSymbol(symbol),
           "showIntervalTabs": true
 });
@@ -310,7 +310,7 @@ export const ADVANCED_CHART_1 = (symbol:string) => ({
             "STD;Supertrend"
           ],
           "width": "100%",
-          "height": 700
+          "height": 720
 });
 
 export const ADVANCED_CHART_2 = (symbol:string) => ({
@@ -336,7 +336,7 @@ export const ADVANCED_CHART_2 = (symbol:string) => ({
           "compareSymbols": [],
           "studies": [],
           "width": "100%",
-          "height": 640
+          "height": 650
 });
 
 export const CRYPTO_MARKETS = {

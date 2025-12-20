@@ -37,7 +37,7 @@ function SortHeader({
   return (
     <TableHead
       onClick={() => onSort(column)}
-      className="cursor-pointer select-none hover:bg-gray-800 text-gray-300 font-semibold"
+      className="cursor-pointer select-none font-semibold text-muted-foreground hover:bg-muted/40"
     >
       <div className="flex items-center gap-1">
         {children}
@@ -137,9 +137,9 @@ export function WatchlistTable({
   }, [stocks, sortConfig])
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/50 overflow-hidden">
+    <div className="overflow-hidden">
       {sortedStocks.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
+        <div className="py-8 text-center text-muted-foreground">
           <p>No stocks in watchlist. Add one to get started.</p>
         </div>
       ) : (
@@ -147,7 +147,7 @@ export function WatchlistTable({
           {/* Desktop Table */}
           <div className="hidden sm:block overflow-x-auto">
             <Table>
-              <TableHeader className="bg-gray-800/30 border-b border-gray-800">
+              <TableHeader className="border-b border-border bg-muted/20">
                 <TableRow className="hover:bg-transparent">
                   <SortHeader column="name" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
                     Company
@@ -167,8 +167,8 @@ export function WatchlistTable({
                   <SortHeader column="peRatio" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
                     P/E
                   </SortHeader>
-                  <TableHead className="text-gray-300 font-semibold">Day&apos;s Range</TableHead>
-                  <TableHead className="text-gray-300 font-semibold">Actions</TableHead>
+                  <TableHead className="font-semibold text-muted-foreground">Day&apos;s Range</TableHead>
+                  <TableHead className="font-semibold text-muted-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -200,12 +200,12 @@ export function WatchlistTable({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="border-b border-gray-800/50 hover:bg-gray-800/50 transition-colors group"
+                        className="group border-b border-border/60 transition-colors hover:bg-muted/30"
                       >
                         {/* Company */}
-                        <TableCell className="py-3 text-gray-100 font-medium">
+                        <TableCell className="py-3 font-medium text-foreground">
                           <div 
-                            className="flex items-center gap-2 cursor-pointer hover:text-yellow-400 transition-colors"
+                            className="flex cursor-pointer items-center gap-2 transition-colors hover:text-yellow-400"
                             onClick={() => onViewStock?.(stock.symbol)}
                           >
                             {stock.logoUrl ? (
@@ -218,7 +218,7 @@ export function WatchlistTable({
                                 unoptimized
                               />
                             ) : (
-                              <div className="h-6 w-6 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-400">
+                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
                                 {stock.symbol.charAt(0)}
                               </div>
                             )}
@@ -228,14 +228,14 @@ export function WatchlistTable({
 
                         {/* Symbol */}
                         <TableCell 
-                          className="py-3 font-mono text-sm cursor-pointer group-hover:text-yellow-400 transition-colors text-yellow-300"
+                          className="cursor-pointer py-3 font-mono text-sm text-yellow-300 transition-colors group-hover:text-yellow-400"
                           onClick={() => onViewStock?.(stock.symbol)}
                         >
                           {stock.symbol}
                         </TableCell>
 
                         {/* Price */}
-                        <TableCell className="py-3 text-gray-100 font-semibold">
+                        <TableCell className="py-3 font-semibold text-foreground">
                           {formatMoney(currencySymbol, stock.currentPrice)}
                         </TableCell>
 
@@ -245,7 +245,7 @@ export function WatchlistTable({
                             className={`flex items-center gap-1 font-semibold ${
                               Number.isFinite(resolvedChange)
                                 ? (isPositive ? "text-green-400" : "text-red-400")
-                                : "text-gray-500"
+                                : "text-muted-foreground"
                             }`}
                           >
                             {Number.isFinite(resolvedChange) ? (
