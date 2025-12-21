@@ -5,6 +5,7 @@ import Link from "next/link";
 import TradingLoader from "@/components/ui/TradingLoader";
 import FullPageTradingLoader from "@/components/ui/FullPageTradingLoader";
 import { sendOtp, signUpWithEmail, verifyOtp } from "@/lib/actions/auth.actions";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 
 const VerifyOtpContent = () => {
@@ -128,7 +129,18 @@ const VerifyOtpContent = () => {
 
         if (result.success) {
           toast.success("Account created successfully!");
-          router.push("/dashboard");
+          // Ensure a browser-side sign-in so the session cookie is set on Vercel.
+          const { data, error } = await authClient.signIn.email({
+            email: email.trim().toLowerCase(),
+            password,
+          });
+
+          if (data?.user && !error) {
+            router.replace("/dashboard");
+          } else {
+            toast.error("Account created, but auto sign-in failed. Please sign in.");
+            router.replace("/sign-in");
+          }
         } else {
           toast.error(result.error || "Invalid verification code");
         }

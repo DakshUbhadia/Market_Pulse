@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import TradingLoader from "@/components/ui/TradingLoader";
 import FullPageTradingLoader from "@/components/ui/FullPageTradingLoader";
-import { signInWithEmail } from "@/lib/actions/auth.actions";
+import { authClient } from "@/lib/auth-client";
 
 const SignInPage = () => {
   const router = useRouter();
@@ -25,16 +25,16 @@ const SignInPage = () => {
     setIsLoading(true);
 
     try {
-      const result = await signInWithEmail({
-        email: formData.email,
+      const { data, error } = await authClient.signIn.email({
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
       });
 
-      if (result.success) {
+      if (data?.user && !error) {
         toast.success("Signed in successfully");
-        router.push("/dashboard");
+        router.replace("/dashboard");
       } else {
-        toast.error(result.error || "Failed to sign in");
+        toast.error((error as { message?: string } | null)?.message || "Failed to sign in");
       }
     } catch {
       toast.error("An unexpected error occurred");
