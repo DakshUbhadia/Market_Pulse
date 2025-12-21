@@ -33,11 +33,26 @@ export const getAuth = async () => {
         process.env.BETTER_AUTH_URL ||
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 
+    const trustedOrigins = Array.from(
+        new Set(
+            [
+                "http://localhost:3000",
+                // Prefer explicit envs, but fall back to Vercel's runtime URL.
+                process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
+                process.env.BETTER_AUTH_URL,
+                process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+                // Allow Vercel preview deployments too (safe as long as your project is private/controlled).
+                "https://*.vercel.app",
+            ].filter((v): v is string => typeof v === "string" && v.length > 0),
+        ),
+    );
+
     authInstance = betterAuth({
         database: mongodbAdapter(db),
 
         secret: process.env.BETTER_AUTH_SECRET,
         baseURL,
+        trustedOrigins,
 
         emailAndPassword: {
             enabled: true,
