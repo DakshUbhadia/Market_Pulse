@@ -24,6 +24,8 @@ const UserDropdown = () => {
   const router = useRouter();
   const { data: session, isPending, isRefetching, refetch } = authClient.useSession();
 
+  const [open, setOpen] = React.useState(false);
+
   const [emailPrefs, setEmailPrefs] = React.useState<EmailPreferencesDTO | null>(null);
   const [isSavingPrefs, setIsSavingPrefs] = React.useState(false);
 
@@ -98,7 +100,7 @@ const UserDropdown = () => {
     const userInitials = viewUser.name ? viewUser.name[0].toUpperCase() : "U";
 
   return (
-  <DropdownMenu>
+  <DropdownMenu open={open} onOpenChange={setOpen}>
   <DropdownMenuTrigger asChild>
     <Button variant="ghost" className="flex items-center gap-3 text-gray-400 hover:text-yellow-500">
         <Avatar className="h-8 w-8">
@@ -112,7 +114,13 @@ const UserDropdown = () => {
         </div>
     </Button>
   </DropdownMenuTrigger>
-  <DropdownMenuContent className="text-gray-500">
+  <DropdownMenuContent
+    align="end"
+    side="bottom"
+    sideOffset={8}
+    collisionPadding={8}
+    className="text-gray-500 w-[min(22rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)]"
+  >
     <DropdownMenuLabel>
       <div className="flex relative items-center gap-3 py-2">
         <Avatar className="h-8 w-8">
@@ -123,7 +131,7 @@ const UserDropdown = () => {
         </Avatar>
         <div className="flex flex-col">
           <span className="text-base font-medium">{viewUser.name}</span>
-          <span className="text-xs text-gray-400">{viewUser.email}</span>
+          <span className="text-xs text-gray-400 truncate max-w-[calc(100vw-8rem)]">{viewUser.email}</span>
         </div>
       </div>
     </DropdownMenuLabel>
@@ -134,32 +142,46 @@ const UserDropdown = () => {
         <Settings className="mr-2 h-4 w-4" />
         <span>Settings</span>
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="text-gray-500">
+      <DropdownMenuSubContent className="text-gray-500 w-[min(22rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)]">
         <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default">
-          <div className="flex w-full items-center justify-between gap-6">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-gray-300">Daily news summary</span>
-              <span className="text-xs text-gray-500">Turn on/off daily emails</span>
+          <div className="flex w-full flex-col gap-2">
+            <div className="flex w-full items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-gray-300">Daily news summary</span>
+              </div>
+              <Switch
+                checked={emailPrefs?.receiveDailyNewsSummary ?? true}
+                disabled={!session?.user || isSavingPrefs}
+                onCheckedChange={(checked) => togglePref("receiveDailyNewsSummary", Boolean(checked))}
+                className="shrink-0 data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+              />
             </div>
+            <span className="text-xs text-gray-500">Turn on/off daily emails</span>
             <Switch
               checked={emailPrefs?.receiveDailyNewsSummary ?? true}
-              disabled={!session?.user || isSavingPrefs}
-              onCheckedChange={(checked) => togglePref("receiveDailyNewsSummary", Boolean(checked))}
-              className="data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+              disabled
+              className="hidden"
             />
           </div>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default">
-          <div className="flex w-full items-center justify-between gap-6">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-gray-300">Alerts</span>
-              <span className="text-xs text-gray-500">Turn on/off alert emails</span>
+          <div className="flex w-full flex-col gap-2">
+            <div className="flex w-full items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-gray-300">Alerts</span>
+              </div>
+              <Switch
+                checked={emailPrefs?.receiveAlerts ?? true}
+                disabled={!session?.user || isSavingPrefs}
+                onCheckedChange={(checked) => togglePref("receiveAlerts", Boolean(checked))}
+                className="shrink-0 data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+              />
             </div>
+            <span className="text-xs text-gray-500">Turn on/off alert emails</span>
             <Switch
               checked={emailPrefs?.receiveAlerts ?? true}
-              disabled={!session?.user || isSavingPrefs}
-              onCheckedChange={(checked) => togglePref("receiveAlerts", Boolean(checked))}
-              className="data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+              disabled
+              className="hidden"
             />
           </div>
         </DropdownMenuItem>
@@ -171,8 +193,18 @@ const UserDropdown = () => {
       <span>Log out</span>
     </DropdownMenuItem>
     <DropdownMenuSeparator className="hidden sm:block bg-gray-600"/>
-      <nav className="sm:hidden">
-        <NavItems />
+      <nav
+        className="sm:hidden"
+        onClick={() => setOpen(false)}
+      >
+        <NavItems
+          onSearchClick={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new Event("marketpulse:open-search"))
+            }
+            setOpen(false)
+          }}
+        />
       </nav>
   </DropdownMenuContent>
   </DropdownMenu>

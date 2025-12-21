@@ -164,9 +164,6 @@ export function WatchlistTable({
                   <SortHeader column="percentChange" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
                     % Change
                   </SortHeader>
-                  <SortHeader column="peRatio" activeColumn={sortConfig.column} direction={sortConfig.direction} onSort={handleSort}>
-                    P/E
-                  </SortHeader>
                   <TableHead className="font-semibold text-muted-foreground">Day&apos;s Range</TableHead>
                   <TableHead className="font-semibold text-muted-foreground">Actions</TableHead>
                 </TableRow>
@@ -277,13 +274,6 @@ export function WatchlistTable({
                           </Badge>
                         </TableCell>
 
-                        {/* P/E Ratio */}
-                        <TableCell className="py-3 text-gray-300 text-sm">
-                          {Number.isFinite(stock.peRatio) && stock.peRatio > 0
-                            ? stock.peRatio.toFixed(2)
-                            : EMPTY_VALUE}
-                        </TableCell>
-
                         {/* Day's Range */}
                         <TableCell className="py-3 px-2">
                           <div className="w-32">
@@ -392,20 +382,12 @@ export function WatchlistTable({
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-3 gap-3 text-[11px] text-gray-400">
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-[11px] text-gray-400">
                     <div>
                       <p className="text-[10px] uppercase tracking-wide text-gray-500">Change</p>
                       <p className={`text-sm font-medium ${isPositive ? "text-green-300" : "text-red-300"}`}>
                         {Number.isFinite(resolvedChange)
                           ? `${isPositive ? "+" : ""}${formatMoney(currencySymbol, Math.abs(resolvedChange))}`
-                          : EMPTY_VALUE}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wide text-gray-500">P/E</p>
-                      <p className="text-sm font-medium text-gray-100">
-                        {Number.isFinite(stock.peRatio) && stock.peRatio > 0
-                          ? stock.peRatio.toFixed(2)
                           : EMPTY_VALUE}
                       </p>
                     </div>

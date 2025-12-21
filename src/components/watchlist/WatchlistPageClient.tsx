@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { AlertModal } from "./AlertModal"
 import { AlertsPanel } from "./AlertsPanel"
 import { WatchlistTable } from "./WatchlistTable"
 import { useToast } from "@/components/ui/use-toast"
 import { useWatchlist } from "@/context/WatchlistContext"
-import { getMultipleStockQuotes } from "@/lib/actions/finnhub.actions"
+import { getMultipleStockQuotesRealtime } from "@/lib/actions/finnhub.actions"
 import {
   checkAndTriggerMultipleAlerts,
   createMyAlert,
@@ -37,7 +37,7 @@ type StreamQuote = {
   lowPrice: number
   change: number
   percentChange: number
-  peRatio: number
+  peRatio?: number
   logoUrl?: string
 }
 
@@ -79,19 +79,21 @@ const mapQuotesToWatchlistStocks = (args: {
       const exchange = (exchangeRaw === "BSE" || exchangeRaw === "NSE" ? exchangeRaw : "NASDAQ") as "NASDAQ" | "BSE" | "NSE"
       const currency = exchange === "BSE" || exchange === "NSE" ? "INR" : ((quote.currency as "USD" | "INR" | undefined) ?? "USD")
 
+      const pick = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? (v as number) : Number.NaN)
+
       return {
         id: item.symbol,
         symbol: item.symbol,
         name: curated?.name || quote.name || item.name || item.symbol,
         exchange,
         currency,
-        currentPrice: quote.currentPrice,
-        openPrice: quote.openPrice,
-        highPrice: quote.highPrice,
-        lowPrice: quote.lowPrice,
-        change: quote.change,
-        percentChange: quote.percentChange,
-        peRatio: quote.peRatio,
+        currentPrice: pick(quote.currentPrice),
+        openPrice: pick(quote.openPrice),
+        highPrice: pick(quote.highPrice),
+        lowPrice: pick(quote.lowPrice),
+        change: pick(quote.change),
+        percentChange: pick(quote.percentChange),
+        peRatio: pick(quote.peRatio),
         logoUrl: quote.logoUrl,
       }
     }
@@ -157,6 +159,30 @@ export function WatchlistPage() {
   const lastTriggeredRef = useRef<Map<string, number>>(new Map())
   const warnedNoSessionRef = useRef(false)
   const alertsRef = useRef<WatchlistAlert[]>([])
+
+  const requiredSymbols = useMemo(
+    () => watchlist.map((w) => w.symbol.toUpperCase()),
+    [watchlist]
+  )
+
+  const isStockFullyPopulated = useCallback((s: WatchlistStock | undefined) => {
+    if (!s) return false
+    const okNumber = (v: unknown) => typeof v === "number" && Number.isFinite(v)
+    return (
+      okNumber(s.currentPrice) &&
+      okNumber(s.openPrice) &&
+      okNumber(s.highPrice) &&
+      okNumber(s.lowPrice)
+    )
+  }, [])
+
+  const allQuotesReady = useMemo(() => {
+    if (!watchlistHydrated) return false
+    if (requiredSymbols.length === 0) return true
+
+    const bySymbol = new Map(stocks.map((s) => [s.symbol.toUpperCase(), s] as const))
+    return requiredSymbols.every((sym) => isStockFullyPopulated(bySymbol.get(sym)))
+  }, [watchlistHydrated, requiredSymbols, stocks, isStockFullyPopulated])
 
   useEffect(() => {
     alertsRef.current = alerts
@@ -224,10 +250,14 @@ export function WatchlistPage() {
     const expired = alerts.filter((a) => a.deleteAt instanceof Date && a.deleteAt.getTime() <= now)
     if (expired.length === 0) return
 
-    setAlerts((prev) => prev.filter((a) => !(a.deleteAt instanceof Date && a.deleteAt.getTime() <= now)))
+    const t = setTimeout(() => {
+      setAlerts((prev) => prev.filter((a) => !(a.deleteAt instanceof Date && a.deleteAt.getTime() <= now)))
+    }, 0)
     for (const a of expired) {
       void deleteMyAlert(a.id)
     }
+
+    return () => clearTimeout(t)
   }, [alerts, alertsHydrated])
 
   // Check alerts and send emails when stock data changes
@@ -394,8 +424,8 @@ export function WatchlistPage() {
     let eventSource: EventSource | null = null
 
     if (!watchlistHydrated) {
-      setLoading(true)
-      return
+      const t = setTimeout(() => setLoading(true), 0)
+      return () => clearTimeout(t)
     }
 
     const maybeCheckAlerts = (watchlistStocks: WatchlistStock[]) => {
@@ -420,13 +450,35 @@ export function WatchlistPage() {
           symbol: item.symbol,
           exchange: item.exchange,
         }))
-        const quotes = await getMultipleStockQuotes(quoteRequests)
 
-        const watchlistStocks = mapQuotesToWatchlistStocks({ watchlist, quotes })
+        // Quick self-retry: Finnhub can return partial data transiently.
+        const retryDelaysMs = [0, 750, 1500]
+        for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
+          if (cancelled) return
+          const delay = retryDelaysMs[attempt]
+          if (delay > 0) {
+            await new Promise((r) => setTimeout(r, delay))
+          }
 
-        if (!cancelled) {
-          setStocks(watchlistStocks)
+          const quotes = await getMultipleStockQuotesRealtime({ requests: quoteRequests, includeMetrics: false })
+          const watchlistStocks = mapQuotesToWatchlistStocks({ watchlist, quotes })
+
+          if (cancelled) return
+
+          setStocks((prev) => {
+            const mergedNext = mergeStocksPreferValid(prev, watchlistStocks)
+            const bySymbol = new Map(mergedNext.map((s) => [s.symbol.toUpperCase(), s] as const))
+            const ready = watchlist.every((w) => isStockFullyPopulated(bySymbol.get(w.symbol.toUpperCase())))
+            if (ready) setLoading(false)
+            return mergedNext
+          })
+
           maybeCheckAlerts(watchlistStocks)
+
+          // If still not ready, loop retries.
+          const bySymbolAttempt = new Map(watchlistStocks.map((s) => [s.symbol.toUpperCase(), s] as const))
+          const readyAttempt = watchlist.every((w) => isStockFullyPopulated(bySymbolAttempt.get(w.symbol.toUpperCase())))
+          if (readyAttempt) break
         }
       } catch (error) {
         console.error("Error fetching stock data:", error)
@@ -434,8 +486,6 @@ export function WatchlistPage() {
           title: "Error",
           description: "Failed to fetch stock data. Please try again.",
         })
-      } finally {
-        setLoading(false)
       }
     }
 
@@ -458,12 +508,17 @@ export function WatchlistPage() {
           const quotes = Array.isArray(payload?.quotes) ? (payload.quotes as StreamQuote[]) : []
 
           const watchlistStocks = mapQuotesToWatchlistStocks({ watchlist, quotes })
-          setStocks((prev) => mergeStocksPreferValid(prev, watchlistStocks))
+          setStocks((prev) => {
+            const mergedNext = mergeStocksPreferValid(prev, watchlistStocks)
+            const bySymbol = new Map(mergedNext.map((s) => [s.symbol.toUpperCase(), s] as const))
+            const ready = watchlist.every((w) => isStockFullyPopulated(bySymbol.get(w.symbol.toUpperCase())))
+            if (ready) setLoading(false)
+            return mergedNext
+          })
           maybeCheckAlerts(watchlistStocks)
 
           if (!receivedFirstPayload) {
             receivedFirstPayload = true
-            setLoading(false)
           }
         } catch (e) {
           console.error("Failed to parse quote stream payload", e)
@@ -500,21 +555,38 @@ export function WatchlistPage() {
     }
 
     if (watchlist.length === 0) {
-      setStocks([])
-      setLoading(false)
-    } else {
-      setLoading(true)
-      const started = startStream()
-      if (!started) {
-        void fetchStockDataOnce()
+      const t = setTimeout(() => {
+        setStocks([])
+        setLoading(false)
+      }, 0)
+      return () => {
+        cancelled = true
+        eventSource?.close()
+        clearTimeout(t)
       }
+    }
+
+    const t = setTimeout(() => setLoading(true), 0)
+    const started = startStream()
+    if (!started) {
+      void fetchStockDataOnce()
     }
 
     return () => {
       cancelled = true
       eventSource?.close()
+      clearTimeout(t)
     }
-  }, [watchlist, toast, checkAlertsAndSendEmails, alertsHydrated, watchlistHydrated])
+  }, [watchlist, toast, checkAlertsAndSendEmails, alertsHydrated, watchlistHydrated, isStockFullyPopulated])
+
+  // If all quotes become ready due to merges/stream updates, drop the overlay.
+  useEffect(() => {
+    if (!watchlistHydrated) return
+    if (watchlist.length === 0) return
+    if (!allQuotesReady) return
+    const t = setTimeout(() => setLoading(false), 0)
+    return () => clearTimeout(t)
+  }, [allQuotesReady, watchlistHydrated, watchlist.length])
 
   const handleAddAlert = useCallback((stock: WatchlistStock) => {
     setPrefilledStock(stock)
@@ -643,7 +715,7 @@ export function WatchlistPage() {
     <>
       <FullPageTradingLoader
         show={!watchlistHydrated || loading}
-        label={!watchlistHydrated ? "Loading your watchlist..." : "Loading your watchlist data..."}
+        label={!watchlistHydrated ? "Loading your watchlist..." : "Your watchlist is getting ready..."}
       />
       <div className="grid h-full min-h-0 grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
       {/* Watchlist Table */}

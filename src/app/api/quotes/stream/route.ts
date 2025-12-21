@@ -66,15 +66,10 @@ export async function GET(req: Request): Promise<Response> {
     start(controller) {
       let closed = false;
 
-      // Price updates can be frequent; P/E updates are heavier.
-      // Auto-scale price interval with list size to reduce Finnhub rate-limit pressure.
+      // Auto-scale interval with list size to reduce Finnhub rate-limit pressure.
       const basePriceIntervalMs = 10_000;
       const scaledPriceIntervalMs = Math.max(basePriceIntervalMs, items.length * 1500);
       let priceIntervalMs = scaledPriceIntervalMs;
-
-      const peIntervalMs = 5 * 60_000;
-      let lastPeRefreshAt = 0;
-      const peBySymbol = new Map<string, number>();
 
       const write = (chunk: string) => {
         if (closed) return;
@@ -91,31 +86,13 @@ export async function GET(req: Request): Promise<Response> {
         }
       };
 
-      const sendQuotes = async (opts?: { includeMetrics?: boolean }) => {
+      const sendQuotes = async () => {
         try {
-          const includeMetrics = opts?.includeMetrics === true;
           const quotes = await getMultipleStockQuotesRealtime({
             requests: items,
-            includeMetrics,
+            includeMetrics: false,
           });
-
-          // Persist last-known-good P/E so we can send it with frequent price ticks.
-          if (includeMetrics) {
-            for (const q of quotes) {
-              if (typeof q?.symbol === "string" && Number.isFinite(q.peRatio) && q.peRatio > 0) {
-                peBySymbol.set(q.symbol.toUpperCase(), q.peRatio);
-              }
-            }
-            lastPeRefreshAt = Date.now();
-          }
-
-          const merged = quotes.map((q) => {
-            const pe = peBySymbol.get(q.symbol.toUpperCase());
-            return {
-              ...q,
-              peRatio: Number.isFinite(pe) && (pe as number) > 0 ? (pe as number) : q.peRatio,
-            };
-          });
+          const merged = quotes;
 
           write(
             sseEvent({
@@ -125,8 +102,6 @@ export async function GET(req: Request): Promise<Response> {
                 at: Date.now(),
                 meta: {
                   priceIntervalMs,
-                  peIntervalMs,
-                  peLastUpdatedAt: lastPeRefreshAt || null,
                 },
               },
             })
@@ -147,10 +122,7 @@ export async function GET(req: Request): Promise<Response> {
       const loop = async () => {
         if (closed) return;
 
-        // Occasionally refresh metrics (P/E). First attempt immediately.
-        const now = Date.now();
-        const shouldRefreshPe = lastPeRefreshAt === 0 || now - lastPeRefreshAt >= peIntervalMs;
-        await sendQuotes({ includeMetrics: shouldRefreshPe });
+        await sendQuotes();
 
         setTimeout(() => void loop(), priceIntervalMs);
       };
