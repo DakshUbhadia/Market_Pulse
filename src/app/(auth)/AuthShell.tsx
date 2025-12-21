@@ -63,7 +63,22 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
     // Per product requirement: visiting auth screens should behave like logout.
     // This also helps prevent viewing cached protected pages via browser back.
     void authClient.signOut();
-  }, []);
+
+    // Intercept browser back/forward to prevent showing cached authenticated pages.
+    // When user presses back on auth page, redirect to landing instead.
+    const handlePopState = () => {
+      // Replace current history entry and navigate to landing
+      router.replace("/landing");
+    };
+
+    // Push a dummy state so we can intercept back navigation
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [router]);
 
   const handleToggle = (toSignUp: boolean) => {
     router.push(toSignUp ? "/sign-up" : "/sign-in");

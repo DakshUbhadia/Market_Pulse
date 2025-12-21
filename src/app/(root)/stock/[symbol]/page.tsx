@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Star } from "lucide-react";
 import TradingViewWidget from "@/components/ui/TradingViewWidgets";
+import FullPageTradingLoader from "@/components/ui/FullPageTradingLoader";
 import { useWatchlist } from "@/context/WatchlistContext";
 import {
   ADVANCED_CHART_1,
@@ -31,6 +33,17 @@ export default function StockDetailPage() {
   const symbol = decodeURIComponent(rawSymbol);
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
 
+  const [loadedSymbol, setLoadedSymbol] = useState<string | null>(null);
+
+  // Simulate initial loading state for widgets
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoadedSymbol(symbol);
+    }, 1500); // Give widgets time to start loading
+
+    return () => clearTimeout(timer);
+  }, [symbol]);
+
   const tvSymbol = toTradingViewSymbol(symbol);
   const config = {
     symbolInfo: STOCK_SYMBOL(tvSymbol),
@@ -45,6 +58,7 @@ export default function StockDetailPage() {
   const displaySymbol = symbol.includes(":") ? symbol.split(":")[1] : symbol;
   const exchange = symbol.includes(":") ? symbol.split(":")[0] : "US";
   const inWatchlist = isInWatchlist(displaySymbol);
+  const isLoading = loadedSymbol !== symbol;
 
   const handleToggleWatchlist = () => {
     toggleWatchlist({
@@ -55,9 +69,11 @@ export default function StockDetailPage() {
   };
 
   return (
-    <main className="grid grid-cols-1 gap-8 pb-10 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
-      <section className="flex min-w-0 flex-col gap-8">
-        <div className="rounded-xl border border-border bg-card p-5">
+    <>
+      <FullPageTradingLoader show={isLoading} label={`Loading stock analysis for ${displaySymbol}...`} />
+      <main className="grid grid-cols-1 gap-8 pb-10 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
+        <section className="flex min-w-0 flex-col gap-8">
+          <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4 flex items-center gap-3">
             <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
             <div className="min-w-0">
@@ -69,7 +85,7 @@ export default function StockDetailPage() {
           <div className="overflow-hidden rounded-lg border border-border/60 bg-background/40">
             <TradingViewWidget scriptURL={SYMBOL_SCRIPT_URL} config={config.symbolInfo} height={220} />
           </div>
-        </div>
+          </div>
 
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4 flex items-center gap-3">
@@ -90,9 +106,9 @@ export default function StockDetailPage() {
             <TradingViewWidget scriptURL={ADVANCED_CHART_SCRIPT_URL} config={config.advancedChart2} height={640} />
           </div>
         </div>
-      </section>
+        </section>
 
-      <aside className="flex w-full flex-col gap-8 lg:w-[420px] lg:justify-self-end">
+        <aside className="flex w-full flex-col gap-8 lg:w-[420px] lg:justify-self-end">
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4 flex items-center gap-3">
             <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
@@ -149,7 +165,8 @@ export default function StockDetailPage() {
             <TradingViewWidget scriptURL={TECHNICAL_ANALYSIS_SCRIPT_URL} config={config.technicalAnalysis} height={460} />
           </div>
         </div>
-      </aside>
-    </main>
+        </aside>
+      </main>
+    </>
   );
 }

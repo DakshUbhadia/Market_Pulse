@@ -1387,3 +1387,69 @@
   margin-top: 6px;
   line-height: 1.4;
 }
+
+/* ==========================================
+   PASSWORD STRENGTH INDICATOR
+   ========================================== */
+.password-strength {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 15px;
+  padding: 0 4px;
+}
+
+.strength-bars {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.strength-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(212, 175, 55, 0.2);
+  transition: all 0.3s ease;
+}
+
+.strength-bar.active {
+  background: #D4AF37;
+}
+
+.strength-bar.active.weak {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
+
+.strength-bar.active.medium {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.strength-bar.active.strong {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.strength-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 80px;
+  text-align: right;
+  color: #9ca3af;
+  transition: color 0.3s ease;
+}
+
+.strength-text.weak {
+  color: #ef4444;
+}
+
+.strength-text.medium {
+  color: #f59e0b;
+}
+
+.strength-text.strong {
+  color: #10b981;
+}

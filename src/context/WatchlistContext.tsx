@@ -14,6 +14,7 @@ export type WatchlistItem = {
 
 type WatchlistContextType = {
   watchlist: WatchlistItem[]
+  isHydrated: boolean
   isInWatchlist: (symbol: string) => boolean
   addToWatchlist: (item: Omit<WatchlistItem, "addedAt">) => void
   removeFromWatchlist: (symbol: string) => void
@@ -47,8 +48,8 @@ function normalizeWatchlist(items: WatchlistItem[]): WatchlistItem[] {
 
 export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>(EMPTY_WATCHLIST)
+  const [isHydrated, setIsHydrated] = useState(false)
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
-  const loadedRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -62,21 +63,21 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
         if (!email) {
           if (!cancelled) {
-            loadedRef.current = true
             setWatchlist(EMPTY_WATCHLIST)
+            setIsHydrated(true)
           }
           return
         }
 
         const items = await getMyWatchlist()
         if (cancelled) return
-        loadedRef.current = true
         setWatchlist(normalizeWatchlist(items))
+        setIsHydrated(true)
       } catch {
         if (!cancelled) {
           setSessionEmail(null)
-          loadedRef.current = true
           setWatchlist(EMPTY_WATCHLIST)
+          setIsHydrated(true)
         }
       }
     }
@@ -143,13 +144,14 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       watchlist,
+      isHydrated,
       isInWatchlist,
       addToWatchlist,
       removeFromWatchlist,
       toggleWatchlist,
       clearWatchlist,
     }),
-    [watchlist, isInWatchlist, addToWatchlist, removeFromWatchlist, toggleWatchlist, clearWatchlist]
+    [watchlist, isHydrated, isInWatchlist, addToWatchlist, removeFromWatchlist, toggleWatchlist, clearWatchlist]
   )
 
   return <WatchlistContext.Provider value={value}>{children}</WatchlistContext.Provider>

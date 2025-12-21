@@ -21,8 +21,9 @@ import {
 import { getCuratedStockBySymbol } from "@/lib/constants"
 import { authClient } from "@/lib/auth-client"
 import type { WatchlistStock, WatchlistAlert } from "@/types/watchlist"
-import { Loader2, Plus, Star } from "lucide-react"
+import { Plus, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import FullPageTradingLoader from "@/components/ui/FullPageTradingLoader"
 const QUOTE_STREAM_INTERVAL_MS = 10_000
 
 type StreamQuote = {
@@ -140,7 +141,7 @@ const mergeStocksPreferValid = (prev: WatchlistStock[], next: WatchlistStock[]):
 export function WatchlistPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { watchlist, removeFromWatchlist } = useWatchlist()
+  const { watchlist, removeFromWatchlist, isHydrated: watchlistHydrated } = useWatchlist()
   
   const [stocks, setStocks] = useState<WatchlistStock[]>([])
   const [loading, setLoading] = useState(true)
@@ -392,6 +393,11 @@ export function WatchlistPage() {
     let cancelled = false
     let eventSource: EventSource | null = null
 
+    if (!watchlistHydrated) {
+      setLoading(true)
+      return
+    }
+
     const maybeCheckAlerts = (watchlistStocks: WatchlistStock[]) => {
       if (!alertsHydrated) return
 
@@ -508,7 +514,7 @@ export function WatchlistPage() {
       cancelled = true
       eventSource?.close()
     }
-  }, [watchlist, toast, checkAlertsAndSendEmails, alertsHydrated])
+  }, [watchlist, toast, checkAlertsAndSendEmails, alertsHydrated, watchlistHydrated])
 
   const handleAddAlert = useCallback((stock: WatchlistStock) => {
     setPrefilledStock(stock)
@@ -605,7 +611,7 @@ export function WatchlistPage() {
   }, [router])
 
   // Empty state
-  if (!loading && watchlist.length === 0) {
+  if (watchlistHydrated && !loading && watchlist.length === 0) {
     return (
       <div className="mx-auto w-full max-w-3xl py-10">
         <div className="rounded-xl border border-border bg-card p-8 text-center">
@@ -634,7 +640,12 @@ export function WatchlistPage() {
   }
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+    <>
+      <FullPageTradingLoader
+        show={!watchlistHydrated || loading}
+        label={!watchlistHydrated ? "Loading your watchlist..." : "Loading your watchlist data..."}
+      />
+      <div className="grid h-full min-h-0 grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
       {/* Watchlist Table */}
       <div className="flex min-h-0 flex-col">
         <div ref={watchlistPanelRef} className="rounded-xl border border-border bg-card p-5">
@@ -648,21 +659,14 @@ export function WatchlistPage() {
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
-              <span className="ml-3 text-sm text-muted-foreground">Loading stock data...</span>
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-lg border border-border/60 bg-background/40">
-              <WatchlistTable
-                stocks={stocks}
-                onAddAlert={handleAddAlert}
-                onRemoveStock={handleRemoveFromWatchlist}
-                onViewStock={handleViewStock}
-              />
-            </div>
-          )}
+          <div className="overflow-hidden rounded-lg border border-border/60 bg-background/40">
+            <WatchlistTable
+              stocks={stocks}
+              onAddAlert={handleAddAlert}
+              onRemoveStock={handleRemoveFromWatchlist}
+              onViewStock={handleViewStock}
+            />
+          </div>
         </div>
       </div>
 
@@ -688,6 +692,7 @@ export function WatchlistPage() {
         prefilledName={prefilledStock?.name}
         editingAlert={editingAlert}
       />
-    </div>
+      </div>
+    </>
   )
 }
