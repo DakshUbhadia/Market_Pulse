@@ -240,7 +240,10 @@ export const signUpWithEmail = async ({ email, password, fullName, country, inve
         }
         
         const auth = await getAuth();
-        const response = await auth.api.signUpEmail({ body: { email: normalizedEmail, password, name: fullName } })
+        const response = await auth.api.signUpEmail({
+            body: { email: normalizedEmail, password, name: fullName },
+            headers: await headers(),
+        })
 
         if(response) {
             // Delete OTP after successful signup
@@ -263,7 +266,10 @@ export const signUpWithEmail = async ({ email, password, fullName, country, inve
 export const signInWithEmail = async ({ email, password }: SignInFormData) => {
     try {
         const auth = await getAuth();
-        const response = await auth.api.signInEmail({ body: { email: normalizeEmail(email), password } })
+        const response = await auth.api.signInEmail({
+            body: { email: normalizeEmail(email), password },
+            headers: await headers(),
+        })
 
         return { success: true, data: response }
     } catch (e) {

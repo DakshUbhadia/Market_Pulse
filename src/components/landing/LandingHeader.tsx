@@ -38,7 +38,7 @@ const LandingHeader = () => {
           }}
         >
           <Image
-            src="/assets/images/Logo.png"
+            src="/assets/images/logo.png"
             alt="Market Pulse Logo"
             width={36}
             height={36}

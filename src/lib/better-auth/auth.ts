@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
-import{ mongodbAdapter } from "better-auth/adapters/mongodb";
-import {nextCookies} from "better-auth/next-js";
+import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { nextCookies } from "better-auth/next-js";
 import { MongoClient, type Db } from "mongodb";
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -29,11 +29,15 @@ export const getAuth = async () => {
 
     if(!db) throw new Error("Database connection is not established");
 
+    const baseURL =
+        process.env.BETTER_AUTH_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
     authInstance = betterAuth({
         database: mongodbAdapter(db),
 
         secret: process.env.BETTER_AUTH_SECRET,
-        baseURL: process.env.BETTER_AUTH_URL,
+        baseURL,
 
         emailAndPassword: {
             enabled: true,
