@@ -5,7 +5,7 @@ export type NavItem = {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Dashboard" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/search", label: "Search", variant: "command" },
   { href: "/watchlist", label: "Watchlist" },
 ]
@@ -248,7 +248,7 @@ export const toTradingViewSymbol = (raw: string) => {
 export const STOCK_SYMBOL = (symbol:string) => ({
           "symbol": toTradingViewSymbol(symbol),
           "colorTheme": "dark",
-          "isTransparent": false,
+          "isTransparent": true,
           "locale": "en",
           "width": "100%"
 });

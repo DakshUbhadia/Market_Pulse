@@ -55,3 +55,42 @@ function patchBetterAuthPackageTsconfig(packageName) {
 
 patchBetterAuthPackageTsconfig("core");
 patchBetterAuthPackageTsconfig("telemetry");
+
+function patchMongoTsconfig(tsconfigPath) {
+  if (!fs.existsSync(tsconfigPath)) return;
+
+  try {
+    const raw = fs.readFileSync(tsconfigPath, "utf8");
+
+    // Ensure ignoreDeprecations is present under compilerOptions (TypeScript expects it there).
+    let patched = raw;
+
+    // If a top-level ignoreDeprecations exists, remove it to avoid ambiguity.
+    patched = patched.replace(/^\s*"ignoreDeprecations"\s*:\s*"6\.0"\s*,?\s*\r?\n/m, "");
+
+    // Inject into compilerOptions if missing.
+    if (!/"compilerOptions"\s*:\s*\{[\s\S]*?"ignoreDeprecations"\s*:\s*"6\.0"/m.test(patched)) {
+      patched = patched.replace(
+        /"compilerOptions"\s*:\s*\{\s*\r?\n/m,
+        (match) => `${match}    "ignoreDeprecations": "6.0",\n`
+      );
+    }
+
+    // Be defensive: if moduleResolution uses node10/node, prefer node16.
+    patched = patched
+      .replace(/"moduleResolution"\s*:\s*"node10"/gi, '"moduleResolution": "node16"')
+      .replace(/"moduleResolution"\s*:\s*"node"/gi, '"moduleResolution": "node16"');
+
+    if (patched !== raw) {
+      fs.writeFileSync(tsconfigPath, patched, "utf8");
+      console.log(`[postinstall] Patched ${tsconfigPath}`);
+    }
+  } catch (err) {
+    console.warn(`[postinstall] Failed to patch ${tsconfigPath}:`, err);
+  }
+}
+
+patchMongoTsconfig(path.join(__dirname, "..", "node_modules", "mongodb", "tsconfig.json"));
+patchMongoTsconfig(
+  path.join(__dirname, "..", "node_modules", "mongoose", "node_modules", "mongodb", "tsconfig.json")
+);

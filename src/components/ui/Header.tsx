@@ -15,7 +15,7 @@ const Header = () => {
       <header className="sticky top-0 header">
         <div className="container flex items-center justify-between h-16">
           <Link
-            href="/"
+            href="/dashboard"
             className="flex items-center gap-3 hover:opacity-90 transition-opacity"
           >
             <Image

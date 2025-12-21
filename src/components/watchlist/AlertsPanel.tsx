@@ -9,6 +9,8 @@ import { AnimatePresence } from "framer-motion"
 
 interface AlertsPanelProps {
   alerts: WatchlistAlert[]
+  watchlistCount?: number
+  panelHeight?: number
   onCreateAlert: () => void
   onEditAlert: (alert: WatchlistAlert) => void
   onDeleteAlert: (alertId: string) => void
@@ -16,15 +18,26 @@ interface AlertsPanelProps {
 
 export function AlertsPanel({
   alerts,
+  watchlistCount,
+  panelHeight,
   onCreateAlert,
   onEditAlert,
   onDeleteAlert,
 }: AlertsPanelProps) {
   const activeAlerts = alerts.filter((a) => a.isActive)
-  const pausedAlerts = alerts.filter((a) => !a.isActive)
+
+  const compact = typeof watchlistCount === "number" ? watchlistCount < 5 : false
+  const resolvedHeight = compact
+    ? 420
+    : typeof panelHeight === "number" && Number.isFinite(panelHeight) && panelHeight > 0
+      ? panelHeight
+      : 420
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
+    <div
+      className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card"
+      style={{ height: resolvedHeight }}
+    >
       {/* Header */}
       <div className="border-b border-border p-5">
         <div className="mb-4 flex items-center gap-3">
@@ -40,8 +53,8 @@ export function AlertsPanel({
         </Button>
       </div>
 
-      {/* Alerts List (show ~3 cards, scroll for more) */}
-      <ScrollArea className="h-[420px]">
+      {/* Alerts List */}
+      <ScrollArea className="min-h-0 flex-1">
         <div className="p-4 space-y-3">
           {alerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -69,40 +82,10 @@ export function AlertsPanel({
                   </AnimatePresence>
                 </div>
               )}
-
-              {/* Paused Alerts */}
-              {pausedAlerts.length > 0 && (
-                <div className="mt-4 border-t border-border pt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
-                    Paused ({pausedAlerts.length})
-                  </p>
-                  <AnimatePresence>
-                    {pausedAlerts.map((alert) => (
-                      <div key={alert.id} className="mb-2">
-                        <AlertCard
-                          alert={alert}
-                          onEdit={onEditAlert}
-                          onDelete={onDeleteAlert}
-                        />
-                      </div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-              )}
             </>
           )}
         </div>
       </ScrollArea>
-
-      {/* Footer Stats */}
-      {alerts.length > 0 && (
-        <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-          <div className="flex justify-between">
-            <span>{activeAlerts.length} active</span>
-            <span>{pausedAlerts.length} paused</span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

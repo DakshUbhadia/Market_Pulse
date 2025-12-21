@@ -146,9 +146,12 @@ export function WatchlistPage() {
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<WatchlistAlert[]>([])
   const [alertsHydrated, setAlertsHydrated] = useState(false)
+  const [watchlistPanelHeight, setWatchlistPanelHeight] = useState<number | undefined>(undefined)
   const [modalOpen, setModalOpen] = useState(false)
   const [prefilledStock, setPrefilledStock] = useState<WatchlistStock | null>(null)
   const [editingAlert, setEditingAlert] = useState<WatchlistAlert | null>(null)
+
+  const watchlistPanelRef = useRef<HTMLDivElement | null>(null)
 
   const lastTriggeredRef = useRef<Map<string, number>>(new Map())
   const warnedNoSessionRef = useRef(false)
@@ -157,6 +160,25 @@ export function WatchlistPage() {
   useEffect(() => {
     alertsRef.current = alerts
   }, [alerts])
+
+  // Keep Alerts panel height aligned with the rendered Watchlist panel height.
+  useEffect(() => {
+    const el = watchlistPanelRef.current
+    if (!el) return
+    if (typeof ResizeObserver === "undefined") return
+
+    const update = () => {
+      const next = el.getBoundingClientRect().height
+      if (Number.isFinite(next) && next > 0) {
+        setWatchlistPanelHeight(next)
+      }
+    }
+
+    update()
+    const ro = new ResizeObserver(() => update())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // Load alerts from MongoDB once on mount.
   useEffect(() => {
@@ -615,7 +637,7 @@ export function WatchlistPage() {
     <div className="grid h-full min-h-0 grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
       {/* Watchlist Table */}
       <div className="flex min-h-0 flex-col">
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div ref={watchlistPanelRef} className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4 flex items-center gap-3">
             <div className="h-6 w-1.5 rounded-full bg-yellow-500" />
             <div>
@@ -648,6 +670,8 @@ export function WatchlistPage() {
       <div className="flex min-h-0 flex-col">
         <AlertsPanel
           alerts={alerts}
+          watchlistCount={watchlist.length}
+          panelHeight={watchlistPanelHeight}
           onCreateAlert={handleCreateAlertFromPanel}
           onEditAlert={handleEditAlert}
           onDeleteAlert={handleDeleteAlert}
