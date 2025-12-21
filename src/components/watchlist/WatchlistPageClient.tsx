@@ -170,9 +170,7 @@ export function WatchlistPage() {
     const okNumber = (v: unknown) => typeof v === "number" && Number.isFinite(v)
     return (
       okNumber(s.currentPrice) &&
-      okNumber(s.openPrice) &&
-      okNumber(s.highPrice) &&
-      okNumber(s.lowPrice)
+      okNumber(s.openPrice)
     )
   }, [])
 
