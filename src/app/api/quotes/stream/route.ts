@@ -66,10 +66,9 @@ export async function GET(req: Request): Promise<Response> {
     start(controller) {
       let closed = false;
 
-      // Auto-scale interval with list size to reduce Finnhub rate-limit pressure.
-      const basePriceIntervalMs = 10_000;
-      const scaledPriceIntervalMs = Math.max(basePriceIntervalMs, items.length * 1500);
-      let priceIntervalMs = scaledPriceIntervalMs;
+      // Fixed cadence for watchlist updates.
+      // Quotes are fetched via server action which is Yahoo-backed.
+      const priceIntervalMs = 10_000;
 
       const write = (chunk: string) => {
         if (closed) return;
@@ -108,12 +107,6 @@ export async function GET(req: Request): Promise<Response> {
           );
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown error";
-
-          // If we got rate limited, back off for this connection.
-          if (typeof message === "string" && (message.includes("429") || message.toLowerCase().includes("rate"))) {
-            priceIntervalMs = Math.min(Math.max(priceIntervalMs, 30_000), 120_000);
-            write(sseEvent({ event: "rate_limit", data: { message, nextPriceIntervalMs: priceIntervalMs } }));
-          }
 
           write(sseEvent({ event: "error", data: { message } }));
         }
