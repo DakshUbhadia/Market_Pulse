@@ -2,11 +2,15 @@
 
 import { cache } from 'react';
 import { BSE_STOCKS, DEFAULT_SEARCH_STOCKS, US_DEFAULT_STOCKS } from '@/lib/constants';
+import YahooFinance from "yahoo-finance2";
+
+const yahooFinance = new YahooFinance();
 
 const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || NEXT_PUBLIC_FINNHUB_API_KEY;
 
-const FINNHUB_TOKEN = NEXT_PUBLIC_FINNHUB_API_KEY;
+const FINNHUB_TOKEN = FINNHUB_API_KEY;
 
 type FinnhubSearchResult = {
   description: string;
@@ -88,7 +92,7 @@ const getArticleKey = (a: MarketNewsArticle): string => {
   return [idPart, urlPart, headlinePart].filter(Boolean).join("|");
 };
 
-export const fetchJSON = async <T>(
+const fetchJSON = async <T>(
   url: string,
   options: FetchJSONOptions = {}
 ): Promise<T> => {
@@ -159,6 +163,238 @@ export type StockQuoteData = {
 type QuoteRequest = {
   symbol: string;
   exchange?: string;
+};
+
+type YahooQuoteLike = {
+  symbol?: string;
+  longName?: string;
+  shortName?: string;
+  currency?: string;
+  fullExchangeName?: string;
+  exchange?: string;
+  regularMarketPrice?: number;
+  regularMarketOpen?: number;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
+  regularMarketPreviousClose?: number;
+  regularMarketChange?: number;
+  regularMarketChangePercent?: number;
+  regularMarketTime?: number;
+  trailingPE?: number;
+  forwardPE?: number;
+};
+
+const toYahooTicker = (symbol: string, exchange?: string): string => {
+  const raw = String(symbol ?? "").trim();
+  if (!raw) return "";
+
+  const upper = raw.toUpperCase();
+  // If user already provided a suffix (e.g., TCS.NS) keep as-is.
+  if (upper.endsWith(".NS") || upper.endsWith(".BO")) return upper;
+
+  const ex = String(exchange ?? "").toUpperCase().trim();
+  if (ex === "NSE") return `${upper}.NS`;
+  if (ex === "BSE") return `${upper}.BO`;
+  return upper;
+};
+
+// Adapter: Yahoo's descriptive fields -> Finnhub-like labels
+const translateYahooToFinnhubQuote = (q: YahooQuoteLike) => {
+  return {
+    c: typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : 0,
+    d: typeof q.regularMarketChange === "number" ? q.regularMarketChange : 0,
+    dp: typeof q.regularMarketChangePercent === "number" ? q.regularMarketChangePercent : 0,
+    h: typeof q.regularMarketDayHigh === "number" ? q.regularMarketDayHigh : 0,
+    l: typeof q.regularMarketDayLow === "number" ? q.regularMarketDayLow : 0,
+    o: typeof q.regularMarketOpen === "number" ? q.regularMarketOpen : 0,
+    pc: typeof q.regularMarketPreviousClose === "number" ? q.regularMarketPreviousClose : 0,
+    // Yahoo gives seconds in regularMarketTime; keep milliseconds in our StockQuoteData.
+    t: typeof q.regularMarketTime === "number" ? q.regularMarketTime : 0,
+  } satisfies FinnhubQuote;
+};
+
+const getFirstPositiveNumberFromYahoo = (q: YahooQuoteLike): number | undefined => {
+  const candidates = [q.trailingPE, q.forwardPE];
+  for (const v of candidates) {
+    if (typeof v !== "number") continue;
+    if (!Number.isFinite(v)) continue;
+    if (v <= 0) continue;
+    return v;
+  }
+  return undefined;
+};
+
+const getRealtimeQuoteFromYahoo = async (args: {
+  symbol: string;
+  exchange?: string;
+}): Promise<StockQuoteData | null> => {
+  const normalizedSymbol = String(args.symbol ?? "").trim().toUpperCase();
+  if (!normalizedSymbol) return null;
+
+  const ex = String(args.exchange ?? "").trim().toUpperCase();
+  const yahooTicker = toYahooTicker(normalizedSymbol, ex);
+  if (!yahooTicker) return null;
+
+  let raw: YahooQuoteLike;
+  try {
+    // yahoo-finance2 types can vary across versions; keep this call strongly runtime-correct.
+    const yahoo = yahooFinance as unknown as { quote: (ticker: string) => Promise<unknown> };
+    raw = (await yahoo.quote(yahooTicker)) as YahooQuoteLike;
+  } catch (error) {
+    console.error("Yahoo quote failed:", error);
+    return null;
+  }
+  const finnhubLike = translateYahooToFinnhubQuote(raw);
+
+  // If Yahoo couldn't resolve a real quote, treat as missing.
+  if (finnhubLike.c === 0 && finnhubLike.o === 0 && finnhubLike.h === 0 && finnhubLike.l === 0) {
+    return null;
+  }
+
+  let currency = "USD";
+  if (typeof raw.currency === "string" && raw.currency.trim()) {
+    currency = raw.currency;
+  } else if (ex === "BSE" || ex === "NSE") {
+    currency = "INR";
+  }
+
+  let name = normalizedSymbol;
+  if (typeof raw.longName === "string" && raw.longName.trim()) {
+    name = raw.longName;
+  } else if (typeof raw.shortName === "string" && raw.shortName.trim()) {
+    name = raw.shortName;
+  }
+
+  const pe = getFirstPositiveNumberFromYahoo(raw);
+  const timestampMs = finnhubLike.t ? finnhubLike.t * 1000 : Date.now();
+
+  return {
+    symbol: normalizedSymbol,
+    name,
+    exchange: args.exchange || raw.fullExchangeName || raw.exchange || "US",
+    currency,
+    currentPrice: finnhubLike.c,
+    openPrice: finnhubLike.o,
+    highPrice: finnhubLike.h,
+    lowPrice: finnhubLike.l,
+    previousClose: finnhubLike.pc,
+    change: finnhubLike.d,
+    percentChange: finnhubLike.dp,
+    logoUrl: undefined,
+    peRatio: typeof pe === "number" ? pe : Number.NaN,
+    timestamp: timestampMs,
+  };
+};
+
+const normalizeExchange = (exchange?: string) => String(exchange ?? "").toUpperCase().trim();
+const isIndianExchange = (exchange?: string) => {
+  const ex = normalizeExchange(exchange);
+  return ex === "BSE" || ex === "NSE";
+};
+
+const toRevalidateOptions = (seconds?: number) =>
+  typeof seconds === "number" ? { revalidateSeconds: seconds } : undefined;
+
+const isZeroQuote = (q: FinnhubQuote) => q.c === 0 && q.o === 0 && q.h === 0 && q.l === 0;
+
+const fetchCandidateQuoteBundle = async (args: {
+  candidate: string;
+  token: string;
+  includeMetrics: boolean;
+  quoteRevalidateSeconds?: number;
+  profileRevalidateSeconds?: number;
+  metricRevalidateSeconds?: number;
+}): Promise<
+  | {
+      quote: FinnhubQuote;
+      profile: FinnhubProfile | null;
+      metric: FinnhubMetricResponse | null;
+    }
+  | null
+> => {
+  const {
+    candidate,
+    token,
+    includeMetrics,
+    quoteRevalidateSeconds,
+    profileRevalidateSeconds,
+    metricRevalidateSeconds,
+  } = args;
+
+  const quoteUrl = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(candidate)}&token=${encodeURIComponent(token)}`;
+  const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(candidate)}&token=${encodeURIComponent(token)}`;
+  const metricUrl = `${FINNHUB_BASE_URL}/stock/metric?symbol=${encodeURIComponent(candidate)}&metric=all&token=${encodeURIComponent(token)}`;
+
+  const quotePromise = fetchJSON<FinnhubQuote>(quoteUrl, toRevalidateOptions(quoteRevalidateSeconds)).catch(() => null);
+  const profilePromise = fetchJSON<FinnhubProfile>(profileUrl, toRevalidateOptions(profileRevalidateSeconds)).catch(() => null);
+  const metricPromise = includeMetrics
+    ? fetchJSON<FinnhubMetricResponse>(metricUrl, toRevalidateOptions(metricRevalidateSeconds)).catch(() => null)
+    : Promise.resolve(null);
+
+  const [quote, profile, metric] = await Promise.all([quotePromise, profilePromise, metricPromise]);
+  if (!quote) return null;
+  if (isZeroQuote(quote)) return null;
+  return { quote, profile, metric };
+};
+
+const tryFetchFirstQuoteForCandidates = async (args: {
+  normalizedSymbol: string;
+  exchange?: string;
+  ex: string;
+  token: string;
+  candidates: string[];
+  includeMetrics: boolean;
+  quoteRevalidateSeconds?: number;
+  profileRevalidateSeconds?: number;
+  metricRevalidateSeconds?: number;
+}): Promise<StockQuoteData | null> => {
+  const {
+    normalizedSymbol,
+    exchange,
+    ex,
+    token,
+    candidates,
+    includeMetrics,
+    quoteRevalidateSeconds,
+    profileRevalidateSeconds,
+    metricRevalidateSeconds,
+  } = args;
+
+  for (const candidate of candidates) {
+    const bundle = await fetchCandidateQuoteBundle({
+      candidate,
+      token,
+      includeMetrics,
+      quoteRevalidateSeconds,
+      profileRevalidateSeconds,
+      metricRevalidateSeconds,
+    });
+    if (!bundle) continue;
+
+    const resolvedCurrency = ex === "BSE" || ex === "NSE" ? "INR" : (bundle.profile?.currency || "USD");
+    const resolvedPe = includeMetrics
+      ? resolvePeRatio({ currentPrice: bundle.quote.c, metricResponse: bundle.metric })
+      : undefined;
+
+    return {
+      symbol: normalizedSymbol,
+      name: bundle.profile?.name || normalizedSymbol,
+      exchange: exchange || bundle.profile?.exchange || "US",
+      currency: resolvedCurrency,
+      currentPrice: bundle.quote.c,
+      openPrice: bundle.quote.o,
+      highPrice: bundle.quote.h,
+      lowPrice: bundle.quote.l,
+      previousClose: bundle.quote.pc,
+      change: bundle.quote.d,
+      percentChange: bundle.quote.dp,
+      logoUrl: bundle.profile?.logo,
+      peRatio: typeof resolvedPe === "number" ? resolvedPe : Number.NaN,
+      timestamp: bundle.quote.t ? bundle.quote.t * 1000 : Date.now(),
+    };
+  }
+
+  return null;
 };
 
 const getFirstPositiveNumber = (values: unknown[]): number | undefined => {
@@ -264,94 +500,42 @@ const getStockQuoteImpl = async (
   exchange?: string,
   policy?: Partial<StockQuoteFetchPolicy>
 ): Promise<StockQuoteData | null> => {
-  const resolvedPolicy = {
-    quoteRevalidateSeconds: policy?.quoteRevalidateSeconds,
-    profileRevalidateSeconds: policy?.profileRevalidateSeconds,
-    metricRevalidateSeconds: policy?.metricRevalidateSeconds,
-    includeMetrics: policy?.includeMetrics ?? true,
-    fallbackToMockOnError: policy?.fallbackToMockOnError ?? true,
-    fallbackToMockOnNotFound: policy?.fallbackToMockOnNotFound ?? true,
-  } satisfies StockQuoteFetchPolicy;
+  const quoteRevalidateSeconds = policy?.quoteRevalidateSeconds;
+  const profileRevalidateSeconds = policy?.profileRevalidateSeconds;
+  const metricRevalidateSeconds = policy?.metricRevalidateSeconds;
+  const includeMetrics = policy?.includeMetrics ?? true;
+  const fallbackToMockOnError = policy?.fallbackToMockOnError ?? true;
+  const fallbackToMockOnNotFound = policy?.fallbackToMockOnNotFound ?? true;
 
-  const {
-    quoteRevalidateSeconds,
-    profileRevalidateSeconds,
-    metricRevalidateSeconds,
-    includeMetrics,
-    fallbackToMockOnError,
-    fallbackToMockOnNotFound,
-  } = resolvedPolicy;
+  const normalizedSymbol = symbol.toUpperCase().trim();
+  const ex = normalizeExchange(exchange);
+
+  if (!FINNHUB_TOKEN) {
+    if (ex === "BSE" || ex === "NSE") return null;
+    console.warn("FINNHUB_TOKEN not set, returning mock data");
+    return createMockQuote(symbol, undefined, undefined, exchange);
+  }
 
   try {
-    const normalizedSymbol = symbol.toUpperCase().trim();
-    const ex = String(exchange ?? "").toUpperCase().trim();
-
-    if (!FINNHUB_TOKEN) {
-      // Don't show misleading mock prices for Indian equities.
-      if (ex === "BSE" || ex === "NSE") return null;
-
-      console.warn("FINNHUB_TOKEN not set, returning mock data");
-      return createMockQuote(symbol, undefined, undefined, exchange);
-    }
-
     const candidates = getFinnhubSymbolCandidates(normalizedSymbol, exchange);
+    const quote = await tryFetchFirstQuoteForCandidates({
+      normalizedSymbol,
+      exchange,
+      ex,
+      token: FINNHUB_TOKEN,
+      candidates,
+      includeMetrics,
+      quoteRevalidateSeconds,
+      profileRevalidateSeconds,
+      metricRevalidateSeconds,
+    });
+    if (quote) return quote;
 
-    for (const candidate of candidates) {
-      const quoteUrl = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(candidate)}&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
-      const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(candidate)}&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
-      const metricUrl = `${FINNHUB_BASE_URL}/stock/metric?symbol=${encodeURIComponent(candidate)}&metric=all&token=${encodeURIComponent(FINNHUB_TOKEN)}`;
-
-      const [quoteResponse, profileResponse, metricResponse] = await Promise.all([
-        fetchJSON<FinnhubQuote>(quoteUrl, typeof quoteRevalidateSeconds === "number" ? { revalidateSeconds: quoteRevalidateSeconds } : undefined).catch(() => null),
-        fetchJSON<FinnhubProfile>(profileUrl, typeof profileRevalidateSeconds === "number" ? { revalidateSeconds: profileRevalidateSeconds } : undefined).catch(() => null),
-        includeMetrics
-          ? fetchJSON<FinnhubMetricResponse>(
-              metricUrl,
-              typeof metricRevalidateSeconds === "number" ? { revalidateSeconds: metricRevalidateSeconds } : undefined
-            ).catch(() => null)
-          : Promise.resolve(null),
-      ]);
-
-      if (!quoteResponse) continue;
-
-      // If quote returns all zeros, the symbol might not be supported.
-      if (quoteResponse.c === 0 && quoteResponse.o === 0 && quoteResponse.h === 0 && quoteResponse.l === 0) {
-        continue;
-      }
-
-      const resolvedCurrency =
-        ex === "BSE" || ex === "NSE" ? "INR" : (profileResponse?.currency || "USD");
-
-      const resolvedPe = includeMetrics ? resolvePeRatio({ currentPrice: quoteResponse.c, metricResponse }) : undefined;
-
-      return {
-        symbol: normalizedSymbol,
-        name: profileResponse?.name || normalizedSymbol,
-        exchange: exchange || profileResponse?.exchange || "US",
-        currency: resolvedCurrency,
-        currentPrice: quoteResponse.c,
-        openPrice: quoteResponse.o,
-        highPrice: quoteResponse.h,
-        lowPrice: quoteResponse.l,
-        previousClose: quoteResponse.pc,
-        change: quoteResponse.d,
-        percentChange: quoteResponse.dp,
-        logoUrl: profileResponse?.logo,
-        peRatio: typeof resolvedPe === "number" ? resolvedPe : Number.NaN,
-        timestamp: quoteResponse.t ? quoteResponse.t * 1000 : Date.now(),
-      };
-    }
-
-    // If none of the candidates worked:
-    // - For Indian equities, return null (avoid wrong random prices).
-    // - For US, optionally fall back to mock.
     if (ex === "BSE" || ex === "NSE") return null;
-
     return fallbackToMockOnNotFound ? createMockQuote(symbol, undefined, undefined, exchange) : null;
   } catch (error) {
     console.error("Error fetching stock quote:", error);
-    const ex = String(exchange ?? "").toUpperCase().trim();
-    if (ex === "BSE" || ex === "NSE") return null;
+    if (isIndianExchange(exchange)) return null;
     return fallbackToMockOnError ? createMockQuote(symbol, undefined, undefined, exchange) : null;
   }
 };
@@ -377,19 +561,15 @@ export const getStockQuoteRealtime = async (args: {
   exchange?: string;
   includeMetrics?: boolean;
 }): Promise<StockQuoteData | null> => {
-  return getStockQuoteImpl(args.symbol, args.exchange, {
-    quoteRevalidateSeconds: undefined,
-    profileRevalidateSeconds: 3600,
-    metricRevalidateSeconds: 6 * 60 * 60,
-    includeMetrics: args.includeMetrics ?? false,
-    fallbackToMockOnError: false,
-    fallbackToMockOnNotFound: false,
-  });
+  // Realtime watchlist data now comes from Yahoo Finance.
+  // Keep the same return shape so the frontend does not change.
+  // includeMetrics is ignored (Yahoo doesn't expose Finnhub metrics in the same way).
+  return getRealtimeQuoteFromYahoo({ symbol: args.symbol, exchange: args.exchange });
 };
 
 function createMockQuote(symbol: string, name?: string, logo?: string, exchange?: string): StockQuoteData {
   // Generate consistent mock data based on symbol
-  const hash = symbol.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = symbol.split("").reduce((acc, char) => acc + (char.codePointAt(0) ?? 0), 0);
   const basePrice = 50 + (hash % 250);
   const change = ((hash % 20) - 10) * 0.5;
 
@@ -555,8 +735,8 @@ export type GetNewsOptions = {
 
 export const getNews = async (symbols?: string[], options?: GetNewsOptions): Promise<MarketNewsArticle[]> => {
   try {
-    if (!NEXT_PUBLIC_FINNHUB_API_KEY) {
-      throw new Error("NEXT_PUBLIC_FINNHUB_API_KEY is not set");
+    if (!FINNHUB_API_KEY) {
+      throw new Error("Finnhub API key is not set (set FINNHUB_API_KEY)");
     }
 
     const daysBack = typeof options?.daysBack === "number" && options.daysBack > 0 ? options.daysBack : 5;
@@ -570,62 +750,78 @@ export const getNews = async (symbols?: string[], options?: GetNewsOptions): Pro
     const fromStr = formatDateYYYYMMDD(from);
     const toStr = formatDateYYYYMMDD(now);
 
-    const hasSymbols = Array.isArray(symbols) && symbols.length > 0;
-
-    if (hasSymbols) {
-      const tickers = cleanSymbols(symbols!);
-      if (tickers.length === 0) return [];
-
-      const picked: MarketNewsArticle[] = [];
-      const seen = new Set<string>();
-
-      // Round-robin, limited fetches/rounds (keeps rate usage predictable)
-      for (let i = 0; i < maxRounds; i++) {
-        const symbol = tickers[i % tickers.length];
-        const url = `${FINNHUB_BASE_URL}/company-news?symbol=${encodeURIComponent(
-          symbol
-        )}&from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(
-          toStr
-        )}&token=${encodeURIComponent(NEXT_PUBLIC_FINNHUB_API_KEY)}`;
-
-        const news = await fetchJSON<FinnhubNewsArticle[]>(url);
-        const firstValid = (news || []).find(isValidNewsArticle);
-        if (!firstValid) continue;
-
-        const formatted = toMarketNewsArticle(firstValid, symbol);
-        const key = getArticleKey(formatted);
-        if (seen.has(key)) continue;
-
-        seen.add(key);
-        picked.push(formatted);
-      }
-
-      return picked.sort((a, b) => b.datetime - a.datetime);
+    const tickers = Array.isArray(symbols) ? cleanSymbols(symbols) : [];
+    if (tickers.length > 0) {
+      return (await getCompanyNews({ tickers, fromStr, toStr, maxRounds, token: FINNHUB_API_KEY }))
+        .sort((a, b) => b.datetime - a.datetime);
     }
 
-    // General market news
-    const url = `${FINNHUB_BASE_URL}/news?category=general&token=${encodeURIComponent(
-      NEXT_PUBLIC_FINNHUB_API_KEY
-    )}`;
-
-    const news = await fetchJSON<FinnhubNewsArticle[]>(url);
-
-    const seen = new Set<string>();
-    const deduped: MarketNewsArticle[] = [];
-
-    for (const item of news || []) {
-      if (!isValidNewsArticle(item)) continue;
-      const formatted = toMarketNewsArticle(item);
-      const key = getArticleKey(formatted);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      deduped.push(formatted);
-      if (deduped.length >= maxItems) break;
-    }
-
-    return deduped.sort((a, b) => b.datetime - a.datetime);
+    return (await getGeneralMarketNews({ maxItems, token: FINNHUB_API_KEY }))
+      .sort((a, b) => b.datetime - a.datetime);
   } catch (err) {
     console.error("getNews error:", err);
     throw new Error("Failed to fetch news");
   }
+};
+
+const getCompanyNews = async (args: {
+  tickers: string[];
+  fromStr: string;
+  toStr: string;
+  maxRounds: number;
+  token: string;
+}): Promise<MarketNewsArticle[]> => {
+  const { tickers, fromStr, toStr, maxRounds, token } = args;
+  if (tickers.length === 0) return [];
+
+  // Fetch in parallel to avoid slow per-user sequential loops.
+  // Prefer covering distinct symbols rather than cycling the same ones.
+  const uniqueTickers = Array.from(
+    new Set(tickers.map((t) => t.trim().toUpperCase()).filter(Boolean))
+  );
+  const symbolsToFetch = uniqueTickers.slice(0, Math.max(1, maxRounds));
+
+  const results = await Promise.all(
+    symbolsToFetch.map(async (symbol) => {
+      const url = `${FINNHUB_BASE_URL}/company-news?symbol=${encodeURIComponent(symbol)}&from=${encodeURIComponent(fromStr)}&to=${encodeURIComponent(toStr)}&token=${encodeURIComponent(token)}`;
+      const news = await fetchJSON<FinnhubNewsArticle[]>(url).catch(() => []);
+      const firstValid = (news || []).find(isValidNewsArticle);
+      if (!firstValid) return null;
+      return toMarketNewsArticle(firstValid, symbol);
+    })
+  );
+
+  const picked: MarketNewsArticle[] = [];
+  const seen = new Set<string>();
+  for (const formatted of results) {
+    if (!formatted) continue;
+    const key = getArticleKey(formatted);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picked.push(formatted);
+  }
+
+  return picked;
+};
+
+const getGeneralMarketNews = async (args: { maxItems: number; token: string }): Promise<MarketNewsArticle[]> => {
+  const { maxItems, token } = args;
+  const url = `${FINNHUB_BASE_URL}/news?category=general&token=${encodeURIComponent(token)}`;
+  const news = await fetchJSON<FinnhubNewsArticle[]>(url);
+
+  const seen = new Set<string>();
+  const deduped: MarketNewsArticle[] = [];
+
+  for (const item of news || []) {
+    if (!isValidNewsArticle(item)) continue;
+    const formatted = toMarketNewsArticle(item);
+    const key = getArticleKey(formatted);
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    deduped.push(formatted);
+    if (deduped.length >= maxItems) break;
+  }
+
+  return deduped;
 };

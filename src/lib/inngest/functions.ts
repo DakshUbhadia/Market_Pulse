@@ -133,7 +133,7 @@ export const sendDailyNewsSummary = inngest.createFunction(
             market: MarketNewsArticle[];
             watchlistSymbols: string[];
             watchlist: MarketNewsArticle[];
-        }): string | null => {
+        }): string => {
             const { userName, market, watchlistSymbols, watchlist } = args;
 
             const safe = (s: string) =>
@@ -181,56 +181,97 @@ export const sendDailyNewsSummary = inngest.createFunction(
         };
 
         // Step #3: Summarize news via AI (single combined email content per user)
-        const userNewsSummaries: Array<{ user: UserForNewsEmail; newsContent: string | null}> = [];
+        const userNewsSummaries: Array<{ user: UserForNewsEmail; newsContent: string }> = [];
 
-        for (const { user, market, watchlist } of results) {
+        const withTimeout = async <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+            return await Promise.race([
+                promise,
+                new Promise<T>((_, reject) => {
+                    setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
+                }),
+            ]);
+        };
+
+        const summarizeOneUser = async (args: { user: UserForNewsEmail; market: MarketNewsArticle[]; watchlist: { symbols: string[]; articles: MarketNewsArticle[] } }) => {
+            const { user, market, watchlist } = args;
             try {
+                // Avoid pretty JSON (wastes tokens/time). Keep payload compact.
                 const prompt = NEWS_SUMMARY_WITH_WATCHLIST_EMAIL_PROMPT
                     .replace('{{userName}}', user.name)
-                    .replace('{{marketNewsData}}', JSON.stringify(market ?? [], null, 2))
-                    .replace('{{watchlistSymbols}}', JSON.stringify(watchlist?.symbols ?? [], null, 2))
-                    .replace('{{watchlistNewsData}}', JSON.stringify(watchlist?.articles ?? [], null, 2));
+                    .replace('{{marketNewsData}}', JSON.stringify(market ?? []))
+                    .replace('{{watchlistSymbols}}', JSON.stringify(watchlist?.symbols ?? []))
+                    .replace('{{watchlistNewsData}}', JSON.stringify(watchlist?.articles ?? []));
 
-                const response = await step.ai.infer(`summarize-news-${user.email}`, {
+                const inferPromise = step.ai.infer(`summarize-news-${user.email}`, {
                     model: step.ai.models.gemini({ model: 'gemini-2.5-flash-lite' }),
                     body: {
-                        contents: [{ role: 'user', parts: [{ text:prompt }]}]
+                        contents: [{ role: 'user', parts: [{ text: prompt }] }]
                     }
                 });
 
+                const response = await withTimeout(inferPromise, 25_000);
+
                 const part = response.candidates?.[0]?.content?.parts?.[0];
                 const aiHtml = (part && 'text' in part ? part.text : null);
-                const newsContent = aiHtml || buildFallbackHtml({
+                const newsContent = (typeof aiHtml === 'string' && aiHtml.trim().length > 0)
+                    ? aiHtml
+                    : buildFallbackHtml({
                     userName: user.name,
                     market: market ?? [],
                     watchlistSymbols: watchlist?.symbols ?? [],
                     watchlist: watchlist?.articles ?? [],
                 });
 
-                userNewsSummaries.push({ user, newsContent });
+                return { user, newsContent };
             } catch (err) {
                 console.error('Failed to summarize news for:', user.email, err);
-                userNewsSummaries.push({
+                return {
                     user,
                     newsContent: buildFallbackHtml({
                         userName: user.name,
-                        market: market ?? [],
-                        watchlistSymbols: watchlist?.symbols ?? [],
-                        watchlist: watchlist?.articles ?? [],
+                        market: args.market ?? [],
+                        watchlistSymbols: args.watchlist?.symbols ?? [],
+                        watchlist: args.watchlist?.articles ?? [],
                     }),
-                });
+                };
             }
+        };
+
+        // Concurrency limit: keep the run fast without overwhelming the AI provider.
+        const concurrency = 3;
+        for (let i = 0; i < results.length; i += concurrency) {
+            const chunk = results.slice(i, i + concurrency);
+            const summarized = await Promise.all(chunk.map((r) => summarizeOneUser(r)));
+            userNewsSummaries.push(...summarized);
         }
 
         // Step #4: Send the emails
         await step.run('send-news-emails', async () => {
             const date = formatDateTodayUtc();
 
+            const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+            const sendWithRetries = async (args: { email: string; date: string; newsContent: string }) => {
+                const delays = [0, 750, 1500];
+                let lastErr: unknown = null;
+                for (let i = 0; i < delays.length; i++) {
+                    try {
+                        if (delays[i] > 0) await delay(delays[i]);
+                        await sendNewsSummaryEmail(args);
+                        return;
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+                throw lastErr instanceof Error ? lastErr : new Error('Failed to send news email');
+            };
+
             await Promise.all(
                 userNewsSummaries.map(async ({ user, newsContent}) => {
-                    if(!newsContent) return;
+                    const safeContent = (typeof newsContent === 'string' && newsContent.trim().length > 0)
+                        ? newsContent
+                        : buildFallbackHtml({ userName: user.name, market: [], watchlistSymbols: [], watchlist: [] });
                     try {
-                        await sendNewsSummaryEmail({ email: user.email, date, newsContent });
+                        await sendWithRetries({ email: user.email, date, newsContent: safeContent });
                     } catch (err) {
                         console.error('Failed to send news email for:', user.email, err);
                     }

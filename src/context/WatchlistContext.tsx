@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { getCuratedStockBySymbol } from "@/lib/constants"
 import { authClient } from "@/lib/auth-client"
 import { addToMyWatchlist, clearMyWatchlist, getMyWatchlist, removeFromMyWatchlist } from "@/lib/actions/watchlist.actions"
