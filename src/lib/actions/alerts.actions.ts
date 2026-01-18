@@ -35,7 +35,7 @@ export interface CheckAlertResult {
 
 const formatCurrency = (value: number, symbol: string): string => {
   const curated = getCuratedStockBySymbol(symbol);
-  const isIndian = curated?.exchange === 'BSE' || curated?.exchange === 'NSE';
+  const isIndian = curated?.exchange === 'BSE';
   const currencySymbol = isIndian ? '₹' : '$';
   return `${currencySymbol}${value.toFixed(2)}`;
 };

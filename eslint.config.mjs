@@ -12,6 +12,14 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+
+    // Local / non-TS assets that should never be linted by ESLint.
+    "venv/**",
+    "**/__pycache__/**",
+    "src/ml_services/**",
+    "**/*.ipynb",
+    "**/*.py",
+    "**/catboost_info/**",
   ]),
 ]);
 
