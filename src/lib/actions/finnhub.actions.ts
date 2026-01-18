@@ -193,13 +193,26 @@ const toYahooTicker = (symbol: string, exchange?: string): string => {
   if (upper.endsWith(".NS") || upper.endsWith(".BO")) return upper;
 
   const ex = String(exchange ?? "").toUpperCase().trim();
-  if (ex === "NSE") return `${upper}.NS`;
-  if (ex === "BSE") return `${upper}.BO`;
+  // India is BSE-only in this app; coerce any NSE inputs to BSE.
+  if (isIndianExchange(ex)) return `${upper}.BO`;
   return upper;
 };
 
 // Adapter: Yahoo's descriptive fields -> Finnhub-like labels
-const translateYahooToFinnhubQuote = (q: YahooQuoteLike) => {
+const translateYahooToFinnhubQuote = (q: YahooQuoteLike | null | undefined) => {
+  if (!q) {
+    return {
+      c: 0,
+      d: 0,
+      dp: 0,
+      h: 0,
+      l: 0,
+      o: 0,
+      pc: 0,
+      t: 0,
+    } satisfies FinnhubQuote;
+  }
+
   return {
     c: typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : 0,
     d: typeof q.regularMarketChange === "number" ? q.regularMarketChange : 0,
@@ -224,54 +237,91 @@ const getFirstPositiveNumberFromYahoo = (q: YahooQuoteLike): number | undefined 
   return undefined;
 };
 
-const getRealtimeQuoteFromYahoo = async (args: {
+type CachedRealtimeQuote = {
+  quote: StockQuoteData;
+  cachedAtMs: number;
+};
+
+// Keep quotes warm between SSE ticks and across multiple clients.
+// This prevents hammering Yahoo when multiple streams request the same symbols.
+const REALTIME_CACHE_TTL_MS = 12_000;
+const REALTIME_CACHE_STALE_MAX_MS = 2 * 60_000;
+const YAHOO_BATCH_SIZE = 50;
+
+const realtimeQuoteCache = new Map<string, CachedRealtimeQuote>();
+
+let yahooBackoffUntilMs = 0;
+
+const cacheKeyForQuote = (symbol: string, exchange?: string): string => {
+  const sym = String(symbol ?? '').toUpperCase().trim();
+  const ex = String(exchange ?? '').toUpperCase().trim();
+  return `${sym}::${ex}`;
+};
+
+const getCachedRealtimeQuote = (args: {
   symbol: string;
   exchange?: string;
-}): Promise<StockQuoteData | null> => {
-  const normalizedSymbol = String(args.symbol ?? "").trim().toUpperCase();
+  maxAgeMs: number;
+}): StockQuoteData | null => {
+  const key = cacheKeyForQuote(args.symbol, args.exchange);
+  const entry = realtimeQuoteCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.cachedAtMs > args.maxAgeMs) return null;
+  return entry.quote;
+};
+
+const setCachedRealtimeQuote = (quote: StockQuoteData) => {
+  realtimeQuoteCache.set(cacheKeyForQuote(quote.symbol, quote.exchange), {
+    quote,
+    cachedAtMs: Date.now(),
+  });
+};
+
+const isTooManyRequestsError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: unknown; message?: unknown };
+  if (e.code === 429) return true;
+  if (typeof e.message === 'string' && /too many requests|\b429\b/i.test(e.message)) return true;
+  return false;
+};
+
+const buildQuoteFromYahooRaw = (args: {
+  raw: YahooQuoteLike;
+  requestedSymbol: string;
+  requestedExchange?: string;
+}): StockQuoteData | null => {
+  const normalizedSymbol = String(args.requestedSymbol ?? '').trim().toUpperCase();
   if (!normalizedSymbol) return null;
 
-  const ex = String(args.exchange ?? "").trim().toUpperCase();
-  const yahooTicker = toYahooTicker(normalizedSymbol, ex);
-  if (!yahooTicker) return null;
-
-  let raw: YahooQuoteLike;
-  try {
-    // yahoo-finance2 types can vary across versions; keep this call strongly runtime-correct.
-    const yahoo = yahooFinance as unknown as { quote: (ticker: string) => Promise<unknown> };
-    raw = (await yahoo.quote(yahooTicker)) as YahooQuoteLike;
-  } catch (error) {
-    console.error("Yahoo quote failed:", error);
-    return null;
-  }
-  const finnhubLike = translateYahooToFinnhubQuote(raw);
+  const ex = normalizeExchange(args.requestedExchange);
+  const finnhubLike = translateYahooToFinnhubQuote(args.raw);
 
   // If Yahoo couldn't resolve a real quote, treat as missing.
   if (finnhubLike.c === 0 && finnhubLike.o === 0 && finnhubLike.h === 0 && finnhubLike.l === 0) {
     return null;
   }
 
-  let currency = "USD";
-  if (typeof raw.currency === "string" && raw.currency.trim()) {
-    currency = raw.currency;
-  } else if (ex === "BSE" || ex === "NSE") {
-    currency = "INR";
+  let currency = 'USD';
+  if (typeof args.raw.currency === 'string' && args.raw.currency.trim()) {
+    currency = args.raw.currency;
+  } else if (isIndianExchange(ex)) {
+    currency = 'INR';
   }
 
   let name = normalizedSymbol;
-  if (typeof raw.longName === "string" && raw.longName.trim()) {
-    name = raw.longName;
-  } else if (typeof raw.shortName === "string" && raw.shortName.trim()) {
-    name = raw.shortName;
+  if (typeof args.raw.longName === 'string' && args.raw.longName.trim()) {
+    name = args.raw.longName;
+  } else if (typeof args.raw.shortName === 'string' && args.raw.shortName.trim()) {
+    name = args.raw.shortName;
   }
 
-  const pe = getFirstPositiveNumberFromYahoo(raw);
+  const pe = getFirstPositiveNumberFromYahoo(args.raw);
   const timestampMs = finnhubLike.t ? finnhubLike.t * 1000 : Date.now();
 
-  return {
+  const quote: StockQuoteData = {
     symbol: normalizedSymbol,
     name,
-    exchange: args.exchange || raw.fullExchangeName || raw.exchange || "US",
+    exchange: args.requestedExchange || args.raw.fullExchangeName || args.raw.exchange || 'US',
     currency,
     currentPrice: finnhubLike.c,
     openPrice: finnhubLike.o,
@@ -281,9 +331,131 @@ const getRealtimeQuoteFromYahoo = async (args: {
     change: finnhubLike.d,
     percentChange: finnhubLike.dp,
     logoUrl: undefined,
-    peRatio: typeof pe === "number" ? pe : Number.NaN,
+    peRatio: typeof pe === 'number' ? pe : Number.NaN,
     timestamp: timestampMs,
   };
+
+  return quote;
+};
+
+const getRealtimeQuotesFromYahooBatch = async (requests: QuoteRequest[]): Promise<StockQuoteData[]> => {
+  if (requests.length === 0) return [];
+
+  const now = Date.now();
+  const inBackoff = now < yahooBackoffUntilMs;
+
+  // Normalize + de-dupe while preserving order.
+  const seen = new Set<string>();
+  const normalized: Array<{ symbol: string; exchange?: string }> = [];
+  for (const r of requests) {
+    const symbol = String(r.symbol ?? '').trim().toUpperCase();
+    if (!symbol) continue;
+    const exchange = typeof r.exchange === 'string' && r.exchange.trim() ? r.exchange.trim().toUpperCase() : undefined;
+    const key = cacheKeyForQuote(symbol, exchange);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalized.push({ symbol, exchange });
+  }
+
+  // Start with cached results.
+  const outputByKey = new Map<string, StockQuoteData>();
+  for (const r of normalized) {
+    const cached = getCachedRealtimeQuote({
+      symbol: r.symbol,
+      exchange: r.exchange,
+      maxAgeMs: inBackoff ? REALTIME_CACHE_STALE_MAX_MS : REALTIME_CACHE_TTL_MS,
+    });
+    if (cached) outputByKey.set(cacheKeyForQuote(r.symbol, r.exchange), cached);
+  }
+
+  if (inBackoff) {
+    // During backoff we do not call Yahoo at all.
+    return normalized
+      .map((r) => outputByKey.get(cacheKeyForQuote(r.symbol, r.exchange)) ?? null)
+      .filter((q): q is StockQuoteData => q !== null);
+  }
+
+  const missing = normalized.filter((r) => !outputByKey.has(cacheKeyForQuote(r.symbol, r.exchange)));
+  if (missing.length === 0) {
+    return normalized
+      .map((r) => outputByKey.get(cacheKeyForQuote(r.symbol, r.exchange)) ?? null)
+      .filter((q): q is StockQuoteData => q !== null);
+  }
+
+  // Fetch missing in batches.
+  for (let i = 0; i < missing.length; i += YAHOO_BATCH_SIZE) {
+    const batch = missing.slice(i, i + YAHOO_BATCH_SIZE);
+
+    const tickerToRequest = new Map<string, { symbol: string; exchange?: string }>();
+    const tickers: string[] = [];
+    for (const r of batch) {
+      const yahooTicker = toYahooTicker(r.symbol, r.exchange);
+      if (!yahooTicker) continue;
+      tickers.push(yahooTicker);
+      tickerToRequest.set(String(yahooTicker).toUpperCase(), r);
+    }
+
+    if (tickers.length === 0) continue;
+
+    try {
+      const yahoo = yahooFinance as unknown as { quote: (ticker: string | string[]) => Promise<unknown> };
+      const res = await yahoo.quote(tickers.length === 1 ? tickers[0] : tickers);
+
+      const rawArray: YahooQuoteLike[] = Array.isArray(res) ? (res as YahooQuoteLike[]) : [res as YahooQuoteLike];
+      const rawBySymbol = new Map<string, YahooQuoteLike>();
+      for (const raw of rawArray) {
+        if (!raw || typeof raw !== 'object') continue;
+        const sym = String((raw as YahooQuoteLike).symbol ?? '').toUpperCase().trim();
+        if (!sym) continue;
+        rawBySymbol.set(sym, raw);
+      }
+
+      for (const [ticker, req] of tickerToRequest.entries()) {
+        const raw = rawBySymbol.get(ticker);
+        if (!raw) continue;
+        const quote = buildQuoteFromYahooRaw({
+          raw,
+          requestedSymbol: req.symbol,
+          requestedExchange: req.exchange,
+        });
+        if (!quote) continue;
+        outputByKey.set(cacheKeyForQuote(req.symbol, req.exchange), quote);
+        setCachedRealtimeQuote(quote);
+      }
+    } catch (error) {
+      if (isTooManyRequestsError(error)) {
+        // Back off for a minute to avoid a request storm.
+        yahooBackoffUntilMs = Date.now() + 60_000;
+      } else {
+        console.error('Yahoo batch quote failed:', error);
+      }
+      // On any error: keep serving cached and move on.
+      break;
+    }
+  }
+
+  return normalized
+    .map((r) => outputByKey.get(cacheKeyForQuote(r.symbol, r.exchange)) ?? null)
+    .filter((q): q is StockQuoteData => q !== null);
+};
+
+const getRealtimeQuoteFromYahoo = async (args: {
+  symbol: string;
+  exchange?: string;
+}): Promise<StockQuoteData | null> => {
+  const normalizedSymbol = String(args.symbol ?? '').trim().toUpperCase();
+  if (!normalizedSymbol) return null;
+
+  // Prefer cached quote to reduce Yahoo traffic.
+  const cached = getCachedRealtimeQuote({
+    symbol: normalizedSymbol,
+    exchange: args.exchange,
+    maxAgeMs: REALTIME_CACHE_TTL_MS,
+  });
+  if (cached) return cached;
+
+  const quotes = await getRealtimeQuotesFromYahooBatch([{ symbol: normalizedSymbol, exchange: args.exchange }]);
+  return quotes[0] ?? null;
 };
 
 const normalizeExchange = (exchange?: string) => String(exchange ?? "").toUpperCase().trim();
@@ -458,12 +630,9 @@ const getFinnhubSymbolCandidates = (symbol: string, exchange?: string): string[]
 
   const candidates: string[] = [normalized];
 
-  // Finnhub symbol formats vary across exchanges. For Indian equities, different
-  // deployments commonly accept one of: RELIANCE.NS, RELIANCE.BO, NSE:RELIANCE, BSE:RELIANCE.
-  if (ex === "BSE") {
-    candidates.unshift(`${normalized}.BO`, `BSE:${normalized}`, `${normalized}.NS`, `NSE:${normalized}`);
-  } else if (ex === "NSE") {
-    candidates.unshift(`${normalized}.NS`, `NSE:${normalized}`, `${normalized}.BO`, `BSE:${normalized}`);
+  // Finnhub symbol formats vary across deployments. For Indian equities, prefer BSE formats.
+  if (isIndianExchange(ex)) {
+    candidates.unshift(`${normalized}.BO`, `BSE:${normalized}`);
   }
 
   // De-dupe while preserving order.
@@ -611,14 +780,31 @@ export const getMultipleStockQuotesRealtime = async (args: {
   requests: QuoteRequest[];
   includeMetrics?: boolean;
 }): Promise<StockQuoteData[]> => {
-  const { requests, includeMetrics } = args;
+  const { requests } = args;
   if (requests.length === 0) return [];
 
-  const results = await Promise.all(
-    requests.map((r) => getStockQuoteRealtime({ symbol: r.symbol, exchange: r.exchange, includeMetrics }))
-  );
+  // Avoid per-symbol Yahoo requests (which triggers 429). Fetch in batches + use cache.
+  try {
+    return await getRealtimeQuotesFromYahooBatch(requests);
+  } catch (error) {
+    if (isTooManyRequestsError(error)) {
+      yahooBackoffUntilMs = Date.now() + 60_000;
+      // Best-effort: serve cached quotes only.
+      const cached = requests
+        .map((r) =>
+          getCachedRealtimeQuote({
+            symbol: String(r.symbol ?? '').toUpperCase().trim(),
+            exchange: r.exchange,
+            maxAgeMs: REALTIME_CACHE_STALE_MAX_MS,
+          })
+        )
+        .filter((q): q is StockQuoteData => q !== null);
+      return cached;
+    }
 
-  return results.filter((quote): quote is StockQuoteData => quote !== null);
+    console.error('Realtime quotes failed:', error);
+    return [];
+  }
 };
 
 export const searchStocks = cache(async (query?: string): Promise<StockWithWatchlistStatus[]> => {
