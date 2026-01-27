@@ -1141,7 +1141,6 @@ export const BSE_STOCKS: StockListItem[] = [
   { symbol: "KFINTECH.BO", name: "KFin Technologies", exchange: "BSE" },
   { symbol: "CRISIL.BO", name: "CRISIL Ltd", exchange: "BSE" },
   { symbol: "ICRA.BO", name: "ICRA Ltd", exchange: "BSE" },
-  { symbol: "ISEC.BO", name: "ICICI Securities", exchange: "BSE" },
   { symbol: "ANGELONE.BO", name: "Angel One Ltd", exchange: "BSE" },
   { symbol: "CDSL.BO", name: "Central Depository Svc", exchange: "BSE" },
   { symbol: "BSE.BO", name: "BSE Ltd", exchange: "BSE" },

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import MarketScopePanel from "@/components/analysis/MarketScopePanel";
+import MarketScopeClient from "./MarketScopeClient";
 
 export const metadata: Metadata = {
   title: "Market Scope | Market Pulse",
@@ -8,8 +8,6 @@ export const metadata: Metadata = {
 
 export default function MarketScopePage() {
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <MarketScopePanel />
-    </div>
+    <MarketScopeClient />
   );
 }

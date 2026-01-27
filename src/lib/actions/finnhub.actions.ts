@@ -4,7 +4,10 @@ import { cache } from 'react';
 import { BSE_STOCKS, DEFAULT_SEARCH_STOCKS, US_DEFAULT_STOCKS } from '@/lib/constants';
 import YahooFinance from "yahoo-finance2";
 
-const yahooFinance = new YahooFinance();
+const yahooFinance = new YahooFinance({
+  suppressNotices: ['yahooSurvey'],
+  validation: { logErrors: false },
+});
 
 const FINNHUB_BASE_URL = "https://finnhub.io/api/v1";
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
@@ -341,87 +344,102 @@ const buildQuoteFromYahooRaw = (args: {
 const getRealtimeQuotesFromYahooBatch = async (requests: QuoteRequest[]): Promise<StockQuoteData[]> => {
   if (requests.length === 0) return [];
 
-  const now = Date.now();
-  const inBackoff = now < yahooBackoffUntilMs;
+  type NormalizedRequest = { symbol: string; exchange?: string; key: string };
 
-  // Normalize + de-dupe while preserving order.
-  const seen = new Set<string>();
-  const normalized: Array<{ symbol: string; exchange?: string }> = [];
-  for (const r of requests) {
-    const symbol = String(r.symbol ?? '').trim().toUpperCase();
-    if (!symbol) continue;
-    const exchange = typeof r.exchange === 'string' && r.exchange.trim() ? r.exchange.trim().toUpperCase() : undefined;
-    const key = cacheKeyForQuote(symbol, exchange);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    normalized.push({ symbol, exchange });
-  }
+  const normalizeRequests = (raw: QuoteRequest[]): NormalizedRequest[] => {
+    const seen = new Set<string>();
+    const out: NormalizedRequest[] = [];
+    for (const r of raw) {
+      const symbol = String(r.symbol ?? '').trim().toUpperCase();
+      if (!symbol) continue;
+      const exchange = typeof r.exchange === 'string' && r.exchange.trim() ? r.exchange.trim().toUpperCase() : undefined;
+      const key = cacheKeyForQuote(symbol, exchange);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ symbol, exchange, key });
+    }
+    return out;
+  };
 
-  // Start with cached results.
-  const outputByKey = new Map<string, StockQuoteData>();
-  for (const r of normalized) {
-    const cached = getCachedRealtimeQuote({
-      symbol: r.symbol,
-      exchange: r.exchange,
-      maxAgeMs: inBackoff ? REALTIME_CACHE_STALE_MAX_MS : REALTIME_CACHE_TTL_MS,
-    });
-    if (cached) outputByKey.set(cacheKeyForQuote(r.symbol, r.exchange), cached);
-  }
-
-  if (inBackoff) {
-    // During backoff we do not call Yahoo at all.
+  const toOrderedArray = (normalized: NormalizedRequest[], outputByKey: Map<string, StockQuoteData>): StockQuoteData[] => {
     return normalized
-      .map((r) => outputByKey.get(cacheKeyForQuote(r.symbol, r.exchange)) ?? null)
+      .map((r) => outputByKey.get(r.key) ?? null)
       .filter((q): q is StockQuoteData => q !== null);
-  }
+  };
 
-  const missing = normalized.filter((r) => !outputByKey.has(cacheKeyForQuote(r.symbol, r.exchange)));
-  if (missing.length === 0) {
-    return normalized
-      .map((r) => outputByKey.get(cacheKeyForQuote(r.symbol, r.exchange)) ?? null)
-      .filter((q): q is StockQuoteData => q !== null);
-  }
+  const fillFromCache = (normalized: NormalizedRequest[], maxAgeMs: number): Map<string, StockQuoteData> => {
+    const outputByKey = new Map<string, StockQuoteData>();
+    for (const r of normalized) {
+      const cached = getCachedRealtimeQuote({
+        symbol: r.symbol,
+        exchange: r.exchange,
+        maxAgeMs,
+      });
+      if (cached) outputByKey.set(r.key, cached);
+    }
+    return outputByKey;
+  };
 
-  // Fetch missing in batches.
-  for (let i = 0; i < missing.length; i += YAHOO_BATCH_SIZE) {
-    const batch = missing.slice(i, i + YAHOO_BATCH_SIZE);
-
-    const tickerToRequest = new Map<string, { symbol: string; exchange?: string }>();
+  const buildYahooBatchRequest = (batch: NormalizedRequest[]): {
+    tickers: string[];
+    tickerToRequest: Map<string, NormalizedRequest>;
+  } => {
+    const tickerToRequest = new Map<string, NormalizedRequest>();
     const tickers: string[] = [];
     for (const r of batch) {
       const yahooTicker = toYahooTicker(r.symbol, r.exchange);
       if (!yahooTicker) continue;
+      const normalizedTicker = String(yahooTicker).toUpperCase();
       tickers.push(yahooTicker);
-      tickerToRequest.set(String(yahooTicker).toUpperCase(), r);
+      tickerToRequest.set(normalizedTicker, r);
     }
+    return { tickers, tickerToRequest };
+  };
 
-    if (tickers.length === 0) continue;
+  const mapYahooResponseBySymbol = (res: unknown): Map<string, YahooQuoteLike> => {
+    const rawArray = Array.isArray(res) ? res : [res];
+    const rawBySymbol = new Map<string, YahooQuoteLike>();
+    for (const rawUnknown of rawArray) {
+      if (!rawUnknown || typeof rawUnknown !== 'object') continue;
+      const raw = rawUnknown as YahooQuoteLike;
+      const sym = String(raw.symbol ?? '').toUpperCase().trim();
+      if (!sym) continue;
+      rawBySymbol.set(sym, raw);
+    }
+    return rawBySymbol;
+  };
+
+  const applyYahooBatchResults = (args: {
+    rawBySymbol: Map<string, YahooQuoteLike>;
+    tickerToRequest: Map<string, NormalizedRequest>;
+    outputByKey: Map<string, StockQuoteData>;
+  }): void => {
+    const { rawBySymbol, tickerToRequest, outputByKey } = args;
+    for (const [ticker, req] of tickerToRequest.entries()) {
+      const raw = rawBySymbol.get(ticker);
+      if (!raw) continue;
+      const quote = buildQuoteFromYahooRaw({
+        raw,
+        requestedSymbol: req.symbol,
+        requestedExchange: req.exchange,
+      });
+      if (!quote) continue;
+      outputByKey.set(req.key, quote);
+      setCachedRealtimeQuote(quote);
+    }
+  };
+
+  const fetchBatch = async (batch: NormalizedRequest[], outputByKey: Map<string, StockQuoteData>): Promise<boolean> => {
+    const { tickers, tickerToRequest } = buildYahooBatchRequest(batch);
+    if (tickers.length === 0) return true;
 
     try {
       const yahoo = yahooFinance as unknown as { quote: (ticker: string | string[]) => Promise<unknown> };
       const res = await yahoo.quote(tickers.length === 1 ? tickers[0] : tickers);
+      const rawBySymbol = mapYahooResponseBySymbol(res);
+      applyYahooBatchResults({ rawBySymbol, tickerToRequest, outputByKey });
 
-      const rawArray: YahooQuoteLike[] = Array.isArray(res) ? (res as YahooQuoteLike[]) : [res as YahooQuoteLike];
-      const rawBySymbol = new Map<string, YahooQuoteLike>();
-      for (const raw of rawArray) {
-        if (!raw || typeof raw !== 'object') continue;
-        const sym = String((raw as YahooQuoteLike).symbol ?? '').toUpperCase().trim();
-        if (!sym) continue;
-        rawBySymbol.set(sym, raw);
-      }
-
-      for (const [ticker, req] of tickerToRequest.entries()) {
-        const raw = rawBySymbol.get(ticker);
-        if (!raw) continue;
-        const quote = buildQuoteFromYahooRaw({
-          raw,
-          requestedSymbol: req.symbol,
-          requestedExchange: req.exchange,
-        });
-        if (!quote) continue;
-        outputByKey.set(cacheKeyForQuote(req.symbol, req.exchange), quote);
-        setCachedRealtimeQuote(quote);
-      }
+      return true;
     } catch (error) {
       if (isTooManyRequestsError(error)) {
         // Back off for a minute to avoid a request storm.
@@ -429,14 +447,33 @@ const getRealtimeQuotesFromYahooBatch = async (requests: QuoteRequest[]): Promis
       } else {
         console.error('Yahoo batch quote failed:', error);
       }
-      // On any error: keep serving cached and move on.
-      break;
+      // On any error: keep serving cached and stop fetching further batches.
+      return false;
     }
+  };
+
+  const now = Date.now();
+  const inBackoff = now < yahooBackoffUntilMs;
+
+  const normalized = normalizeRequests(requests);
+  const outputByKey = fillFromCache(normalized, inBackoff ? REALTIME_CACHE_STALE_MAX_MS : REALTIME_CACHE_TTL_MS);
+
+  if (inBackoff) {
+    // During backoff we do not call Yahoo at all.
+    return toOrderedArray(normalized, outputByKey);
   }
 
-  return normalized
-    .map((r) => outputByKey.get(cacheKeyForQuote(r.symbol, r.exchange)) ?? null)
-    .filter((q): q is StockQuoteData => q !== null);
+  const missing = normalized.filter((r) => !outputByKey.has(r.key));
+  if (missing.length === 0) return toOrderedArray(normalized, outputByKey);
+
+  // Fetch missing in batches.
+  for (let i = 0; i < missing.length; i += YAHOO_BATCH_SIZE) {
+    const batch = missing.slice(i, i + YAHOO_BATCH_SIZE);
+    const ok = await fetchBatch(batch, outputByKey);
+    if (!ok) break;
+  }
+
+  return toOrderedArray(normalized, outputByKey);
 };
 
 const getRealtimeQuoteFromYahoo = async (args: {

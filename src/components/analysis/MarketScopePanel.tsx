@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   getStrongMoneyScope,
   type MarketScopeResult,
-  type MarketType,
   type SectorHeatmapData,
   type SectorScope,
   type StockAnalysis,
 } from '@/lib/actions/analysis.actions';
+import type { MarketType } from '@/lib/markets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +23,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Loader2, Activity, TrendingUp, TrendingDown, Globe, Building2, HelpCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+
+type SentimentType = 'Bullish' | 'Bearish' | 'Neutral';
 
 type StreamQuoteUpdate = {
   currentPrice: number;
@@ -102,6 +104,20 @@ const applyQuoteUpdates = (args: {
   });
 
   return { ...prev, sectors: nextSectors };
+};
+
+// Helper function to get A/D Ratio badge style
+const getADRatioStyle = (sentiment: SentimentType): string => {
+  if (sentiment === 'Bullish') return 'border-green-500/50 text-green-500 bg-green-500/10';
+  if (sentiment === 'Bearish') return 'border-red-500/50 text-red-500 bg-red-500/10';
+  return 'border-muted text-muted-foreground';
+};
+
+// Helper function to get sentiment badge variant
+const getSentimentBadgeVariant = (sentiment: SentimentType): 'default' | 'destructive' | 'secondary' => {
+  if (sentiment === 'Bullish') return 'default';
+  if (sentiment === 'Bearish') return 'destructive';
+  return 'secondary';
 };
 
 // ============================================================================
@@ -200,7 +216,7 @@ function SectorHeatmap({ data, onSectorClick }: Readonly<SectorHeatmapProps>) {
   };
 
   // Get border style based on sentiment
-  const getBorderStyle = (sentiment: 'Bullish' | 'Bearish' | 'Neutral'): string => {
+  const getBorderStyle = (sentiment: SentimentType): string => {
     if (sentiment === 'Bullish') return 'border-green-500/50';
     if (sentiment === 'Bearish') return 'border-red-500/50';
     return 'border-border/60';
@@ -447,8 +463,18 @@ function SectorDetail({ scope, id, currencySymbol }: Readonly<SectorDetailProps>
 // MAIN COMPONENT
 // ============================================================================
 
-export default function MarketScopePanel() {
-  const [market, setMarket] = useState<MarketType>('US');
+export default function MarketScopePanel(props?: {
+  market?: MarketType;
+  showMarketTabs?: boolean;
+}) {
+  const showMarketTabs = props?.showMarketTabs ?? true;
+  const [internalMarket, setInternalMarket] = useState<MarketType>(props?.market ?? 'US');
+
+  useEffect(() => {
+    if (props?.market) setInternalMarket(props.market);
+  }, [props?.market]);
+
+  const market = useMemo<MarketType>(() => props?.market ?? internalMarket, [internalMarket, props?.market]);
   const [data, setData] = useState<MarketScopeResult | null>(null);
   const [streamItems, setStreamItems] = useState<Array<{ symbol: string; exchange?: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -529,7 +555,20 @@ export default function MarketScopePanel() {
 
     const chunks = chunkArray(streamItems, 50);
 
-    const startChunkStream = (items: Array<{ symbol: string; exchange?: string }>, retryAttempt: number = 0) => {
+    const computeRetryDelayMs = (retryAttempt: number): number => {
+      // Quiet reconnection (no full-page loading).
+      const baseDelayMs = 1_500;
+      const maxDelayMs = 15_000;
+      const jitterMs = Math.floor(Math.random() * 400);
+      return Math.min(maxDelayMs, baseDelayMs * Math.pow(1.6, retryAttempt)) + jitterMs;
+    };
+
+    function retryLater(items: Array<{ symbol: string; exchange?: string }>, retryAttempt: number): void {
+      if (cancelled) return;
+      startChunkStream(items, retryAttempt);
+    }
+
+    function startChunkStream(items: Array<{ symbol: string; exchange?: string }>, retryAttempt: number = 0): void {
       const url = `/api/quotes/stream?items=${encodeURIComponent(JSON.stringify(items))}`;
       const es = new EventSource(url);
       sources.push(es);
@@ -538,18 +577,8 @@ export default function MarketScopePanel() {
         es.close();
         if (cancelled) return;
 
-        // Quiet reconnection (no full-page loading).
-        const baseDelayMs = 1_500;
-        const maxDelayMs = 15_000;
-        const jitterMs = Math.floor(Math.random() * 400);
-        const nextDelay = Math.min(maxDelayMs, baseDelayMs * Math.pow(1.6, retryAttempt)) + jitterMs;
-
-        const doRetry = () => {
-          if (cancelled) return;
-          startChunkStream(items, retryAttempt + 1);
-        };
-
-        setTimeout(doRetry, nextDelay);
+        const nextDelay = computeRetryDelayMs(retryAttempt);
+        globalThis.setTimeout(retryLater, nextDelay, items, retryAttempt + 1);
       };
 
       es.addEventListener('quotes', (evt) => {
@@ -572,10 +601,8 @@ export default function MarketScopePanel() {
         }
       });
 
-      es.onerror = () => {
-        retry();
-      };
-    };
+      es.onerror = retry;
+    }
 
     // Start all chunk streams.
     chunks.forEach((items) => startChunkStream(items));
@@ -587,7 +614,7 @@ export default function MarketScopePanel() {
   }, [applyStreamQuotes, error, fetchData, loading, market, streamItems]);
 
   const handleMarketChange = (value: string) => {
-    setMarket(value as MarketType);
+    setInternalMarket(value as MarketType);
   };
 
   const handleSectorClick = (sector: string) => {
@@ -615,18 +642,20 @@ export default function MarketScopePanel() {
           </div>
 
           {/* Market Selector Tabs */}
-          <Tabs value={market} onValueChange={handleMarketChange} className="w-full sm:w-auto">
-            <TabsList className="grid w-full grid-cols-2 sm:w-[280px] bg-muted/30">
-              <TabsTrigger value="US" className="flex items-center gap-2 data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-500">
-                <Globe className="h-4 w-4" />
-                American
-              </TabsTrigger>
-              <TabsTrigger value="IN" className="flex items-center gap-2 data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-500">
-                <Building2 className="h-4 w-4" />
-                Indian
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {showMarketTabs ? (
+            <Tabs value={market} onValueChange={handleMarketChange} className="w-full sm:w-auto">
+              <TabsList className="grid w-full grid-cols-2 sm:w-[280px] bg-muted/30">
+                <TabsTrigger value="US" className="flex items-center gap-2 data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-500">
+                  <Globe className="h-4 w-4" />
+                  American
+                </TabsTrigger>
+                <TabsTrigger value="IN" className="flex items-center gap-2 data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-500">
+                  <Building2 className="h-4 w-4" />
+                  Indian
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          ) : null}
         </div>
 
         {/* Strategy Guide Button */}
@@ -641,7 +670,7 @@ export default function MarketScopePanel() {
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
             <p className="text-muted-foreground text-sm">
-              Analyzing {market === 'US' ? 'American' : 'Indian'} markets...
+              Analyzing {market === 'IN' ? 'Indian' : 'American'} markets...
             </p>
           </div>
         </div>
@@ -665,7 +694,7 @@ export default function MarketScopePanel() {
       {/* Data Display */}
       {!loading && !error && data && (
         <>
-          {/* Stats Bar */}
+          {/* Stats Bar with A/D Ratio */}
           <div className="flex flex-wrap gap-4 p-4 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
             <div className="text-sm">
               <span className="text-muted-foreground">Stocks:</span>{' '}
@@ -679,51 +708,83 @@ export default function MarketScopePanel() {
               <span className="text-muted-foreground">Active Sectors:</span>{' '}
               <span className="font-semibold text-yellow-500">{data.sectors.length}</span>
             </div>
+            {/* A/D Ratio Display */}
+            <div className="text-sm flex items-center gap-2">
+              <span className="text-muted-foreground">A/D Ratio:</span>{' '}
+              <Badge 
+                variant="outline" 
+                className={`font-mono font-bold ${getADRatioStyle(data.marketSentiment)}`}
+              >
+                {data.marketADRatio >= 999 ? '∞' : data.marketADRatio.toFixed(2)}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                ({data.marketAdvancing}↑ / {data.marketDeclining}↓)
+              </span>
+              <Badge 
+                variant={getSentimentBadgeVariant(data.marketSentiment)}
+                className="text-[10px]"
+              >
+                {data.marketSentiment}
+              </Badge>
+            </div>
             <div className="text-sm">
               <span className="text-muted-foreground">Last Updated:</span>{' '}
               <span className="font-semibold">{new Date(data.timestamp).toLocaleTimeString()}</span>
             </div>
           </div>
 
-          {/* Empty State */}
-          {data.heatmap.length === 0 ? (
-            <div className="text-center text-muted-foreground py-10">
+          {/* Summary / Empty / Warning */}
+          {data.totalStocksWithData === 0 ? (
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-red-500/5 border border-red-500/20">
+              <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-red-500">Live fundamentals/sector data is unavailable right now.</p>
+                <p className="text-muted-foreground mt-1">
+                  This usually happens when the upstream data provider blocks requests or rate-limits them. You can still
+                  see the symbol list below, and prices may update as the live quote stream reconnects.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {data.heatmap.length === 0 && data.totalStocksWithData > 0 ? (
+            <div className="text-center text-muted-foreground py-6">
               No significant &ldquo;Strong Money&rdquo; activity detected in the {market === 'US' ? 'American' : 'Indian'} market today.
             </div>
-          ) : (
-            <>
-              {/* Heatmap Section */}
-              <SectorHeatmap data={data.heatmap} onSectorClick={handleSectorClick} />
+          ) : null}
 
-              {/* Detailed Sector Breakdown */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-yellow-500" />
-                  Detailed Sector Analysis
-                  <span className="text-xs text-muted-foreground font-normal ml-2">
-                    (Bullish Today first, then by R-Factor)
-                  </span>
-                </h3>
+          {/* Heatmap Section (only if available) */}
+          {data.heatmap.length > 0 ? (
+            <SectorHeatmap data={data.heatmap} onSectorClick={handleSectorClick} />
+          ) : null}
 
-                {data.sectors.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-6">
-                    No sectors with active buying/selling signals found.
-                  </p>
-                ) : (
-                  <div className="space-y-6">
-                    {data.sectors.map((scope) => (
-                      <SectorDetail
-                        key={scope.sector}
-                        scope={scope}
-                        id={`sector-${scope.sector.replaceAll(/\s+/g, '-').toLowerCase()}`}
-                        currencySymbol={currencySymbol}
-                      />
-                    ))}
-                  </div>
-                )}
+          {/* Detailed Sector Breakdown (always render if we have any sectors) */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-yellow-500" />
+              Detailed Sector Analysis
+              <span className="text-xs text-muted-foreground font-normal ml-2">
+                (Bullish Today first, then by R-Factor)
+              </span>
+            </h3>
+
+            {data.sectors.length === 0 ? (
+              <p className="text-muted-foreground text-center py-6">
+                No sectors/stocks to display.
+              </p>
+            ) : (
+              <div className="space-y-6">
+                {data.sectors.map((scope) => (
+                  <SectorDetail
+                    key={scope.sector}
+                    scope={scope}
+                    id={`sector-${scope.sector.replaceAll(/\s+/g, '-').toLowerCase()}`}
+                    currencySymbol={currencySymbol}
+                  />
+                ))}
               </div>
-            </>
-          )}
+            )}
+          </div>
         </>
       )}
     </div>

@@ -63,7 +63,7 @@ const checkCondition = (
   // For true "cross" semantics we need a previous value snapshot.
   // If we don't have one yet, we treat it as not triggered and let the caller
   // store the current value for the next check.
-  const hasPrev = typeof prevValue === 'number' && Number.isFinite(prevValue);
+  const prev = typeof prevValue === 'number' && Number.isFinite(prevValue) ? prevValue : null;
 
   switch (condition) {
     case 'GREATER_THAN':
@@ -71,9 +71,9 @@ const checkCondition = (
     case 'LESS_THAN':
       return currentValue < threshold;
     case 'CROSSES_ABOVE':
-      return hasPrev ? prevValue! <= threshold && currentValue > threshold : false;
+      return prev !== null && prev <= threshold && currentValue > threshold;
     case 'CROSSES_BELOW':
-      return hasPrev ? prevValue! >= threshold && currentValue < threshold : false;
+      return prev !== null && prev >= threshold && currentValue < threshold;
     default:
       return false;
   }
@@ -214,24 +214,42 @@ export type CreateMyAlertInput = {
   isActive: boolean;
 };
 
+const toOptionalDate = (value: unknown): Date | undefined => {
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+  }
+  return undefined;
+};
+
+const toNonEmptyString = (value: unknown, fallback: string): string => {
+  return typeof value === 'string' && value.trim() ? value : fallback;
+};
+
 const toDTO = (doc: unknown): WatchlistAlertDTO => {
   const d = doc as Record<string, unknown>;
+  const createdAt = toOptionalDate(d.createdAt) ?? new Date(String(d.createdAt));
+  const lastTriggeredAt = toOptionalDate(d.lastTriggeredAt);
+  const deleteAt = toOptionalDate(d.deleteAt);
+  const lastObservedAt = toOptionalDate(d.lastObservedAt);
+
   return {
     id: String(d._id),
     name: String(d.name),
     symbol: String(d.symbol),
     stockName: String(d.stockName),
-    exchange: String(d.exchange || "US"),
+    exchange: toNonEmptyString(d.exchange, 'US'),
     type: d.type as AlertType,
     condition: d.condition as AlertCondition,
     threshold: Number(d.threshold),
     frequency: d.frequency as WatchlistAlertDTO["frequency"],
     isActive: Boolean(d.isActive),
-    createdAt: d.createdAt instanceof Date ? d.createdAt : new Date(String(d.createdAt)),
-    lastTriggeredAt: d.lastTriggeredAt instanceof Date ? d.lastTriggeredAt : (d.lastTriggeredAt ? new Date(String(d.lastTriggeredAt)) : undefined),
-    deleteAt: d.deleteAt instanceof Date ? d.deleteAt : (d.deleteAt ? new Date(String(d.deleteAt)) : undefined),
+    createdAt,
+    lastTriggeredAt,
+    deleteAt,
     lastObservedValue: typeof d.lastObservedValue === "number" ? d.lastObservedValue : undefined,
-    lastObservedAt: d.lastObservedAt instanceof Date ? d.lastObservedAt : (d.lastObservedAt ? new Date(String(d.lastObservedAt)) : undefined),
+    lastObservedAt,
   };
 };
 
