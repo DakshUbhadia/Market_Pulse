@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/my-backtests
 
 # next.js
 /.next/
