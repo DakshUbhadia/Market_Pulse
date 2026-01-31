@@ -5,9 +5,10 @@ import { usePathname } from 'next/navigation'
 
 type NavItemsProps = {
     onSearchClick?: () => void
+    onNavClick?: () => void
 }
 
-const NavItems = ({ onSearchClick }: NavItemsProps) => {
+const NavItems = ({ onSearchClick, onNavClick }: NavItemsProps) => {
     const pathname = usePathname()
 
     const isActive = (path: string) => {
@@ -40,7 +41,7 @@ const NavItems = ({ onSearchClick }: NavItemsProps) => {
                                 {label}
                             </button>
                         ) : (
-                            <Link href={href} className={linkClass}>
+                            <Link href={href} className={linkClass} onClick={onNavClick}>
                                 {label}
                             </Link>
                         )}

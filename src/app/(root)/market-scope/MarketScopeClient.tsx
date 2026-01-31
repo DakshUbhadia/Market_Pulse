@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Globe, Building2 } from 'lucide-react';
-import type { MarketType } from '@/lib/markets';
+import { usePageContext } from '@/context/PageContext';
+import type { MarketType } from '@/lib/constants';
 import MomentumRadarPanel from '@/components/analysis/MomentumRadarPanel';
 import MarketScopePanel from '@/components/analysis/MarketScopePanel';
 import TomHougaardAlert from '@/components/analysis/TomHougaardAlert';
@@ -11,6 +12,16 @@ import TomHougaardAlert from '@/components/analysis/TomHougaardAlert';
 export default function MarketScopeClient() {
   // Default to Indian market (IN) when user navigates to market-scope
   const [market, setMarket] = useState<MarketType>('IN');
+  const { setExclusivePage, clearExclusivePage } = usePageContext();
+
+  // Register as exclusive page to pause background watchlist fetches
+  // This prevents Yahoo Finance rate limiting which causes price freezes in simulator
+  useEffect(() => {
+    setExclusivePage('market-scope');
+    return () => {
+      clearExclusivePage();
+    };
+  }, [setExclusivePage, clearExclusivePage]);
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">

@@ -247,7 +247,8 @@ type CachedRealtimeQuote = {
 
 // Keep quotes warm between SSE ticks and across multiple clients.
 // This prevents hammering Yahoo when multiple streams request the same symbols.
-const REALTIME_CACHE_TTL_MS = 12_000;
+// Reduced to 6 seconds for more real-time updates (was 12s)
+const REALTIME_CACHE_TTL_MS = 6_000;
 const REALTIME_CACHE_STALE_MAX_MS = 2 * 60_000;
 const YAHOO_BATCH_SIZE = 50;
 

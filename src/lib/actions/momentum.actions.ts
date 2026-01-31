@@ -1,8 +1,7 @@
 'use server';
 
 import yahooFinance from 'yahoo-finance2';
-import type { MarketType } from '@/lib/markets';
-import { getStocksForMarket } from '@/lib/stocks/getStocksForMarket';
+import { getStocksForMarket, type MarketType } from '@/lib/constants';
 
 const yf = new yahooFinance({
   suppressNotices: ['yahooSurvey'],
@@ -402,11 +401,11 @@ const getMarketSessionStart = (market: MarketType): number => {
     });
     
     const parts = estFormatter.formatToParts(now);
-    const estYear = parseInt(parts.find(p => p.type === 'year')?.value ?? '2026');
-    const estMonth = parseInt(parts.find(p => p.type === 'month')?.value ?? '1') - 1;
-    const estDay = parseInt(parts.find(p => p.type === 'day')?.value ?? '1');
-    const estHour = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0');
-    const estMinute = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0');
+    const estYear = Number.parseInt(parts.find(p => p.type === 'year')?.value ?? '2026');
+    const estMonth = Number.parseInt(parts.find(p => p.type === 'month')?.value ?? '1') - 1;
+    const estDay = Number.parseInt(parts.find(p => p.type === 'day')?.value ?? '1');
+    const estHour = Number.parseInt(parts.find(p => p.type === 'hour')?.value ?? '0');
+    const estMinute = Number.parseInt(parts.find(p => p.type === 'minute')?.value ?? '0');
     
     // Create session start at 9:30 AM EST for today (in EST context)
     // We need to use a date string approach to get accurate EST time
@@ -446,11 +445,11 @@ const getMarketSessionStart = (market: MarketType): number => {
     });
     
     const parts = istFormatter.formatToParts(now);
-    const istYear = parseInt(parts.find(p => p.type === 'year')?.value ?? '2026');
-    const istMonth = parseInt(parts.find(p => p.type === 'month')?.value ?? '1') - 1;
-    const istDay = parseInt(parts.find(p => p.type === 'day')?.value ?? '1');
-    const istHour = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0');
-    const istMinute = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0');
+    const istYear = Number.parseInt(parts.find(p => p.type === 'year')?.value ?? '2026');
+    const istMonth = Number.parseInt(parts.find(p => p.type === 'month')?.value ?? '1') - 1;
+    const istDay = Number.parseInt(parts.find(p => p.type === 'day')?.value ?? '1');
+    const istHour = Number.parseInt(parts.find(p => p.type === 'hour')?.value ?? '0');
+    const istMinute = Number.parseInt(parts.find(p => p.type === 'minute')?.value ?? '0');
     
     const todayStr = `${istYear}-${String(istMonth + 1).padStart(2, '0')}-${String(istDay).padStart(2, '0')}`;
     

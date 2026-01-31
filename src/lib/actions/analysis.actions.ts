@@ -1,8 +1,6 @@
 'use server';
 
-import { type StockListItem } from '@/lib/constants';
-import type { MarketType } from '@/lib/markets';
-import { getStocksForMarket } from '@/lib/stocks/getStocksForMarket';
+import { getStocksForMarket, type MarketType, type StockListItem } from '@/lib/constants';
 import yahooFinance from 'yahoo-finance2';
 
 // Initialize yahoo-finance2 instance

@@ -1,15 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Zap, Loader2, TrendingUp, TrendingDown, Flame, ArrowUpDown } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from 'react';
+import { Zap, TrendingUp, TrendingDown, Flame, ArrowUpDown, Bell } from 'lucide-react';
+import { toast } from 'sonner';
+import TradingLoader from '@/components/ui/TradingLoader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getMomentumRadar, type MomentumRadarItem } from '@/lib/actions/momentum.actions';
-import type { MarketType } from '@/lib/markets';
+import type { MarketType } from '@/lib/constants';
 
-type SortField = 'change15Min' | 'rsi' | 'volumeMultiple';
+type SortField = 'change15Min' | 'rsi' | 'volumeMultiple' | 'breakoutTime';
 
 /**
  * Format time based on market timezone
@@ -134,6 +136,9 @@ export default function MomentumRadarPanel(props?: {
   const [items, setItems] = useState<MomentumRadarItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track notified breakouts to avoid duplicate toasts
+  const notifiedBreakoutsRef = useRef<Set<string>>(new Set());
 
   // Cache key includes market and today's date
   const getCacheKey = (m: MarketType) => {
@@ -167,6 +172,51 @@ export default function MomentumRadarPanel(props?: {
       const result = await getMomentumRadar({ market: m, limit: 100 });
       const resultArray = Array.isArray(result) ? result : [];
       
+      // Check for high-confidence breakouts (95%+) that happened RECENTLY (within last 5 minutes)
+      const now = Date.now();
+      const RECENT_BREAKOUT_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+      
+      const highConfidenceBreakouts = resultArray.filter(item => {
+        const key = `${item.symbol}-${item.breakoutTime}`;
+        const breakoutAge = now - item.breakoutTime;
+        
+        // Only notify if:
+        // 1. 95%+ confidence
+        // 2. Breakout happened within last 5 minutes (recent)
+        // 3. Not already notified
+        if (
+          item.confidenceScore >= 95 && 
+          breakoutAge >= 0 && 
+          breakoutAge <= RECENT_BREAKOUT_THRESHOLD_MS &&
+          !notifiedBreakoutsRef.current.has(key)
+        ) {
+          notifiedBreakoutsRef.current.add(key);
+          return true;
+        }
+        return false;
+      });
+      
+      // Show toast for each high-confidence breakout (max 3 at a time to avoid spam)
+      highConfidenceBreakouts.slice(0, 3).forEach((item, index) => {
+        const isPositive = item.change15Min > 0;
+        const direction = isPositive ? '📈 Bullish' : '📉 Bearish';
+        const marketLabel = m === 'IN' ? '🇮🇳' : '🇺🇸';
+        const exchange = m === 'IN' ? 'NSE' : 'NASDAQ';
+        const tradeUrl = `/simulator/${item.symbol}?exchange=${exchange}`;
+        
+        setTimeout(() => {
+          toast.success(`${marketLabel} ${direction} Breakout Alert!`, {
+            description: `${item.symbol} detected with ${item.confidenceScore}% confidence. ${isPositive ? '+' : ''}${item.change15Min.toFixed(2)}% in 15 mins.`,
+            duration: 10000,
+            icon: <Bell className="h-4 w-4 text-yellow-500" />,
+            action: {
+              label: 'View',
+              onClick: () => { globalThis.location.href = tradeUrl; },
+            },
+          });
+        }, index * 500); // Stagger notifications
+      });
+      
       // Replace items completely (no merging to avoid mixing markets)
       setItems(resultArray);
       
@@ -190,6 +240,12 @@ export default function MomentumRadarPanel(props?: {
 
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
+      // Primary sort: confidence (highest first)
+      const confDiff = b.confidenceScore - a.confidenceScore;
+      // Use a threshold of 5 points to group similar confidence levels
+      if (Math.abs(confDiff) >= 5) return confDiff;
+      
+      // Secondary sort: within similar confidence, sort by selected field
       switch (sortField) {
         case 'change15Min':
           return b.change15Min - a.change15Min;
@@ -200,6 +256,9 @@ export default function MomentumRadarPanel(props?: {
           const bVol = Number.parseFloat(b.volumeMultiple.replace('×', ''));
           return bVol - aVol;
         }
+        case 'breakoutTime':
+          // Latest breakout first (higher timestamp = more recent)
+          return b.breakoutTime - a.breakoutTime;
         default:
           return b.change15Min - a.change15Min;
       }
@@ -207,7 +266,7 @@ export default function MomentumRadarPanel(props?: {
   }, [items, sortField]);
 
   const cycleSortField = () => {
-    const fields: SortField[] = ['change15Min', 'rsi', 'volumeMultiple'];
+    const fields: SortField[] = ['change15Min', 'rsi', 'volumeMultiple', 'breakoutTime'];
     const currentIndex = fields.indexOf(sortField);
     const nextIndex = (currentIndex + 1) % fields.length;
     setSortField(fields[nextIndex]);
@@ -221,6 +280,8 @@ export default function MomentumRadarPanel(props?: {
         return 'RSI';
       case 'volumeMultiple':
         return 'RVOL';
+      case 'breakoutTime':
+        return 'Latest';
       default:
         return '15m %';
     }
@@ -229,9 +290,9 @@ export default function MomentumRadarPanel(props?: {
   let content: ReactNode;
   if (loading && items.length === 0) {
     content = (
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Scanning for momentum breakouts…
+      <div className="flex flex-col items-center justify-center gap-3 py-8">
+        <TradingLoader />
+        <span className="text-muted-foreground text-sm">Scanning for momentum breakouts…</span>
       </div>
     );
   } else if (error && sorted.length === 0) {
@@ -247,10 +308,7 @@ export default function MomentumRadarPanel(props?: {
       </div>
     );
   } else {
-    // Sort by confidence (highest first)
-    const highQualityFirst = [...sorted].sort((a, b) => {
-      return b.confidenceScore - a.confidenceScore;
-    });
+    // Already sorted by confidence (primary) and selected field (secondary) in useMemo
 
     content = (
       <div className="space-y-3">
@@ -264,8 +322,9 @@ export default function MomentumRadarPanel(props?: {
           </span>
         </div>
 
+        <div className="max-h-[420px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-cyan-500/30 scrollbar-track-transparent">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {highQualityFirst.map((s) => {
+        {sorted.map((s) => {
           const isBull = s.signalType === 'Bullish Breakout';
           const isHighConf = s.confidenceScore >= 70;
           
@@ -394,6 +453,7 @@ export default function MomentumRadarPanel(props?: {
             </div>
           );
         })}
+        </div>
         </div>
       </div>
     );
