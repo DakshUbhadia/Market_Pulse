@@ -7,6 +7,7 @@ import { AlertsPanel } from "./AlertsPanel"
 import { WatchlistTable } from "./WatchlistTable"
 import { useToast } from "@/components/ui/use-toast"
 import { useWatchlist } from "@/context/WatchlistContext"
+import { usePageContext } from "@/context/PageContext"
 import { getMultipleStockQuotesRealtime } from "@/lib/actions/finnhub.actions"
 import {
   checkAndTriggerMultipleAlerts,
@@ -144,6 +145,7 @@ export function WatchlistPage() {
   const router = useRouter()
   const { toast } = useToast()
   const { watchlist, removeFromWatchlist, isHydrated: watchlistHydrated } = useWatchlist()
+  const { shouldPauseBackgroundFetches } = usePageContext()
   
   const [stocks, setStocks] = useState<WatchlistStock[]>([])
   const [loading, setLoading] = useState(true)
@@ -417,9 +419,16 @@ export function WatchlistPage() {
   }, [toast])
 
   // Fetch stock data when watchlist changes
+  // IMPORTANT: Pauses when user is on simulator/market-scope to avoid Yahoo rate limits
   useEffect(() => {
     let cancelled = false
     let eventSource: EventSource | null = null
+
+    // Pause all fetches when user is on exclusive pages (simulator, market-scope)
+    // This prevents Yahoo Finance rate limiting which causes price freezes
+    if (shouldPauseBackgroundFetches) {
+      return
+    }
 
     if (!watchlistHydrated) {
       const t = setTimeout(() => setLoading(true), 0)
@@ -575,7 +584,7 @@ export function WatchlistPage() {
       eventSource?.close()
       clearTimeout(t)
     }
-  }, [watchlist, toast, checkAlertsAndSendEmails, alertsHydrated, watchlistHydrated, isStockFullyPopulated])
+  }, [watchlist, toast, checkAlertsAndSendEmails, alertsHydrated, watchlistHydrated, isStockFullyPopulated, shouldPauseBackgroundFetches])
 
   // If all quotes become ready due to merges/stream updates, drop the overlay.
   useEffect(() => {

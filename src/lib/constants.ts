@@ -1,3 +1,5 @@
+export type MarketType = 'US' | 'IN';
+
 export type NavItem = {
   href: string
   label: string
@@ -7,6 +9,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/market-scope", label: "Market Scope" },
+  { href: "/simulator", label: "Simulator" },
   { href: "/search", label: "Search", variant: "command" },
   { href: "/watchlist", label: "Watchlist" },
 ]
@@ -1912,3 +1915,15 @@ export const USA_MARKET_DATA = {
           "width": "100%",
           "height": 550
 }
+
+export const getStocksForMarket = (market: MarketType): StockListItem[] => {
+  if (market === 'US') {
+    return US_DEFAULT_STOCKS ?? [];
+  }
+
+  // For Indian market, use BSE stocks (with .BO suffix for Yahoo Finance)
+  return (BSE_STOCKS ?? []).map((s) => ({
+    ...s,
+    symbol: s.symbol.endsWith('.BO') ? s.symbol : `${s.symbol}.BO`,
+  }));
+};

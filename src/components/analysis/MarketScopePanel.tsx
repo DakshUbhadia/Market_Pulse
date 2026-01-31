@@ -9,7 +9,7 @@ import {
   type SectorScope,
   type StockAnalysis,
 } from '@/lib/actions/analysis.actions';
-import type { MarketType } from '@/lib/markets';
+import type { MarketType } from '@/lib/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,7 +22,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Loader2, Activity, TrendingUp, TrendingDown, Globe, Building2, HelpCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, Globe, Building2, HelpCircle, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
+import TradingLoader from '@/components/ui/TradingLoader';
 
 type SentimentType = 'Bullish' | 'Bearish' | 'Neutral';
 
@@ -319,18 +320,30 @@ function StockCard({ stock, currencySymbol }: Readonly<StockCardProps>) {
   };
 
   const href = `/stock/${encodeURIComponent(stock.symbol)}`;
+  const tradeHref = `/simulator/${encodeURIComponent(stock.symbol)}?exchange=${encodeURIComponent(stock.exchange || 'US')}`;
 
   return (
-    <Link
-      href={href}
-      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50 rounded-lg"
-      title={`View ${stock.symbol}`}
-    >
-      <div className={`p-3 rounded-lg border transition-all ${
-        isBullishToday 
-          ? 'bg-background/50 hover:bg-accent/30 border-border/50' 
-          : 'bg-red-500/5 hover:bg-red-500/10 border-red-500/20'
-      }`}>
+    <div className={`p-3 rounded-lg border transition-all relative group ${
+      isBullishToday 
+        ? 'bg-background/50 hover:bg-accent/30 border-border/50' 
+        : 'bg-red-500/5 hover:bg-red-500/10 border-red-500/20'
+    }`}>
+      {/* Trade Button - Absolute positioned */}
+      <Link
+        href={tradeHref}
+        onClick={(e) => e.stopPropagation()}
+        className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-yellow-500 hover:bg-yellow-600 text-black px-2 py-1 rounded text-[10px] font-semibold flex items-center gap-1"
+        title={`Trade ${stock.symbol}`}
+      >
+        <Zap className="h-3 w-3" />
+        Trade
+      </Link>
+      
+      <Link
+        href={href}
+        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50 rounded-lg"
+        title={`View ${stock.symbol}`}
+      >
       {/* Header: Symbol + Intraday Trend Badge */}
       <div className="flex justify-between items-start mb-2">
         <div>
@@ -402,8 +415,8 @@ function StockCard({ stock, currencySymbol }: Readonly<StockCardProps>) {
           </div>
         </div>
       </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
@@ -668,7 +681,7 @@ export default function MarketScopePanel(props?: {
       {loading && (
         <div className="flex h-[50vh] w-full items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
+            <TradingLoader />
             <p className="text-muted-foreground text-sm">
               Analyzing {market === 'IN' ? 'Indian' : 'American'} markets...
             </p>
