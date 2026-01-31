@@ -34,7 +34,7 @@ import {
   type TomHougaardAnalysis, 
   type TomHougaardPrediction 
 } from "@/lib/actions/tom-hougaard.actions";
-import type { MarketType } from "@/lib/markets";
+import type { MarketType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 interface TomHougaardAlertProps {
