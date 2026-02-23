@@ -256,3 +256,101 @@ EXAMPLES:
 - Barclays PLC (BARC.L) from Finnhub → {"tradingViewSymbol": "LSE:BARC", "confidence": "high", "reasoning": "Barclays trades on London Stock Exchange as BARC"}
 
 Your response must be valid JSON only. Do not include any other text.`
+
+export const DAILY_TRADING_INSIGHTS_EMAIL_PROMPT = `Generate HTML content for a daily trading insights email that will be inserted into the DAILY_TRADING_INSIGHTS_EMAIL_TEMPLATE at the {{insightsContent}} placeholder.
+
+This email is for INDIAN MARKET (NSE/BSE) stocks only, sent at 10 AM IST.
+
+INPUT DATA:
+- User: {{userName}}
+- Date: {{date}}
+- Market Sentiment: {{marketSentiment}} (Bullish/Bearish/Neutral)
+- Market A/D Ratio: {{marketADRatio}}
+- Top Institutional Buying Sectors: {{topBuyingSectors}}
+- Top Institutional Selling Sectors: {{topSellingSectors}}
+- Stocks with Highest Upward Probability: {{bullishStocks}}
+- Stocks with Highest Downward Probability: {{bearishStocks}}
+- Top Options Trading Picks: {{optionsPicks}}
+
+CRITICAL FORMATTING REQUIREMENTS:
+- Return ONLY clean HTML content with NO markdown, NO code blocks, NO backticks
+- Use the same dark theme styling as news summary emails
+- Use gold (#FDD458) for highlights and important elements
+- Use green (#22c55e) for bullish/buying indicators
+- Use red (#ef4444) for bearish/selling indicators
+- Use #CCDADC for regular text and #9ca3af for secondary text
+
+SECTION 1: MARKET OVERVIEW (Brief summary of market condition)
+<div class="dark-info-box" style="background-color: #212328; padding: 20px; margin: 0 0 24px 0; border-radius: 8px; border-left: 4px solid {{sentimentColor}};">
+  <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #FFFFFF;">📊 Market Pulse</h3>
+  <p style="margin: 0; font-size: 15px; color: #CCDADC; line-height: 1.5;">Brief 2-3 sentence summary of overall market condition and what direction is more probable today based on sentiment and A/D ratio.</p>
+</div>
+
+SECTION 2: INSTITUTIONAL ACTIVITY (Two columns - Buying & Selling sectors)
+<h3 class="mobile-news-title dark-text" style="margin: 24px 0 15px 0; font-size: 18px; font-weight: 600; color: #FDD458; line-height: 1.3;">🏛️ Institutional Money Flow</h3>
+
+Use this two-column layout:
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0 0 24px 0;">
+  <tr>
+    <td style="width: 48%; vertical-align: top; padding-right: 2%;">
+      <div style="background-color: #0d2818; border: 1px solid #22c55e; border-radius: 8px; padding: 16px;">
+        <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #22c55e;">📈 Top Buying Sectors</h4>
+        <!-- List 3 sectors with buying activity -->
+      </div>
+    </td>
+    <td style="width: 48%; vertical-align: top; padding-left: 2%;">
+      <div style="background-color: #2d1215; border: 1px solid #ef4444; border-radius: 8px; padding: 16px;">
+        <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: #ef4444;">📉 Top Selling Sectors</h4>
+        <!-- List 3 sectors with selling activity -->
+      </div>
+    </td>
+  </tr>
+</table>
+
+SECTION 3: HIGH PROBABILITY STOCKS
+Based on market sentiment, indicate which direction (up or down) is MORE LIKELY today.
+
+<h3 class="mobile-news-title dark-text" style="margin: 24px 0 15px 0; font-size: 18px; font-weight: 600; color: #FDD458; line-height: 1.3;">🎯 High Probability Movers</h3>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #9ca3af;">
+  Based on current market conditions, <strong style="color: {{dominantColor}};">{{dominantDirection}} moves are more probable today</strong>.
+</p>
+
+For BULLISH stocks (Top 5):
+<div style="background-color: #0d2818; border: 1px solid #22c55e; border-radius: 8px; padding: 16px; margin: 0 0 16px 0;">
+  <h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: #22c55e;">🚀 Likely to Go UP</h4>
+  <!-- List each stock with: Symbol, Company Name, R-Factor score, Key reason -->
+  <!-- Format: Symbol (R: XX) - Brief reason -->
+</div>
+
+For BEARISH stocks (Top 5):
+<div style="background-color: #2d1215; border: 1px solid #ef4444; border-radius: 8px; padding: 16px; margin: 0 0 16px 0;">
+  <h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: #ef4444;">⚠️ Likely to Go DOWN</h4>
+  <!-- List each stock with: Symbol, Company Name, R-Factor score, Key reason -->
+</div>
+
+SECTION 4: TOP OPTIONS TRADING PICKS
+<h3 class="mobile-news-title dark-text" style="margin: 24px 0 15px 0; font-size: 18px; font-weight: 600; color: #FDD458; line-height: 1.3;">⚡ Today's Options Trading Picks</h3>
+
+<p style="margin: 0 0 16px 0; font-size: 14px; color: #9ca3af;">
+  Top 3 stocks combining technical and institutional analysis for potential options plays.
+</p>
+
+For each of 3 stocks:
+<div class="dark-info-box" style="background-color: #212328; padding: 16px; margin: 0 0 12px 0; border-radius: 8px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin: 0 0 8px 0;">
+    <span style="font-size: 16px; font-weight: 600; color: #FDD458;">SYMBOL</span>
+    <span style="font-size: 12px; padding: 4px 8px; border-radius: 4px; background-color: {{directionBg}}; color: {{directionColor}};">BULLISH/BEARISH</span>
+  </div>
+  <p style="margin: 0 0 8px 0; font-size: 14px; color: #CCDADC;">Company Name</p>
+  <p style="margin: 0; font-size: 13px; color: #9ca3af;">Brief explanation of why this stock is a good options candidate today.</p>
+</div>
+
+CONTENT GUIDELINES:
+- Keep language simple and actionable
+- Use specific data (R-Factor scores, % changes, sector names)
+- Clearly indicate bullish vs bearish bias for each stock
+- Explain in simple terms why each stock made the list
+- For options picks, suggest whether to look at CALLS (bullish) or PUTS (bearish)
+- Make analysis relevant to intraday/short-term traders
+- Be specific about which direction is more favorable given market conditions`

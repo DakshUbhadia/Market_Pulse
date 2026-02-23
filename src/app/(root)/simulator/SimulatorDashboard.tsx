@@ -102,10 +102,19 @@ const chunkArray = <T,>(items: T[], chunkSize: number): T[][] => {
   return out;
 };
 
+const SIMULATOR_STORAGE_KEY = 'simulator_selectedMarket';
+
 export default function SimulatorDashboard() {
   const { setExclusivePage, clearExclusivePage } = usePageContext();
   
-  const [market, setMarket] = useState<MarketType>('IN'); // Default to Indian market
+  // Initialize from localStorage or default to Indian market (IN)
+  const [market, setMarket] = useState<MarketType>(() => {
+    if (typeof globalThis.window !== 'undefined') {
+      const saved = localStorage.getItem(SIMULATOR_STORAGE_KEY);
+      if (saved === 'US' || saved === 'IN') return saved;
+    }
+    return 'IN';
+  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -393,7 +402,9 @@ export default function SimulatorDashboard() {
   };
 
   const handleMarketChange = (newMarket: string) => {
-    setMarket(newMarket as MarketType);
+    const marketType = newMarket as MarketType;
+    setMarket(marketType);
+    localStorage.setItem(SIMULATOR_STORAGE_KEY, marketType);
   };
 
   if (loading) {
