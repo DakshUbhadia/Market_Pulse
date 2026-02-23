@@ -3,7 +3,8 @@ import {
     NEWS_SUMMARY_EMAIL_TEMPLATE, 
     WELCOME_EMAIL_TEMPLATE, 
     STOCK_ALERT_UPPER_EMAIL_TEMPLATE, 
-    STOCK_ALERT_LOWER_EMAIL_TEMPLATE 
+    STOCK_ALERT_LOWER_EMAIL_TEMPLATE,
+    DAILY_TRADING_INSIGHTS_EMAIL_TEMPLATE
 } from "@/lib/nodemailer/templates";
 
 const getTransporter = () => {
@@ -160,6 +161,26 @@ export const sendAlertEmail = async (data: AlertEmailData): Promise<void> => {
         subject,
         text: `${data.alertName}: ${data.symbol} has ${conditionLabel} your ${metricLabel} target of ${data.targetPrice}. Current value: ${data.currentPrice}`,
         html: htmlWithType,
+    };
+
+    await transporter.sendMail(mailOptions);
+};
+
+export const sendDailyTradingInsightsEmail = async (
+    { email, date, insightsContent }: { email: string; date: string; insightsContent: string }
+): Promise<void> => {
+    const transporter = getTransporter();
+
+    const htmlTemplate = DAILY_TRADING_INSIGHTS_EMAIL_TEMPLATE
+        .replace('{{date}}', date)
+        .replace('{{insightsContent}}', insightsContent);
+
+    const mailOptions = {
+        from: `"Market Pulse Insights" <${process.env.NODEMAILER_EMAIL}>`,
+        to: email,
+        subject: `🎯 Daily Trading Insights - Indian Market (${date})`,
+        text: `Daily trading insights for Indian market - ${date}`,
+        html: htmlTemplate,
     };
 
     await transporter.sendMail(mailOptions);
