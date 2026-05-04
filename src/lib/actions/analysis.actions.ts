@@ -19,6 +19,28 @@ const toNumber = (value: unknown): number | undefined => {
   return undefined;
 };
 
+const asyncPool = async <T, R>(args: {
+  items: T[];
+  concurrency: number;
+  mapper: (item: T, index: number) => Promise<R>;
+}): Promise<R[]> => {
+  const { items, concurrency, mapper } = args;
+  const results: R[] = new Array(items.length) as R[];
+  let nextIndex = 0;
+
+  const workers = new Array(Math.max(1, concurrency)).fill(0).map(async () => {
+    while (true) {
+      const current = nextIndex;
+      nextIndex += 1;
+      if (current >= items.length) return;
+      results[current] = await mapper(items[current], current);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+};
+
 export type IntradayTrend = 'Bullish' | 'Bearish';
 
 export type SupportedCurrency = 'USD' | 'INR';
@@ -314,9 +336,12 @@ const analyzeStockSymbol = async (args: {
 
 export const getStrongMoneyScope = async (
   market: MarketType = 'US',
-  topPerSector: number = 15
+  topPerSector: number = 15,
+  customStocks?: StockListItem[]
 ): Promise<MarketScopeResult> => {
-  const stocks = getStocksForMarket(market);
+  const stocks = Array.isArray(customStocks) && customStocks.length > 0
+    ? customStocks
+    : getStocksForMarket(market);
   const currency: SupportedCurrency = market === 'IN' ? 'INR' : 'USD';
 
   const stockBySymbol = new Map<string, StockListItem>();
@@ -329,14 +354,17 @@ export const getStrongMoneyScope = async (
   const uniqueSymbols = Array.from(stockBySymbol.keys());
 
   // Fetch & Analyze Each Stock
-  const promises = uniqueSymbols.map((symbol) => {
-    const curated = stockBySymbol.get(symbol);
-    const fallbackName = curated?.name ?? symbol;
-    const fallbackExchange = curated?.exchange ?? (market === 'IN' ? 'BSE' : 'NASDAQ');
-    return analyzeStockSymbol({ symbol, fallbackName, fallbackExchange, currency });
+  const concurrency = market === 'IN' ? 6 : 8;
+  const analyzedStocks = await asyncPool({
+    items: uniqueSymbols,
+    concurrency,
+    mapper: async (symbol) => {
+      const curated = stockBySymbol.get(symbol);
+      const fallbackName = curated?.name ?? symbol;
+      const fallbackExchange = curated?.exchange ?? (market === 'IN' ? 'BSE' : 'NASDAQ');
+      return analyzeStockSymbol({ symbol, fallbackName, fallbackExchange, currency });
+    },
   });
-
-  const analyzedStocks = await Promise.all(promises);
 
   // Filter out stocks where quote data wasn't available.
   // These are represented by the fallback sector "Data Unavailable".
