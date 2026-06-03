@@ -45,7 +45,6 @@ Users can create custom watchlists, set price alerts, and receive **AI-curated e
 | 📉 **Interactive Charts** | Embedded **TradingView** widgets for Heatmaps, Tickers, and Technical Analysis. |
 | 🤖 **AI Workflows** | **Gemini AI** generates personalized daily news digests and welcome emails via **Inngest**. |
 | 🔔 **Smart Alerts** | Configure price thresholds to receive instant email notifications via **Nodemailer**. |
-| 💨 **Optimized UX** | Full-page blurred loader overlay prevents layout shifts during hydration. |
 
 ---
 
@@ -77,7 +76,6 @@ Users can create custom watchlists, set price alerts, and receive **AI-curated e
 * **MongoDB:** A flexible, high-performance NoSQL database for storing user data and watchlists.
 * **Finnhub:** A real-time financial data API providing stock market data, economic indicators, and news.
 * **Gemini AI:** Google's AI model used to generate smart email digests and summaries.
-* **CodeRabbit:** An AI-powered code review assistant that integrates with GitHub to enforce best practices.
 * **Nodemailer:** A Node.js library for handling transactional emails and notifications.
 * **TailwindCSS & Shadcn:** Utility-first CSS framework and accessible component library for rapid UI development.
 
