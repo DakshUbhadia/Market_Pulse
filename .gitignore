@@ -42,3 +42,13 @@ yarn-error.log*
 next-env.d.ts
 
 .early.coverage
+
+# Quant research data and local Python environment
+/data/
+/quant/.venv/
+**/.pytest_cache/
+**/__pycache__/
+*.pyc
+*.duckdb
+*.parquet
+/quant/artifacts/local/
