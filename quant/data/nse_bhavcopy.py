@@ -22,8 +22,8 @@ NUMERIC = ('open', 'high', 'low', 'close', 'last', 'previous_close', 'volume', '
 KEY = ['trade_date', 'symbol', 'series']
 
 
-def source_url(day: date) -> str:
-    base = 'https://nsearchives.nseindia.com/content/'
+def source_url(day: date, archives_url: str = 'https://nsearchives.nseindia.com') -> str:
+    base = archives_url.rstrip('/') + '/content/'
     if day >= TRANSITION:
         return f'{base}cm/BhavCopy_NSE_CM_0_0_0_{day:%Y%m%d}_F_0000.csv.zip'
     month = MONTHS[day.month - 1]
