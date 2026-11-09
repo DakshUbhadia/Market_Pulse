@@ -31,7 +31,7 @@ class Downloader:
     def __init__(self, config: Config, session=None):
         self.config = config
         self.session = session or requests.Session()
-        self.session.headers.update({'User-Agent': 'Mozilla/5.0 MarketPulseResearch/0.1',
+        self.session.headers.update({'User-Agent': config.nse_user_agent,
                                      'Accept': '*/*'})
         self.last_request = 0.0
 
@@ -67,6 +67,8 @@ class Downloader:
             atomic_write(metadata, json.dumps({
                 'source_url': url, 'sha256': sha256(content), 'bytes': len(content),
                 'downloaded_at': datetime.now(timezone.utc).isoformat(),
+                'fetched_at': datetime.now(timezone.utc).isoformat(),
+                'http_status': response.status_code, 'parser_version': None,
             }, indent=2).encode())
             return content
         raise RuntimeError('Download attempts exhausted')

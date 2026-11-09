@@ -101,6 +101,7 @@ def test_bad_archive_reported(tmp_path, monkeypatch):
 def test_cache_checksum_and_url(tmp_path):
     session = Mock()
     session.get.return_value.content = b'valid csv'
+    session.get.return_value.status_code = 200
     downloader = Downloader(Config(request_interval=0), session)
     path = tmp_path / 'file.csv'
     downloader.fetch('https://example.test/a', path)
@@ -125,7 +126,7 @@ def test_no_retry_for_404(tmp_path):
 def test_retry_transient_failure(tmp_path, monkeypatch):
     monkeypatch.setattr('quant.data.http.time.sleep', lambda _: None)
     session = Mock()
-    response = Mock(content=b'csv')
+    response = Mock(content=b'csv', status_code=200)
     session.get.side_effect = [requests.Timeout(), response]
     assert Downloader(Config(request_interval=0), session).fetch('https://example.test/a', tmp_path / 'a') == b'csv'
     assert session.get.call_count == 2
