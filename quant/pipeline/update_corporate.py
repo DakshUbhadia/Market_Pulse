@@ -62,7 +62,7 @@ def archive_filings(client, frame, dataset, history):
     return frame, review
 
 
-def update_corporate(config, start, end):
+def _update_sources(config, start, end, *, actions=True, filings=True):
     state = PipelineState(config)
     path = config.data_dir / 'normalized' / 'security_history' / 'identities.parquet'
     history = pd.read_parquet(path) if path.exists() else pd.DataFrame()
@@ -71,6 +71,7 @@ def update_corporate(config, start, end):
                ('financials', config.enable_fundamentals, nse_financials, nse_financials.parse_financial_filings),
                ('shareholding', config.enable_shareholding, nse_shareholding, nse_shareholding.parse_shareholding),
                ('announcements', config.enable_announcements, nse_announcements, nse_announcements.parse_announcements)]
+    sources = [source for source in sources if (actions if source[0] == 'corporate_actions' else filings)]
     with NseClient(config) as client:
         for name, enabled, adapter, parse in sources:
             key = 'nse_' + name
@@ -127,8 +128,21 @@ def update_corporate(config, start, end):
                 report[key] = {'status': 'FAILED', 'error': str(error), 'completed_windows': completed,
                                 'needs_review': reviews}
             state.record(key, **report[key])
-    atomic_write(config.data_dir / 'reports' / f'corporate-{end}.json', json.dumps(report, indent=2).encode())
+    scope = 'corporate' if actions and filings else 'corporate-actions' if actions else 'corporate-filings'
+    atomic_write(config.data_dir / 'reports' / f'{scope}-{end}.json', json.dumps(report, indent=2).encode())
     return report
+
+
+def update_corporate_actions(config, start, end):
+    return _update_sources(config, start, end, actions=True, filings=False)
+
+
+def update_corporate_filings(config, start, end):
+    return _update_sources(config, start, end, actions=False, filings=True)
+
+
+def update_corporate(config, start, end):
+    return _update_sources(config, start, end)
 
 
 def main():

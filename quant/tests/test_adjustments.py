@@ -35,7 +35,8 @@ def test_dividend_total_return_and_unresolved_action():
     assert result.adjusted_return.iloc[-1] == pytest.approx(-.05)
     assert result.total_return.iloc[-1] == pytest.approx(0)
     excluded = adjust_prices(prices(), actions(parse_status='NEEDS_REVIEW'))
-    assert excluded.adjusted_close.isna().all()
+    assert excluded.adjusted_close.iloc[0] == 2000  # Future uncertainty cannot exclude an earlier observation.
+    assert pd.isna(excluded.adjusted_close.iloc[1])
 
 
 def test_dividend_total_return_includes_real_price_change():

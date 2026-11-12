@@ -16,7 +16,7 @@ from quant.data.nse_client import NseSourceError
 
 
 def run(config: Config, start: date, end: date, *, instruments=True, expected_dates=None,
-        reuse_validated=False):
+        reuse_validated=False, refresh=False):
     if start > end:
         raise ValueError('Backfill start must not be after end')
     from quant.pipeline.cli import require_history_gate
@@ -48,7 +48,7 @@ def run(config: Config, start: date, end: date, *, instruments=True, expected_da
             url = source_url(day, config.nse_archives_url)
             destination = config.data_dir / 'raw' / 'nse' / 'bhavcopy' / str(day.year) / url.rsplit('/', 1)[-1]
             try:
-                frame = downloader.fetch_parsed(url, destination, lambda content: parse_bhavcopy(content, day, url))
+                frame = downloader.fetch_parsed(url, destination, lambda content: parse_bhavcopy(content, day, url), refresh=refresh)
                 write_prices(frame, config.prices_dir)
                 report['loaded'].append({'date': str(day), 'rows': len(frame)})
                 print(f'{day}: loaded {len(frame)} rows', flush=True)

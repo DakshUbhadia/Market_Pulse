@@ -21,7 +21,7 @@ def daily_path(config, dataset, day):
     return config.data_dir / 'normalized' / dataset / f'year={day.year}' / f'month={day.month:02d}' / f'{day}.parquet'
 
 
-def update_market_eod(config, start, end):
+def update_market_eod(config, start, end, *, incremental=False):
     calendar = read_calendar(config, start, end)
     sessions = sorted(calendar.loc[calendar.is_trading_session, 'trade_date'].dt.date)
     state = PipelineState(config)
@@ -40,7 +40,8 @@ def update_market_eod(config, start, end):
         except (ValueError, OSError, requests.RequestException) as error:
             report['nse_security_master'] = {'status': 'FAILED', 'error': str(error)}
         state.record('nse_security_master', day=today, **report['nse_security_master'])
-        prices = bootstrap(config, start, end, instruments=False, expected_dates=sessions, reuse_validated=True)
+        prices = bootstrap(config, start, end, instruments=False, expected_dates=sessions,
+                           reuse_validated=not incremental, refresh=incremental)
         report['nse_bhavcopy'] = {'status': 'READY' if prices['status'] == 'SUCCESS' else 'FAILED',
                                   'loaded': len(prices['loaded']), 'failed': prices['failed'],
                                   'missing': prices['unresolved'] + prices['unattempted_sessions']}
@@ -60,7 +61,7 @@ def update_market_eod(config, start, end):
                 raw = config.data_dir / 'raw' / 'nse' / dataset / str(day.year) / url.rsplit('/', 1)[-1]
                 try:
                     parser = adapter.parse_delivery if dataset == 'delivery' else adapter.parse_indices
-                    frame = downloader.fetch_parsed(url, raw, lambda data: parser(data, day, url))
+                    frame = downloader.fetch_parsed(url, raw, lambda data: parser(data, day, url), refresh=incremental)
                     write_parquet(frame, target)
                     if dataset == 'indices':
                         vix = nse_vix.from_indices(frame)
@@ -81,8 +82,14 @@ def update_market_eod(config, start, end):
         report['nse_vix'] = dict(report['nse_indices'])
         state.record('nse_vix', **report['nse_vix'])
         try:
-            history = build_security_history(query_prices(config.prices_dir,
-                columns=['trade_date', 'symbol', 'series', 'isin']))
+            observations = query_prices(config.prices_dir, start=start if incremental else None,
+                end=end, columns=['trade_date', 'symbol', 'series', 'isin'])
+            history = build_security_history(observations)
+            identity_path = config.data_dir / 'normalized' / 'security_history' / 'identities.parquet'
+            if incremental and identity_path.exists():
+                import pandas as pd
+                from quant.data.security_history import extend_security_history
+                history = extend_security_history(pd.read_parquet(identity_path), history, start)
             write_parquet(history, config.data_dir / 'normalized' / 'security_history' / 'identities.parquet')
             unresolved = int((history.identity_status == 'UNRESOLVED').sum())
             report['security_history'] = {'status': 'READY', 'intervals': len(history), 'unresolved': unresolved}

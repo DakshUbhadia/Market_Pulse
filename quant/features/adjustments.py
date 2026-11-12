@@ -5,8 +5,16 @@ unresolved identities produce null research prices, rather than false returns.
 """
 import numpy as np
 import pandas as pd
+import hashlib
 
 from quant.data.security_history import attach_identities
+
+
+def action_version(actions):
+    columns = [name for name in ('event_id', 'instrument_id', 'symbol', 'ex_date', 'action_type',
+                                 'parse_status', 'ratio_numerator', 'ratio_denominator', 'cash_amount') if name in actions]
+    payload = actions[columns].astype(str).sort_values(columns).to_json(orient='records') if columns else '[]'
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def _adjust_group(prices, actions):
@@ -14,6 +22,8 @@ def _adjust_group(prices, actions):
     frame = frame.sort_values(['instrument_id', 'symbol', 'series', 'trade_date']).reset_index(drop=True)
     frame['trade_date'] = pd.to_datetime(frame.trade_date).dt.normalize()
     frame['raw_close'] = frame.close.astype(float)
+    for field in ('open', 'high', 'low'):
+        frame['raw_' + field] = frame[field].astype(float) if field in frame else np.nan
     if not np.isfinite(frame.raw_close).all() or (frame.raw_close <= 0).any():
         raise ValueError('Invalid raw close')
     frame['split_adjustment_factor'] = 1.0
@@ -30,13 +40,14 @@ def _adjust_group(prices, actions):
                 continue
             # ISIN permits a split across symbol changes. A missing identity never links companies.
             selected = (frame.instrument_id == action.instrument_id) if pd.notna(action.instrument_id) else (frame.symbol == action.symbol)
+            affected = selected & (frame.trade_date >= action.ex_date)
             if not selected.any() or action.ex_date > frame.loc[selected, 'trade_date'].max():
                 continue
             duplicate = actions[(actions.symbol == action.symbol) & (actions.ex_date == action.ex_date)
                                 & (actions.action_type == action.action_type)]
             if (action.parse_status != 'PARSED' or action.action_type not in ('SPLIT', 'BONUS', 'DIVIDEND')
                     or len(duplicate) != 1 or pd.isna(action.instrument_id)):
-                frame.loc[selected, 'adjustment_status'] = 'NEEDS_REVIEW'
+                frame.loc[affected, 'adjustment_status'] = 'NEEDS_REVIEW'
                 continue
             before = selected & (frame.trade_date < action.ex_date)
             if not before.any():
@@ -45,7 +56,7 @@ def _adjust_group(prices, actions):
             if action.action_type in ('SPLIT', 'BONUS'):
                 n, d = action.ratio_numerator, action.ratio_denominator
                 if pd.isna(n) or pd.isna(d) or not np.isfinite([n, d]).all() or min(n, d) <= 0:
-                    frame.loc[selected, 'adjustment_status'] = 'NEEDS_REVIEW'
+                    frame.loc[affected, 'adjustment_status'] = 'NEEDS_REVIEW'
                     continue
                 multiplier = d / n if action.action_type == 'SPLIT' else d / (n + d)
                 frame.loc[before, 'split_adjustment_factor'] *= multiplier
@@ -58,15 +69,18 @@ def _adjust_group(prices, actions):
                 ex_bars = frame.loc[selected & (frame.trade_date == action.ex_date)]
                 if (not simultaneous.empty or len(ex_bars) != 1 or pd.isna(cash)
                         or not np.isfinite(cash) or not 0 <= cash < prior):
-                    frame.loc[selected, 'adjustment_status'] = 'NEEDS_REVIEW'
+                    frame.loc[affected, 'adjustment_status'] = 'NEEDS_REVIEW'
                     continue
                 ex_close = ex_bars.raw_close.iloc[0]
                 multiplier = ex_close / (ex_close + cash)
             frame.loc[before, 'total_return_adjustment_factor'] *= multiplier
     frame['adjusted_close'] = frame.raw_close * frame.split_adjustment_factor
+    frame['split_factor'] = frame.split_adjustment_factor
+    for field in ('open', 'high', 'low'):
+        frame['adjusted_' + field] = frame['raw_' + field] * frame.split_factor
     frame['total_return_close'] = frame.raw_close * frame.total_return_adjustment_factor
     excluded = frame.adjustment_status != 'OK'
-    frame.loc[excluded, ['adjusted_close', 'total_return_close']] = np.nan
+    frame.loc[excluded, ['adjusted_open', 'adjusted_high', 'adjusted_low', 'adjusted_close', 'total_return_close']] = np.nan
     return frame
 
 
@@ -86,4 +100,7 @@ def adjust_prices(prices, actions):
         candidates.extend(by_symbol[symbol] for symbol in bars.symbol.unique() if symbol in by_symbol)
         events = pd.concat(candidates, ignore_index=True) if candidates else actions.iloc[:0]
         groups.append(_adjust_group(bars.drop(columns='_identity'), events))
-    return pd.concat(groups, ignore_index=True)
+    result = pd.concat(groups, ignore_index=True)
+    result['source_price_sha256'] = result['source_hash'] if 'source_hash' in result else pd.NA
+    result['corporate_action_version'] = action_version(actions)
+    return result

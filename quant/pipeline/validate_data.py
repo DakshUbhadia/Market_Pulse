@@ -13,7 +13,7 @@ from quant.pipeline.state import PipelineState
 from quant.pipeline.update_calendar import read_calendar
 
 
-def validate_data(config, start, end, *, run_errors=None):
+def validate_data(config, start, end, *, run_errors=None, incremental=False):
     state = PipelineState(config)
     now = datetime.now(ZoneInfo(config.timezone))
     sources = source_status(config, state.data, as_of=now.date())
@@ -101,7 +101,14 @@ def validate_data(config, start, end, *, run_errors=None):
         errors['corporate_actions'] = str(error)
     essential = [name for name, row in sources.items() if row.get('required')]
     historical_ready = start <= date(2010, 1, 1) and audit['status'] == 'READY'
-    if start > date(2010, 1, 1):
+    if incremental:
+        prior = state.data.get('weekly_integrity', {})
+        historical_ready = prior.get('status') == 'READY' and prior.get('from') == '2010-01-01'
+        try:
+            historical_ready = historical_ready and (pd.Timestamp(now)-pd.Timestamp(prior['last_successful_at'])).days <= 7
+        except (ValueError, KeyError, TypeError):
+            historical_ready = False
+    elif start > date(2010, 1, 1):
         try:
             historical_ready = audit_prices(config, date(2010, 1, 1), end, write=False)['status'] == 'READY'
         except (OSError, ValueError, KeyError):
@@ -110,7 +117,8 @@ def validate_data(config, start, end, *, run_errors=None):
              and all(sources[name]['status'] == 'READY' for name in essential))
     report = {
         'as_of': str(end), 'generated_at': now.isoformat(), 'status': 'READY' if ready else 'NOT_READY',
-        'recommendation_allowed': ready and bool(sessions), 'sources': sources, 'price_audit': audit,
+        'recommendation_allowed': False, 'publication_gate': 'DISABLED_RESEARCH_PHASE',
+        'sources': sources, 'price_audit': audit,
         'excluded_symbols': excluded, 'errors': errors,
         'full_history_ready': historical_ready,
         'fundamental_research_allowed': (ready and sources['nse_financials']['status'] == 'READY'

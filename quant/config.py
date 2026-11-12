@@ -33,7 +33,7 @@ class Config:
     nse_archives_url: str = env('QUANT_NSE_ARCHIVES_URL', 'https://nsearchives.nseindia.com')
     nse_user_agent: str = env('QUANT_NSE_USER_AGENT', 'Mozilla/5.0')
     rbi_api_base: str = env('QUANT_RBI_API_BASE', 'https://data-api.dbie.rbihub.in')
-    mongo_publish: bool = env('QUANT_MONGO_PUBLISH', 'true', boolean)
+    mongo_publish: bool = env('QUANT_MONGO_PUBLISH', 'false', boolean)
     enable_angel: bool = env('QUANT_ENABLE_ANGEL', 'false', boolean)
     enable_fundamentals: bool = env('QUANT_ENABLE_FUNDAMENTALS', 'false', boolean)
     enable_shareholding: bool = env('QUANT_ENABLE_SHAREHOLDING', 'false', boolean)

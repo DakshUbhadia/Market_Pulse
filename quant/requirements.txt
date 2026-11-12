@@ -1,4 +1,4 @@
-# Data-foundation dependencies only; model dependencies come with later phases.
+# Foundation and fixed Factor V1 research; no machine-learning dependencies.
 pandas>=2.2,<4
 numpy>=2,<3
 duckdb>=1.2,<3
