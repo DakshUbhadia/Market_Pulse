@@ -44,7 +44,7 @@ def parse_instruments(content: bytes) -> pd.DataFrame:
 def download_instruments(downloader: Downloader) -> pd.DataFrame:
     now = datetime.now(timezone.utc)
     path = downloader.config.data_dir / 'raw' / 'dhan' / f'{now:%Y-%m-%d}-instruments.csv'
-    frame = parse_instruments(downloader.fetch(MASTER_URL, path))
+    frame = downloader.fetch_parsed(MASTER_URL, path, parse_instruments)
     # Download timestamp is retained in the raw sidecar; snapshot date is not listing date.
     frame['snapshot_date'] = now.date().isoformat()
     return frame

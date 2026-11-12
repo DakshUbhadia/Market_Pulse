@@ -1,0 +1,9 @@
+{
+  "repo_rate": {"table": "financial_sector/r440_major_monetary_policy_measures_bank_rate_crr_slr", "parser": "report", "date_column": "c1", "value_column": "c3", "header": "Repo", "unit": "PERCENT", "max_age_days": 370},
+  "91d_tbill": {"table": "financial_markets/r113_auctions_of_91_day_government_of_india_treasury_bills", "parser": "report", "date_column": "c1", "value_column": "c13", "header": "Implicit Yield", "unit": "PERCENT", "max_age_days": 30},
+  "10y_gsec": {"table": "financial_markets/r217_month_end_yield_of_sgl_transactions_in_government_dated_se", "parser": "maturity_matrix", "maturity": "10", "unit": "PERCENT", "max_age_days": 62},
+  "cpi": {"table": "real_sector/cpi_ruc_rn", "parser": "sdmx", "filters": {"base_per": "BY_2012", "comd_item": "C_GIAG", "coverage_geo_rn": "ALL_INDIA", "freq": "M"}, "unit": "INDEX_2012_100", "max_age_days": 62},
+  "usd_inr": {"table": "financial_markets/forex_rate_d_rn", "parser": "sdmx", "filters": {"currency": "USD", "freq": "D"}, "unit": "INR_PER_USD", "max_age_days": 7},
+  "bank_credit_growth": {"table": "financial_sector/r1130_food_non_food_credit_of_scheduled_commercial_banks", "parser": "credit_growth", "date_column": "c1", "value_column": "c2", "header": "Bank Credit", "unit": "YOY_PERCENT", "max_age_days": 45},
+  "system_liquidity": {"table": "financial_markets/r702_liquidity_operations_by_rbi", "parser": "report", "date_column": "c1", "value_column": "c18", "header": "Net Injection", "unit": "INR_CRORE", "max_age_days": 7}
+}

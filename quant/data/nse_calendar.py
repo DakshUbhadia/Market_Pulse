@@ -1,7 +1,7 @@
 """Cash-market calendar derived from exchange records and observed bhavcopies."""
-import json
 import re
-from datetime import date, datetime
+from io import BytesIO
+from datetime import date
 from html.parser import HTMLParser
 
 import pandas as pd
@@ -12,6 +12,42 @@ from quant.data.nse_client import NseSourceError, RawResponse
 PARSER_VERSION = '1.0.0'
 HOLIDAY_PATH = '/api/holiday-master'
 HOLIDAY_PAGE = '/resources/exchange-communication-holidays'
+# The holiday API returns no 2010 records. This is the official CM circular,
+# verified from its own title, calendar year and download number before parsing.
+HOLIDAY_CIRCULARS = {2010: ('cmtr13713.pdf', '13713')}
+
+
+def parse_holiday_circular_text(text, year, raw, reference):
+    if (not re.search(r'CAPITAL\s+MARKET\s+SEGMENT', text, re.I)
+            or not re.search(rf'holidays\s+for\s+the\s+calendar\s+year\s+{year}', text, re.I)
+            or not re.search(rf'Download\s+No\.?\s*:\s*{reference}\b', text, re.I)):
+        raise NseSourceError('Historical holiday circular title, year or reference changed')
+    pattern = (r'^\s*\d+\s+(\d{1,2})-([A-Za-z]{3})-(\d{2})\s+'
+               r'(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+([^\r\n]+)')
+    rows = []
+    for day, month, short_year, description in re.findall(pattern, text, flags=re.M):
+        if int(short_year) != year % 100:
+            raise NseSourceError('Historical circular contains unexpected holiday year')
+        if '*' in description and re.search(r'Muhurat\s+Trading\s+will\s+be\s+conducted', text, re.I):
+            description += ' (Muhurat trading confirmed by circular)'
+        rows.append({'tradingDate': f'{day}-{month}-{year}', 'description': description.strip()})
+    if len(rows) < 10 or not any(row['tradingDate'].startswith('26-Jan-') for row in rows):
+        raise NseSourceError('Historical circular holiday table could not be validated')
+    return parse_holidays({'CM': rows}, year, raw)
+
+
+def parse_holiday_circular(content, year, raw, reference):
+    from pypdf import PdfReader
+    if len(content) > 2_000_000 or not content.startswith(b'%PDF'):
+        raise NseSourceError('Expected a small official holiday PDF')
+    try:
+        reader = PdfReader(BytesIO(content))
+        if len(reader.pages) > 3:
+            raise NseSourceError('Unexpected holiday circular length')
+        text = '\n'.join(page.extract_text() or '' for page in reader.pages)
+    except (ValueError, OSError) as error:
+        raise NseSourceError(f'Cannot parse historical holiday circular: {error}') from error
+    return parse_holiday_circular_text(text, year, raw, reference)
 
 
 def exchange_date(value: str) -> date:
@@ -86,7 +122,7 @@ def parse_muhurat_notice(content: bytes, raw: RawResponse) -> dict[date, dict]:
     return events
 
 
-def loaded_bhavcopy_evidence(config, start: date, end: date):
+def loaded_bhavcopy_evidence(config, start: date, end: date, *, on_frame=None):
     """Inspect partition contents, not filenames alone. Corrupt partitions stay flagged."""
     observations, invalid = {}, []
     for path in sorted(config.prices_dir.glob('year=*/month=*/*.parquet')):
@@ -96,6 +132,8 @@ def loaded_bhavcopy_evidence(config, start: date, end: date):
             if not start <= candidate <= end:
                 continue
             frame = pd.read_parquet(path)
+            if on_frame is not None:
+                on_frame(frame, candidate)
             validate_bars(frame)
             dates = pd.to_datetime(frame.trade_date).dt.date.unique()
             hashes = frame.source_hash.unique()

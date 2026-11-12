@@ -2,9 +2,9 @@ name: Quant unit tests
 
 on:
   pull_request:
-    paths: ['quant/**', 'pytest.ini', '.github/workflows/quant-tests.yml']
+    paths: ['quant/**', 'scripts/*quant*.ps1', '.env.example', 'pytest.ini', '.github/workflows/quant-tests.yml']
   push:
-    paths: ['quant/**', 'pytest.ini', '.github/workflows/quant-tests.yml']
+    paths: ['quant/**', 'scripts/*quant*.ps1', '.env.example', 'pytest.ini', '.github/workflows/quant-tests.yml']
   workflow_dispatch:
 
 permissions:
