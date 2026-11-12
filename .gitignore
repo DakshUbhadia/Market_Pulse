@@ -27,6 +27,7 @@
 
 # Local Markdown documentation and implementation plans
 *.md
+!quant/README.md
 
 # debug
 npm-debug.log*

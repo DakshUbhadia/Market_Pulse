@@ -1,9 +1,8 @@
 """Restartable backfill; missing dates are explicitly unresolved, never invented."""
 import argparse
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 from zipfile import BadZipFile
 
 import requests
@@ -20,6 +19,8 @@ def run(config: Config, start: date, end: date, *, instruments=True, expected_da
         reuse_validated=False):
     if start > end:
         raise ValueError('Backfill start must not be after end')
+    from quant.pipeline.cli import require_history_gate
+    require_history_gate(config, start, end)
     downloader = Downloader(config)
     requested_dates = (sorted(day for day in set(expected_dates) if start <= day <= end)
                        if expected_dates is not None else None)
@@ -33,7 +34,7 @@ def run(config: Config, start: date, end: date, *, instruments=True, expected_da
             existing, _ = loaded_bhavcopy_evidence(config, start, end)
         if instruments:
             master = download_instruments(downloader)
-            write_parquet(master, config.data_dir / 'normalized' / 'instruments'
+            write_parquet(master, config.data_dir / 'normalized' / 'vendor_mappings' / 'dhan'
                           / f'{master.snapshot_date.iloc[0]}.parquet')
         # Probe ALL calendar days by default: special weekend sessions must not be lost.
         days = requested_dates if requested_dates is not None else (
@@ -45,9 +46,9 @@ def run(config: Config, start: date, end: date, *, instruments=True, expected_da
                 report['loaded'].append({'date': str(day), 'rows': existing[day]['rows'], 'reused': True})
                 continue
             url = source_url(day, config.nse_archives_url)
-            destination = config.data_dir / 'raw' / 'nse' / str(day.year) / url.rsplit('/', 1)[-1]
+            destination = config.data_dir / 'raw' / 'nse' / 'bhavcopy' / str(day.year) / url.rsplit('/', 1)[-1]
             try:
-                frame = parse_bhavcopy(downloader.fetch(url, destination), day, url)
+                frame = downloader.fetch_parsed(url, destination, lambda content: parse_bhavcopy(content, day, url))
                 write_prices(frame, config.prices_dir)
                 report['loaded'].append({'date': str(day), 'rows': len(frame)})
                 print(f'{day}: loaded {len(frame)} rows', flush=True)
@@ -61,6 +62,8 @@ def run(config: Config, start: date, end: date, *, instruments=True, expected_da
             except (ValueError, OSError, BadZipFile, requests.RequestException) as error:
                 report['failed'].append({'date': str(day), 'error': str(error)})
                 print(f'{day}: failed {error}', flush=True)
+                if isinstance(error, (requests.ConnectionError, requests.Timeout)):
+                    break  # The transport already exhausted its bounded retry policy.
     except Exception as error:
         report['failed'].append({'stage': 'bootstrap', 'error': str(error)})
         raise
@@ -80,17 +83,18 @@ def run(config: Config, start: date, end: date, *, instruments=True, expected_da
 
 
 def main():
+    from quant.pipeline.cli import completed_day
     config = Config()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--from', dest='start', type=date.fromisoformat, default=date(2018, 1, 1))
     parser.add_argument('--to', dest='end', type=date.fromisoformat,
-                        default=datetime.now(ZoneInfo(config.timezone)).date() - timedelta(days=1))
+                        default=completed_day(config))
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--skip-instruments', action='store_true')
     parser.add_argument('--trading-dates', type=Path,
                         help='Verified session calendar: one ISO date per line, including special sessions')
-    parser.add_argument('--calendar', choices=('auto', 'cached', 'probe'), default='auto',
-                        help='Refresh automatic calendar (default), use a generated calendar, or probe every date')
+    parser.add_argument('--calendar', choices=('auto', 'cached', 'none', 'probe'), default='auto',
+                        help='auto refreshes the calendar; cached reuses it; none probes every calendar day (probe is a legacy alias)')
     args = parser.parse_args()
     if args.start > args.end:
         parser.error('--from must not be after --to')
@@ -103,7 +107,7 @@ def main():
     if args.data_dir:
         from dataclasses import replace
         config = replace(config, data_dir=args.data_dir)
-    generated = expected is None and args.calendar != 'probe'
+    generated = expected is None and args.calendar not in ('none', 'probe')
     try:
         if generated:
             from quant.pipeline.update_calendar import refresh_calendar, read_calendar
@@ -129,6 +133,10 @@ def main():
             report['calendar_status'] = health['status']
             if health['status'] != 'READY':
                 report['status'] = 'INCOMPLETE'
+            unverified = [day for day in health['unverified_sessions'] if str(args.start) <= day <= str(args.end)]
+            if unverified:
+                report['status'] = 'INCOMPLETE'
+                report['unverified_calendar_sessions'] = unverified
             atomic_write(config.data_dir / 'reports' / f'bootstrap-{args.start}-{args.end}.json',
                          json.dumps(report, indent=2).encode())
     except (NseSourceError, ValueError, OSError, requests.RequestException) as error:

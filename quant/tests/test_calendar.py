@@ -19,6 +19,21 @@ from test_bhavcopy import archive
 ASOF = '2026-11-09T18:00:00+05:30'
 
 
+def test_historical_circular_requires_correct_year_and_reference():
+    from quant.data.nse_calendar import parse_holiday_circular_text
+    text = ('CAPITAL MARKET SEGMENT\nTrading holidays for the calendar year 2010\nDownload No.: 13713\n'
+            + '\n'.join(f'{day} {day:02d}-Jan-10 Friday Holiday' for day in range(1, 10))
+            + '\n10 26-Jan-10 Tuesday Republic Day\n11 05-Nov-10 Friday Laxmi Puja*\n'
+            + '*Muhurat Trading will be conducted.')
+    events = parse_holiday_circular_text(text, 2010, raw(), '13713')
+    assert not events[date(2010, 1, 26)]['is_trading_session']
+    assert events[date(2010, 11, 5)]['session_type'] == 'MUHURAT'
+    with pytest.raises(NseSourceError):
+        parse_holiday_circular_text(text, 2011, raw(), '13713')
+    with pytest.raises(NseSourceError):
+        parse_holiday_circular_text(text, 2010, raw(), 'wrong')
+
+
 def raw():
     return RawResponse('https://www.nseindia.com/api/holiday-master?type=trading&year=2024',
                        ASOF, 'a' * 64, Path('raw.json'), 200)
@@ -120,7 +135,16 @@ def test_partition_contents_are_checked(tmp_path):
 def fake_client():
     client = Mock()
     client.last_response = raw()
-    client.get_json.return_value = holidays()
+    def get_json(path, params=None, **kwargs):
+        if 'indicesHistory' not in path:
+            return holidays()
+        day = pd.to_datetime(params['from'], dayfirst=True)
+        while day.weekday() > 4:
+            day += pd.Timedelta(days=1)
+        return {'data': [{'EOD_TIMESTAMP': day.strftime('%d-%b-%Y'), 'EOD_INDEX_NAME': 'NIFTY 50',
+                          'EOD_OPEN_INDEX_VAL': 100, 'EOD_HIGH_INDEX_VAL': 110,
+                          'EOD_LOW_INDEX_VAL': 90, 'EOD_CLOSE_INDEX_VAL': 105}]}
+    client.get_json.side_effect = get_json
     client.get_bytes.return_value = b'<p>No special dated notices.</p>'
     return client
 

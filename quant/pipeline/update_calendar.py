@@ -1,7 +1,7 @@
 """Automatically refresh NSE calendar; failed refreshes retain the last valid data."""
 import argparse
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from zipfile import BadZipFile
@@ -14,6 +14,8 @@ from quant.data.http import Downloader, atomic_write, sha256
 from quant.data.nse_bhavcopy import parse_bhavcopy, source_url
 from quant.data.nse_calendar import (HOLIDAY_PATH, HOLIDAY_PAGE, build_calendar, calendar_report,
                                     loaded_bhavcopy_evidence, parse_holidays, parse_muhurat_notice)
+from quant.data.nse_calendar import HOLIDAY_CIRCULARS, parse_holiday_circular
+from quant.data.nse_index_sessions import fetch_index_sessions
 from quant.data.nse_client import NseClient, NseSourceError
 from quant.storage.parquet_store import write_parquet, write_prices
 
@@ -31,9 +33,9 @@ def confirm_special_sessions(config, events, start, end):
                         or event['investigation_reason'] != 'MUHURAT_REQUIRES_CONFIRMATION'):
                     continue
                 url = source_url(day, config.nse_archives_url)
-                path = config.data_dir / 'raw' / 'nse' / str(day.year) / url.rsplit('/', 1)[-1]
+                path = config.data_dir / 'raw' / 'nse' / 'bhavcopy' / str(day.year) / url.rsplit('/', 1)[-1]
                 try:
-                    frame = parse_bhavcopy(downloader.fetch(url, path), day, url)
+                    frame = downloader.fetch_parsed(url, path, lambda content: parse_bhavcopy(content, day, url))
                     write_prices(frame, config.prices_dir)
                 except (ValueError, OSError, BadZipFile, requests.RequestException) as error:
                     failures.append({'date': str(day), 'error': str(error)})
@@ -71,10 +73,28 @@ def refresh_calendar(config: Config, start: date, end: date, *, client=None):
         for year in range(start.year, end.year + 1):
             payload = client.get_json(HOLIDAY_PATH, params={'type': 'trading', 'year': year},
                                       referer=config.nse_base_url + HOLIDAY_PAGE, dataset='calendar')
+            if isinstance(payload, dict) and not payload.get('CM') and year in HOLIDAY_CIRCULARS:
+                filename, reference = HOLIDAY_CIRCULARS[year]
+                content = client.get_bytes(config.nse_archives_url.rstrip('/') + '/content/circulars/' + filename,
+                                           dataset='calendar', suffix='pdf')
+                sources[year] = client.last_response
+                events[year] = parse_holiday_circular(content, year, client.last_response, reference)
+                continue
             sources[year] = client.last_response
             events[year] = parse_holidays(payload, year, client.last_response)
         notice = client.get_bytes(HOLIDAY_PAGE, dataset='calendar', suffix='html')
         specials = parse_muhurat_notice(notice, client.last_response)
+        index_sessions, index_windows = fetch_index_sessions(config, client, start, end,
+            datetime.now(ZoneInfo(config.timezone)).date())
+        for day, provenance in index_sessions.items():
+            event = events[day.year].get(day, {})
+            if day in specials or event.get('is_trading_session'):
+                continue
+            if day.weekday() >= 5 or (event and not event['is_trading_session']):
+                muhurat = event.get('investigation_reason') == 'MUHURAT_REQUIRES_CONFIRMATION'
+                specials[day] = {'is_trading_session': True, 'session_type': 'MUHURAT' if muhurat else 'SPECIAL',
+                    'description': 'Trading session confirmed by official NIFTY history',
+                    'needs_investigation': False, 'investigation_reason': '', **provenance}
         special_checks = confirm_special_sessions(config, events, start, end)
         observations, invalid = loaded_bhavcopy_evidence(config, start, end)
         frame = build_calendar(start, end, events, sources, special_events=specials,
@@ -82,6 +102,8 @@ def refresh_calendar(config: Config, start: date, end: date, *, client=None):
         report = calendar_report(frame, invalid_partitions=invalid)
         report['checked_at'] = checked_at
         report['special_session_check_failures'] = special_checks
+        report['index_history_months_reconciled'] = index_windows
+        report['calendar_basis'] += ' + independently queried monthly NIFTY session history'
         persist_calendar(config, frame, report)
         atomic_write(report_path, json.dumps(report, indent=2).encode())
         return frame, report
@@ -134,11 +156,12 @@ def reconcile_calendar(config: Config, start: date, end: date):
 
 
 def main():
+    from quant.pipeline.cli import completed_day
     config = Config()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--from', dest='start', type=date.fromisoformat, default=date(2018, 1, 1))
     parser.add_argument('--to', dest='end', type=date.fromisoformat,
-                        default=datetime.now(ZoneInfo(config.timezone)).date() - timedelta(days=1))
+                        default=completed_day(config))
     parser.add_argument('--data-dir', type=Path)
     args = parser.parse_args()
     if args.start > args.end:

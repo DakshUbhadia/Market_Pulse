@@ -22,8 +22,28 @@ NUMERIC = ('open', 'high', 'low', 'close', 'last', 'previous_close', 'volume', '
 KEY = ['trade_date', 'symbol', 'series']
 
 
-def source_url(day: date, archives_url: str = 'https://nsearchives.nseindia.com') -> str:
-    base = archives_url.rstrip('/') + '/content/'
+def invalid_ohlc(frame):
+    """NSE T0 adopts the EQ close, which can lie outside T0's intraday range.
+
+    NSE T+0 trading FAQ, question 17. Require the corresponding EQ close as
+    evidence for this exception; no tolerance is applied to ordinary EQ bars.
+    """
+    upper = frame[['open', 'close', 'low']].max(axis=1)
+    lower = frame[['open', 'close', 'high']].min(axis=1)
+    t0 = frame.series == 'T0'
+    if t0.any():
+        eq = frame.loc[frame.series == 'EQ'].drop_duplicates(['trade_date', 'symbol']).set_index(['trade_date', 'symbol'])['close']
+        reference = pd.MultiIndex.from_frame(frame.loc[t0, ['trade_date', 'symbol']])
+        copied = frame.index[t0][np.isclose(frame.loc[t0, 'close'].to_numpy(), eq.reindex(reference).to_numpy(),
+                                          rtol=0, atol=1e-8)]
+        upper.loc[copied] = frame.loc[copied, ['open', 'low']].max(axis=1)
+        lower.loc[copied] = frame.loc[copied, ['open', 'high']].min(axis=1)
+    return ((frame['volume'] > 0) & ((frame[['open', 'high', 'low']] <= 0).any(axis=1)
+                                    | (frame.high < upper) | (frame.low > lower)))
+
+
+def source_url(day: date, base: str = 'https://nsearchives.nseindia.com') -> str:
+    base = base.rstrip('/') + '/content/'
     if day >= TRANSITION:
         return f'{base}cm/BhavCopy_NSE_CM_0_0_0_{day:%Y%m%d}_F_0000.csv.zip'
     month = MONTHS[day.month - 1]
@@ -46,11 +66,7 @@ def validate_bars(frame: pd.DataFrame) -> None:
     if not np.isfinite(last).all() or (last < 0).any():
         raise ValueError('Invalid last price')
     # Some nontraded securities have zero OHLC; retain but never make them eligible here.
-    traded = frame['volume'] > 0
-    bars = frame.loc[traded]
-    if ((bars[['open', 'high', 'low']] <= 0).any().any()
-            or (bars['high'] < bars[['open', 'close', 'low']].max(axis=1)).any()
-            or (bars['low'] > bars[['open', 'close', 'high']].min(axis=1)).any()):
+    if invalid_ohlc(frame).any():
         raise ValueError('Inconsistent OHLC prices')
     for name in ('volume', 'num_trades'):
         values = frame[name].dropna()
@@ -76,13 +92,14 @@ def parse_bhavcopy(content: bytes, day: date, url: str | None = None) -> pd.Data
     if not (frame['trade_date'].dt.date == day).all():
         raise ValueError('File trade date does not match requested date')
     for column in NUMERIC:
-        frame[column] = pd.to_numeric(frame[column].replace('', float('nan')), errors='raise').astype('float64')
+        frame[column] = pd.to_numeric(frame[column].mask(frame[column].eq('')), errors='raise').astype('float64')
     frame['num_trades'] = pd.to_numeric(frame['num_trades'].replace('', pd.NA), errors='raise').astype('Int64')
     frame['volume'] = frame['volume'].astype('float64')
     frame['source_file'] = url or source_url(day)
     frame['source_hash'] = sha256(content)
     frame['data_quality'] = np.where(frame['series'] == '', 'MISSING_SERIES',
                                      np.where(frame['last'].isna(), 'MISSING_LAST', 'OK'))
+    frame.loc[frame.series == 'T0', 'data_quality'] = 'T0_USES_EQ_CLOSE'
     validate_bars(frame)
     frame['volume'] = frame['volume'].astype('int64')
     return frame.sort_values(KEY).reset_index(drop=True)

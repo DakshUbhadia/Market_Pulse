@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 import time
+from zipfile import BadZipFile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -37,6 +38,17 @@ class Downloader:
 
     def close(self):
         self.session.close()
+
+    def fetch_parsed(self, url: str, destination: Path, parser):
+        """A structurally invalid cache gets exactly one fresh network attempt."""
+        for attempt in range(2):
+            try:
+                return parser(self.fetch(url, destination))
+            except (ValueError, UnicodeError, BadZipFile):
+                destination.unlink(missing_ok=True)
+                destination.with_suffix(destination.suffix + '.json').unlink(missing_ok=True)
+                if attempt:
+                    raise
 
     def fetch(self, url: str, destination: Path) -> bytes:
         metadata = destination.with_suffix(destination.suffix + '.json')

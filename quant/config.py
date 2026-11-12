@@ -35,11 +35,11 @@ class Config:
     rbi_api_base: str = env('QUANT_RBI_API_BASE', 'https://data-api.dbie.rbihub.in')
     mongo_publish: bool = env('QUANT_MONGO_PUBLISH', 'true', boolean)
     enable_angel: bool = env('QUANT_ENABLE_ANGEL', 'false', boolean)
-    enable_fundamentals: bool = env('QUANT_ENABLE_FUNDAMENTALS', 'true', boolean)
-    enable_shareholding: bool = env('QUANT_ENABLE_SHAREHOLDING', 'true', boolean)
-    enable_announcements: bool = env('QUANT_ENABLE_ANNOUNCEMENTS', 'true', boolean)
-    enable_fiidii: bool = env('QUANT_ENABLE_FIIDII', 'true', boolean)
-    enable_rbi: bool = env('QUANT_ENABLE_RBI', 'true', boolean)
+    enable_fundamentals: bool = env('QUANT_ENABLE_FUNDAMENTALS', 'false', boolean)
+    enable_shareholding: bool = env('QUANT_ENABLE_SHAREHOLDING', 'false', boolean)
+    enable_announcements: bool = env('QUANT_ENABLE_ANNOUNCEMENTS', 'false', boolean)
+    enable_fiidii: bool = env('QUANT_ENABLE_FIIDII', 'false', boolean)
+    enable_rbi: bool = env('QUANT_ENABLE_RBI', 'false', boolean)
     enable_derivatives: bool = env('QUANT_ENABLE_DERIVATIVES', 'false', boolean)
 
     def __post_init__(self):

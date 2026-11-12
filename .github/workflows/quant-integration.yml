@@ -1,0 +1,21 @@
+name: Quant live source smoke tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: quant/requirements.txt
+      - run: python -m pip install -r quant/requirements.txt
+      - run: python -m pytest quant/tests/integration -m integration -q

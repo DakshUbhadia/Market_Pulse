@@ -78,6 +78,18 @@ def test_duplicate_keys_rejected(tmp_path):
 def test_urls():
     assert 'cm05JUL2024bhav.csv.zip' in source_url(date(2024, 7, 5))
     assert '20240708_F_0000' in source_url(date(2024, 7, 8))
+    assert source_url(date(2024, 7, 8), base='https://example.test').startswith('https://example.test/')
+
+
+def test_t0_close_requires_corresponding_eq_evidence():
+    day = date(2024, 7, 8)
+    eq = parse_bhavcopy(archive(day, UDIFF), day)
+    t0 = eq.copy()
+    t0.loc[0, ['series', 'open', 'high', 'low']] = ['T0', 100, 100, 100]
+    from quant.data.nse_bhavcopy import validate_bars
+    validate_bars(pd.concat([eq, t0], ignore_index=True))
+    with pytest.raises(ValueError, match='OHLC'):
+        validate_bars(t0)
 
 
 def test_optional_last_and_unknown_series_are_flagged():
