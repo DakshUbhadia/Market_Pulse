@@ -196,6 +196,7 @@ quant/.venv/Scripts/python.exe -m quant.pipeline.backfill_benchmarks --from 2010
 quant/.venv/Scripts/python.exe -m quant.pipeline.weekly_audit --to 2026-11-09 --rebuild-adjusted
 quant/.venv/Scripts/python.exe -m quant.pipeline.check_research_ready --as-of 2026-11-09
 quant/.venv/Scripts/python.exe -m quant.pipeline.audit_fundamentals
+quant/.venv/Scripts/python.exe -m quant.pipeline.audit_identities --to 2026-11-12
 quant/.venv/Scripts/python.exe -m quant.pipeline.build_features --as-of 2026-11-09
 quant/.venv/Scripts/python.exe -m quant.pipeline.run_factor_v1 --as-of 2026-11-09
 ```
@@ -303,3 +304,22 @@ point-in-time classifications exist. `NOT_VALIDATED` may mean failed or
 unmeasurable criteria; inspect the individual checks. V2 fundamentals, Elastic
 Net, paper trading, Mongo publishing and the `/quant` UI remain conditional on
 the guide's evidence gates. None is enabled by an attractive backtest alone.
+
+## Verified data limitation (2026-11-13)
+
+The local build contains 8,417,222 adjusted-source rows over all 4,184 expected
+sessions through November 12, 2026. Price and benchmark session coverage is 100%.
+However, the original NSE bhavcopy CSVs through June 21, 2011 omit the ISIN column.
+The first ISIN-bearing session is June 22, 2011. All 369 earlier sessions remain
+unresolved: they are retained in raw/normalized history, but cannot enter a
+resolved historical universe. A current identity table cannot repair this gap
+without dated evidence. Full 2010 research readiness therefore remains
+`NOT_READY`; actual rankings and empirical backtest conclusions remain gated.
+
+`audit_identities` writes a dated identity-coverage report with yearly row counts,
+the affected sessions, and original archive URLs/SHA-256 values. NSE documents
+symbol/series/ISIN masters in its [historical data specification](https://nsearchives.nseindia.com/content/press/Data_details_CM.pdf).
+No verified historical master archive for these dates has been loaded. Recovery
+requires authoritative effective-date mapping evidence. Using today's master or
+backfilling the first future ISIN would introduce unsupported identity assumptions.
+The 2010 requirement is preserved; no partial-history exception is implicit.

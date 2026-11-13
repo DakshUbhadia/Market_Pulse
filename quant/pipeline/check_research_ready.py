@@ -17,7 +17,7 @@ def check_research_ready(config, *, as_of=None, history_start=date(2010, 1, 1), 
     target = as_of or completed_day(config)
     checks = dict(price_history_ready=False, calendar_ready=False, adjustments_ready=False,
                   index_history_ready=False, identity_ready=False, corporate_actions_ready=False)
-    errors, excluded = {}, set()
+    errors, excluded, unresolved_sessions = {}, set(), []
     coverage, latest = 0.0, None
     try:
         calendar = read_calendar(config, history_start, target)
@@ -49,6 +49,9 @@ def check_research_ready(config, *, as_of=None, history_start=date(2010, 1, 1), 
                             if 'data_quality' in rows and rows.data_quality.eq('INVALID_OHLC').any():
                                 raise ValueError(f'{name} invalid OHLC')
                     else:
+                        traded_EQ = frame[frame.series.eq('EQ') & frame.volume.gt(0)]
+                        if traded_EQ.empty or not traded_EQ.instrument_id.notna().any():
+                            unresolved_sessions.append(str(day))
                         if frame.duplicated(['trade_date', 'symbol', 'series']).any():
                             raise ValueError('Duplicate adjusted price keys')
                         # Bhavcopies retain nontraded securities with zero OHLC.
@@ -56,6 +59,8 @@ def check_research_ready(config, *, as_of=None, history_start=date(2010, 1, 1), 
                         # traded EQ bars or invent opens for suspended names.
                         ok = frame[frame.adjustment_status.eq('OK') & frame.series.eq('EQ') & frame.volume.gt(0)]
                         fields = ['adjusted_open', 'adjusted_high', 'adjusted_low', 'adjusted_close']
+                        if ok.empty and str(day) in unresolved_sessions:
+                            raise ValueError('No resolved trading EQ identities; dated historical master evidence required')
                         if ok.empty or not np.isfinite(ok[fields].to_numpy(dtype=float)).all() or (ok[fields] <= 0).any().any():
                             raise ValueError('Adjusted executable OHLC unavailable')
                         if ((ok.adjusted_high < ok[['adjusted_open', 'adjusted_close', 'adjusted_low']].max(axis=1))
@@ -82,6 +87,11 @@ def check_research_ready(config, *, as_of=None, history_start=date(2010, 1, 1), 
                                     and (ids.valid_from <= ids.valid_to).all())
     except (OSError, ValueError, KeyError) as error:
         errors['identity'] = str(error)
+    if unresolved_sessions:
+        checks['identity_ready'] = False
+        errors['historical_identity'] = dict(sessions_without_resolved_EQ=len(unresolved_sessions),
+            first_date=unresolved_sessions[0], last_date=unresolved_sessions[-1],
+            remediation='Load dated historical symbol/series/ISIN evidence; do not backfill from today\'s master')
     state = PipelineState(config).data
     actions = state.get('nse_corporate_actions', {})
     checks['corporate_actions_ready'] = (actions.get('status') == 'READY'

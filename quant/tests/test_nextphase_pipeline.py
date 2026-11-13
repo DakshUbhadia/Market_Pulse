@@ -148,6 +148,14 @@ def test_historical_gate_uses_build_anchor_and_checks_unresolved_exclusions(tmp_
     monkeypatch.setattr('quant.pipeline.check_research_ready.audit_prices',lambda cfg,a,b,**kwargs:
         dict(status='READY',coverage_percent=100,latest_date=str(b)))
     assert check_research_ready(config,as_of=sessions[1].date(),history_start=start)['status']=='READY'
+    first_path=tmp_path/f'normalized/adjusted_prices/year={start.year}/month={start.month:02d}/{start}.parquet'
+    original=pd.read_parquet(first_path)
+    unresolved=original.copy(); unresolved['instrument_id']=None
+    unresolved['adjustment_status']='UNRESOLVED_IDENTITY'
+    write_parquet(unresolved,first_path)
+    result=check_research_ready(config,as_of=sessions[1].date(),history_start=start)
+    assert not result['identity_ready'] and result['errors']['historical_identity']['sessions_without_resolved_EQ']==1
+    write_parquet(original,first_path)
     ledger.record('adjusted_prices',status='READY',**{'from':str(sessions[1].date())})
     assert not check_research_ready(config,as_of=sessions[1].date(),history_start=start)['adjustments_ready']
     ledger.record('adjusted_prices',status='READY',**{'from':str(start)})
@@ -157,3 +165,23 @@ def test_historical_gate_uses_build_anchor_and_checks_unresolved_exclusions(tmp_
     ledger.record('adjusted_prices',status='READY',corporate_action_version=action_version(event))
     result=check_research_ready(config,as_of=end,history_start=start)
     assert not result['adjustments_ready'] and 'unresolved_action_exclusion' in result['errors']
+
+
+def test_identity_audit_never_borrows_future_isins(tmp_path,monkeypatch):
+    from quant.pipeline.audit_identities import audit_identities
+    from quant.tests.research_fixtures import market_fixture
+    from quant.data.normalization import write_daily
+    prices,_,sessions=market_fixture(stocks=2,days=3,start='2010-01-04')
+    prices['isin']=prices.symbol.map({'STOCK000':'INE000A01000','STOCK001':'INE000B01000'})
+    prices.loc[prices.trade_date==sessions[0],'isin']=None
+    prices['source_file']='https://nsearchives.nseindia.com/official-example.zip'
+    prices['source_hash']='a'*64
+    config=Config(data_dir=tmp_path)
+    write_daily(prices,config.prices_dir)
+    monkeypatch.setattr('quant.pipeline.audit_identities.read_calendar',lambda *args:
+        pd.DataFrame(dict(trade_date=sessions,is_trading_session=True)))
+    result=audit_identities(config,sessions[0].date(),sessions[-1].date())
+    assert result['status']=='NOT_READY' and result['sessions_without_resolved_EQ']==1
+    assert result['first_resolved_session']==str(sessions[1].date())
+    assert result['by_year'][0]['resolved_rows']==4 and result['by_year'][0]['unresolved_rows']==2
+    assert result['missing_identity_sessions'][0]['source_sha256']=='a'*64
