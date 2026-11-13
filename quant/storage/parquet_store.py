@@ -8,9 +8,10 @@ from quant.data.http import atomic_write
 from quant.data.nse_bhavcopy import validate_bars
 
 
-def write_parquet(frame: pd.DataFrame, path: Path) -> Path:
+def write_parquet(frame: pd.DataFrame, path: Path, *, row_group_size=None) -> Path:
     buffer = BytesIO()
-    frame.to_parquet(buffer, index=False, compression='zstd')
+    options = {'row_group_size': row_group_size} if row_group_size is not None else {}
+    frame.to_parquet(buffer, index=False, compression='zstd', **options)
     atomic_write(path, buffer.getvalue())
     return path
 

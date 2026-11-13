@@ -55,13 +55,14 @@ def persist_calendar(config, frame, report):
     atomic_write(config.calendar_text_path.with_suffix('.txt.json'), json.dumps(metadata, indent=2).encode())
 
 
-def refresh_calendar(config: Config, start: date, end: date, *, client=None):
+def refresh_calendar(config: Config, start: date, end: date, *, client=None, incremental=False):
     if start > end:
         raise ValueError('Calendar start must not be after end')
     # Preserve previously covered years when a scheduled update requests a shorter range.
+    previous = pd.DataFrame()
     if config.calendar_path.exists():
-        previous = pd.read_parquet(config.calendar_path, columns=['trade_date'])
-        if not previous.empty:
+        previous = pd.read_parquet(config.calendar_path)
+        if not previous.empty and not incremental:
             start = min(start, previous.trade_date.min().date())
             end = max(end, previous.trade_date.max().date())
     report_path = config.data_dir / 'reports' / 'calendar-health.json'
@@ -99,6 +100,9 @@ def refresh_calendar(config: Config, start: date, end: date, *, client=None):
         observations, invalid = loaded_bhavcopy_evidence(config, start, end)
         frame = build_calendar(start, end, events, sources, special_events=specials,
                                observed=observations, normalized_at=checked_at)
+        if incremental and not previous.empty:
+            frame = pd.concat([previous[~previous.trade_date.dt.date.between(start, end)], frame], ignore_index=True)
+            frame = frame.sort_values('trade_date').reset_index(drop=True)
         report = calendar_report(frame, invalid_partitions=invalid)
         report['checked_at'] = checked_at
         report['special_session_check_failures'] = special_checks

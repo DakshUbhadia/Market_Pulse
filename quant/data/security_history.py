@@ -48,3 +48,18 @@ def attach_identities(prices):
     frame['instrument_id'] = frame['isin'].map(instrument_id)
     frame['identity_status'] = frame.instrument_id.map(lambda value: 'RESOLVED' if value else 'UNRESOLVED')
     return frame
+
+
+def extend_security_history(previous, recent, start):
+    """Replace overlap evidence, preserving older intervals without reading old bars."""
+    before = previous[previous.valid_from < pd.Timestamp(start)].copy()
+    before['valid_to'] = before.valid_to.clip(upper=pd.Timestamp(start) - pd.Timedelta(days=1))
+    combined = pd.concat([before, recent], ignore_index=True).sort_values(['symbol', 'series', 'valid_from'])
+    rows = []
+    for row in combined.to_dict('records'):
+        if (rows and all(rows[-1][key] == row[key] for key in ('symbol', 'series', 'isin'))
+                and rows[-1]['valid_to'] < row['valid_from']):
+            rows[-1]['valid_to'] = row['valid_to']
+        else:
+            rows.append(row)
+    return pd.DataFrame(rows, columns=previous.columns)

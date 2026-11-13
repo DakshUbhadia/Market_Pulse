@@ -39,24 +39,31 @@ class Downloader:
     def close(self):
         self.session.close()
 
-    def fetch_parsed(self, url: str, destination: Path, parser):
+    def fetch_parsed(self, url: str, destination: Path, parser, *, refresh=False):
         """A structurally invalid cache gets exactly one fresh network attempt."""
         for attempt in range(2):
             try:
-                return parser(self.fetch(url, destination))
+                content = self.fetch(url, destination, force=True) if refresh else self.fetch(url, destination)
+                return parser(content)
             except (ValueError, UnicodeError, BadZipFile):
                 destination.unlink(missing_ok=True)
                 destination.with_suffix(destination.suffix + '.json').unlink(missing_ok=True)
                 if attempt:
                     raise
 
-    def fetch(self, url: str, destination: Path) -> bytes:
+    def fetch(self, url: str, destination: Path, *, force=False) -> bytes:
         metadata = destination.with_suffix(destination.suffix + '.json')
+        if force and destination.exists() and metadata.exists():
+            old = destination.read_bytes()
+            archive = destination.parent / 'revisions' / (destination.name + '.' + sha256(old))
+            if not archive.exists():
+                atomic_write(archive, old)
+                atomic_write(archive.with_suffix(archive.suffix + '.json'), metadata.read_bytes())
         if destination.exists() and metadata.exists():
             try:
                 info = json.loads(metadata.read_text(encoding='utf-8'))
                 content = destination.read_bytes()
-                if info['source_url'] == url and info['sha256'] == sha256(content):
+                if not force and info['source_url'] == url and info['sha256'] == sha256(content):
                     return content
             except (ValueError, KeyError):
                 pass
