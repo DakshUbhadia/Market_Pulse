@@ -16,6 +16,7 @@ def save_backtest(root, *, config, metrics, result, ic, deciles, rolling, eviden
         write_parquet(frame, path / f'{name}.parquet')
     write_parquet(result.skipped_orders, path / 'skipped_orders.parquet')
     write_parquet(result.dividends, path / 'dividends.parquet')
+    write_parquet(result.lifecycle, path / 'lifecycle.parquet')
     if extra is not None:
         write_json(path / 'robustness.json', extra)
     report = ('# Factor V1 research report\n\n'

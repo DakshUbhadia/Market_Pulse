@@ -41,6 +41,7 @@ class CostSchedule:
 
 @dataclass
 class CostModel:
+    broker_profile: str = field(default_factory=lambda: os.getenv('QUANT_BROKER_PROFILE', 'GENERIC_ZERO_DELIVERY'))
     slippage_bps: float = field(default_factory=lambda: float(os.getenv('QUANT_BASE_SLIPPAGE_BPS', '5')))
     cost_multiplier: float = 1
     slippage_multiplier: float = 1
@@ -49,6 +50,8 @@ class CostModel:
     schedules: tuple = ()
 
     def __post_init__(self):
+        if self.broker_profile != 'GENERIC_ZERO_DELIVERY':
+            raise ValueError('Unsupported broker profile; verified broker-specific schedules are not implemented')
         if not all(math.isfinite(value) and value >= 0 for value in
                    (self.slippage_bps, self.cost_multiplier, self.slippage_multiplier, self.market_impact_bps)):
             raise ValueError('Costs must be finite and nonnegative')

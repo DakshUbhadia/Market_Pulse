@@ -11,7 +11,10 @@ def evaluate_evidence(metrics, ic_summary, deciles, cost_stress, curve, benchmar
     values = deciles.groupby('decile').excess_return.mean() if not deciles.empty else pd.Series(dtype=float)
     monotonic = values.index.to_series().corr(values.rank()) if len(values) == 10 else np.nan
     returns = curve.set_index('trade_date').daily_return
-    yearly = (returns - benchmark.reindex(returns.index)).resample('YE').sum()
+    aligned = benchmark.reindex(returns.index)
+    if aligned.isna().any():
+        raise ValueError('Missing benchmark sessions in yearly evidence')
+    yearly = (1 + returns).resample('YE').prod() - (1 + aligned).resample('YE').prod()
     positive = yearly.clip(lower=0)
     dominance = positive.max()/positive.sum() if positive.sum() > 0 and len(yearly) >= 3 else np.nan
     conditions = dict(

@@ -1,0 +1,23 @@
+{
+  "source_exchange": "BSE",
+  "source_url": "https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2016/2/0A5854E1_0389_40E7_8D3E_685DC087DF90_165210.pdf",
+  "source_sha256": "c0c7a96dec645decea23342f6d3c9382b1939d6ff32c07ebd58c137d09273f3e",
+  "raw_path": "raw/lifecycle/essaroil-exit-offer-20160216.pdf",
+  "symbol": "ESSAROIL",
+  "instrument_id": "6c788a58-de33-575a-9f7a-188d887aa97a",
+  "isin": "INE011A01019",
+  "document_date": "2016-02-16",
+  "announced_at": "2016-02-16T23:59:59+05:30",
+  "timing_convention": "CONSERVATIVE_DOCUMENT_DATE_END_OF_DAY; not proof of January notice dissemination",
+  "effective_date": "2016-02-17",
+  "last_trading_date": "2016-02-09",
+  "suspension_date": "2016-02-10",
+  "event_type": "EXIT_OFFER",
+  "offer_start": "2016-02-17",
+  "offer_end": "2017-02-16",
+  "offer_price": 262.8,
+  "mandatory": false,
+  "optional": true,
+  "verification_status": "VERIFIED",
+  "first_seen_at": "2026-11-17T06:29:20.325661+00:00"
+}

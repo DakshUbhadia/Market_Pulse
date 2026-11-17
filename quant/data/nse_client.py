@@ -108,7 +108,8 @@ class NseClient:
             raise NseSourceError('NSE requested a longer cooldown; try again later')
         time.sleep(delay)
 
-    def _request(self, url, *, params=None, referer=None, dataset='web', suffix='bin', warmup=False):
+    def _request(self, url, *, params=None, referer=None, dataset='web', suffix='bin', warmup=False,
+                 migration_allowed=True):
         for attempt in range(self.config.retries + 1):
             time.sleep(max(0, self.config.request_interval - (time.monotonic() - self._last_request)))
             self._last_request = time.monotonic()
@@ -124,6 +125,17 @@ class NseClient:
                     raise NseSourceError('NSE request timed out or connection failed') from None
             else:
                 self._archive(response, dataset, suffix)
+                # NSE migrated its public web origin. Follow only this exact
+                # HTTPS host migration with unchanged path/query, once.
+                if migration_allowed and response.status_code in (301,308):
+                    target = urljoin(url, response.headers.get('Location',''))
+                    old = urlsplit(requests.Request('GET',url,params=params).prepare().url)
+                    new = urlsplit(target)
+                    if (old.hostname == 'www.nseindia.com' and new.hostname == 'www.nseindia.in'
+                            and new.scheme == 'https' and not new.username and not new.password
+                            and new.port in (None,443) and old.path == new.path and old.query == new.query):
+                        return self._request(target,params=None,referer=referer,dataset=dataset,suffix=suffix,
+                                             warmup=warmup,migration_allowed=False)
                 if response.status_code != 429 and response.status_code < 500:
                     return response
                 if attempt == self.config.retries:

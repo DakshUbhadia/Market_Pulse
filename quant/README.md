@@ -425,3 +425,73 @@ accounting can value held delistings without invented exits or retrospective
 exclusions. The first snapshot's top 30 passed their checks, but a wider review
 found 55 fund units among 493 ranked EQ instruments. The stock-only universe fix
 preserves that snapshot in revisions and bumps the feature version.
+
+
+## November 17 audit implementation
+
+The audit document describes a gated roadmap, rather than authorization to skip
+research evidence. Factor V1 weights, lookbacks and portfolio defaults remain
+frozen. V2, ML, forward publishing and the UI remain gated.
+
+Implemented in this pass:
+
+- Discovery under all of `quant`, Python 3.12 CI with checkout/setup-python v7,
+  dependency validation, and syntax compilation. The required job name is
+  `Quant unit tests`. Live source tests remain manual.
+- Windows extended paths for atomic artifact writes, removal of duplicate test
+  definitions, compounded yearly excess-return concentration, and explicit
+  `QUANT_BROKER_PROFILE=GENERIC_ZERO_DELIVERY`. Other broker profiles fail closed.
+- Official lifecycle inventory discovery, immutable raw archives and reviewed
+  circular import with SHA-256 validation. Inventory downloads alone remain
+  `NEEDS_REVIEW`: current lists do not establish historical announcement timing.
+- Lifecycle schema, timezone-aware publication checks, PIT state transitions,
+  universe entry flags, daily next-open risk exits, mandatory cash settlements,
+  and mandatory successor conversions in raw-share units. Missing valuations
+  still block. No forward-filled prices, inferred tender participation or
+  undocumented zero recoveries are introduced.
+- Lifecycle events and policy/scenario metadata in full research, baselines,
+  robustness, walk-forward and manifests. Adding lifecycle evidence invalidates
+  an earlier feature manifest. Feature version is `factor_v1_features_1.0.2`.
+- An ESSAROIL fixture tied to the checksum of the official February 16, 2016 exit
+  letter. Its publication cutoff conservatively uses document-day end. The
+  letter does not prove the January notice's publication timestamp, and the
+  optional INR 262.80 offer does not establish automatic payment. Earlier
+  information must come from separately verified contemporary notice evidence.
+
+Operations:
+
+```powershell
+python -m quant.pipeline.backfill_lifecycle --refresh-lists
+python -m quant.pipeline.backfill_lifecycle --events-json reviewed-events.json
+python -m quant.pipeline.update_lifecycle --events-json additional-events.json
+```
+
+Reviewed JSON is a list of schema records from `lifecycle_normalize.py`, including
+an official `source_url`, the reviewed document's `source_sha256`, a stable
+instrument identity, timezone-aware `announced_at`, and effective/economic terms.
+The importer downloads and archives the document, verifies its bytes, and fills
+raw provenance. Existing event IDs cannot be overwritten. Publication timing is
+never substituted with the download timestamp.
+
+The default `KNOWN_EVENT_NEXT_OPEN_EXIT` scenario applies deterministic risk exits
+plus documented mandatory economics. `MANDATORY_ONLY` disables proactive risk
+exits for sensitivity analysis. Optional offer participation and hypothetical
+zero recovery are deliberately rejected until their independent assumption and
+execution policies exist. Both scenarios retain the investability overlay.
+
+Operational gates still require verification outside unit tests: authenticated
+GitHub branch protection for the `Quant unit tests` check, a green remote run,
+live-source smoke tests, reviewed lifecycle coverage, the full historical audit,
+and frozen price/total-return OOS runs. No V1-complete or production-validation
+claim follows merely from implementing the lifecycle engine. Historical cost
+proxies still prevent production validation. Do not start V2 or ML while these
+gates remain unmet.
+
+
+Local validation on November 17: 190 non-integration tests passed, all 11 live
+integration tests passed after the NSE origin migration fix, `pip check` passed,
+and syntax compilation passed. Six official lifecycle inventories were archived
+(14 proposed, 460 delisted, 12 voluntary applications, 15 progress rows, and two
+suspension lists with 36 and 1 rows). These counts describe downloaded rows, not
+verified PIT lifecycle coverage. Branch-protection update returned HTTP 401
+because no authenticated GitHub API session was available.

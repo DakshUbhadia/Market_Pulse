@@ -20,7 +20,7 @@ def purged_training_labels(labels, window, sessions, *, embargo_sessions=63):
                   & labels.label_available & (labels.exit_date <= cutoff)].copy()
 
 
-def walk_forward(prices, scores, labels, sessions, *, windows=None, portfolio=None, cost_model=None, corporate_actions=None):
+def walk_forward(prices, scores, labels, sessions, *, windows=None, portfolio=None, cost_model=None, corporate_actions=None, lifecycle_events=None, lifecycle_scenario='KNOWN_EVENT_NEXT_OPEN_EXIT'):
     from quant.backtest.engine import run_backtest
     output = []
     for window in windows or rolling_windows():
@@ -29,7 +29,7 @@ def walk_forward(prices, scores, labels, sessions, *, windows=None, portfolio=No
         train = purged_training_labels(labels, window, sessions)
         # V1 weights are fixed before observing any test outcome; no fitted model or random folds.
         result = run_backtest(prices, scores, sessions, start=window['test_start'], end=window['test_end'],
-                               portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions)
+                               portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario)
         test_scores = scores[scores.as_of.between(pd.Timestamp(window['test_start']), pd.Timestamp(window['test_end']))]
         output.append(dict(window=window, train_labels=len(train), result=result, scores=test_scores,
                            method='FIXED_PREDECLARED_WEIGHTS_NO_TEST_OPTIMIZATION', embargo_sessions=63))

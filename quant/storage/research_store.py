@@ -53,10 +53,10 @@ def input_manifest(config, as_of):
     from quant.config import REPO_ROOT
     import importlib.metadata
     files = []
-    for dataset in ('adjusted_prices', 'indices', 'delivery', 'corporate_actions', 'index_tri'):
+    for dataset in ('adjusted_prices', 'indices', 'delivery', 'corporate_actions', 'index_tri', 'lifecycle'):
         for filename in dataset_files(config.data_dir, dataset):
             path = Path(filename)
-            if dataset not in ('corporate_actions','index_tri') and path.stem > str(as_of)[:10]:
+            if dataset not in ('corporate_actions','index_tri','lifecycle') and path.stem > str(as_of)[:10]:
                 continue
             files.append(dict(path=str(path.relative_to(config.data_dir)), bytes=path.stat().st_size,
                               sha256=digest_file(path)))
@@ -76,6 +76,11 @@ def input_manifest(config, as_of):
 
 def verify_manifest(config, manifest):
     from quant.config import REPO_ROOT
+    # Adding lifecycle evidence also invalidates a previously frozen snapshot.
+    recorded = {item['path'] for item in manifest['files'] if item['path'].replace('\\','/').startswith('normalized/lifecycle/')}
+    current = {str(Path(path).relative_to(config.data_dir)) for path in dataset_files(config.data_dir,'lifecycle')}
+    if current != recorded:
+        raise ValueError('Lifecycle evidence changed; rebuild research inputs')
     for item in manifest['files']:
         path = (config.data_dir / item['path']).resolve()
         if not path.is_relative_to(config.data_dir.resolve()) or digest_file(path) != item['sha256']:
