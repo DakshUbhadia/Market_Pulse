@@ -15,11 +15,12 @@ def save_backtest(root, *, config, metrics, result, ic, deciles, rolling, eviden
                          ('holdings', result.holdings), ('ic', ic), ('deciles', deciles), ('rolling_excess', rolling)]:
         write_parquet(frame, path / f'{name}.parquet')
     write_parquet(result.skipped_orders, path / 'skipped_orders.parquet')
+    write_parquet(result.dividends, path / 'dividends.parquet')
     if extra is not None:
         write_json(path / 'robustness.json', extra)
     report = ('# Factor V1 research report\n\n'
               f'Evidence status: {evidence["status"]}. Public recommendations remain disabled.\n\n'
-              'Score percentiles are ranks, not profit probabilities. Returns use the explicitly recorded price-return basis.\n\n'
+              f'Score percentiles are ranks, not profit probabilities. Return basis: {config.get("return_basis", "PRICE")}.\n\n'
               + '\n'.join(f'- {key}: {value}' for key, value in metrics.items()) + '\n\n'
               + '\n'.join(f'- {key}: {"PASS" if value else "UNMET"}' for key, value in evidence['checks'].items())
               + '\n\n' + '\n'.join(f'- {item}' for item in result.limitations) + '\n')

@@ -53,10 +53,10 @@ def input_manifest(config, as_of):
     from quant.config import REPO_ROOT
     import importlib.metadata
     files = []
-    for dataset in ('adjusted_prices', 'indices', 'delivery', 'corporate_actions'):
+    for dataset in ('adjusted_prices', 'indices', 'delivery', 'corporate_actions', 'index_tri'):
         for filename in dataset_files(config.data_dir, dataset):
             path = Path(filename)
-            if dataset != 'corporate_actions' and path.stem > str(as_of)[:10]:
+            if dataset not in ('corporate_actions','index_tri') and path.stem > str(as_of)[:10]:
                 continue
             files.append(dict(path=str(path.relative_to(config.data_dir)), bytes=path.stat().st_size,
                               sha256=digest_file(path)))
@@ -66,7 +66,7 @@ def input_manifest(config, as_of):
                               bytes=path.stat().st_size, sha256=digest_file(path)))
     encoded = json.dumps(files, sort_keys=True).encode()
     code_files = list((REPO_ROOT / 'quant').glob('*.py'))
-    for name in ('data', 'features', 'models', 'pipeline', 'storage', 'universe', 'backtest'):
+    for name in ('data', 'features', 'models', 'pipeline', 'storage', 'universe', 'backtest', 'risk'):
         code_files.extend(path for path in (REPO_ROOT / 'quant' / name).rglob('*.py') if 'tests' not in path.parts)
     code = {str(path.relative_to(REPO_ROOT)): digest_file(path) for path in sorted(set(code_files))}
     dependencies = {name: importlib.metadata.version(name) for name in ('pandas', 'numpy', 'duckdb', 'pyarrow')}
@@ -87,22 +87,22 @@ def verify_manifest(config, manifest):
 
 
 def load_research_data(config, as_of):
-    from datetime import date
+    from quant.boundaries import RAW_PRICE_START
     from quant.pipeline.update_calendar import read_calendar
-    calendar = read_calendar(config, date(2010, 1, 1), as_of)
+    calendar = read_calendar(config, RAW_PRICE_START, as_of)
     sessions = calendar.loc[calendar.is_trading_session, 'trade_date']
     # V1 only researches EQ bars. Project away raw archive metadata and unused
     # OHLC copies before materializing a sixteen-year frame in pandas.
     import duckdb
     with duckdb.connect(':memory:') as connection:
-        relation = connection.sql('SELECT trade_date, instrument_id, symbol, series, adjusted_open, '
+        relation = connection.sql('SELECT trade_date, instrument_id, isin, symbol, series, adjusted_open, '
             'adjusted_close, raw_close, volume, traded_value, adjustment_status '
             'FROM read_parquet(?, hive_partitioning=false, union_by_name=true) '
             "WHERE series='EQ' AND trade_date <= ?", params=[dataset_files(config.data_dir, 'adjusted_prices'), as_of])
         table = relation.to_arrow_table() if hasattr(relation, 'to_arrow_table') else relation.arrow()
         if hasattr(table, 'read_all'):
             table = table.read_all()
-        prices = table.to_pandas(categories=['instrument_id','symbol','series','adjustment_status'], split_blocks=True)
+        prices = table.to_pandas(categories=['instrument_id','isin','symbol','series','adjustment_status'], split_blocks=True)
     indices = query_dataset(config.data_dir, 'indices', end=as_of)
     benchmark = indices[indices.index_name == 'NIFTY 500'].copy()
     try:

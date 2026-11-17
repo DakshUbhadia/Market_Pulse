@@ -1,11 +1,12 @@
 import math
 import os
 from dataclasses import dataclass, field
+from quant.boundaries import MIN_HISTORY_SESSIONS
 
 
 @dataclass(frozen=True)
 class UniverseConfig:
-    min_history_sessions: int = field(default_factory=lambda: int(os.getenv('QUANT_MIN_HISTORY_SESSIONS', '252')))
+    min_history_sessions: int = field(default_factory=lambda: int(os.getenv('QUANT_MIN_HISTORY_SESSIONS', str(MIN_HISTORY_SESSIONS))))
     min_trading_presence: float = field(default_factory=lambda: float(os.getenv('QUANT_MIN_TRADING_PRESENCE', '.95')))
     min_adv60: float = field(default_factory=lambda: float(os.getenv('QUANT_MIN_ADV60', '50000000')))
     min_price: float = field(default_factory=lambda: float(os.getenv('QUANT_MIN_PRICE', '0')))

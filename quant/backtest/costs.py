@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import date as Date
 
 from quant.version import COST_MODEL_VERSION
+from quant.backtest.cost_history import historical_schedule_parameters, charge_table
 
 SOURCES = ['https://nsearchives.nseindia.com/content/circulars/FATAX63809.pdf',
            'https://nsearchives.nseindia.com/content/circulars/FA64232.pdf',
@@ -44,11 +45,12 @@ class CostModel:
     cost_multiplier: float = 1
     slippage_multiplier: float = 1
     allow_estimated_history: bool = False
+    market_impact_bps: float = 0
     schedules: tuple = ()
 
     def __post_init__(self):
         if not all(math.isfinite(value) and value >= 0 for value in
-                   (self.slippage_bps, self.cost_multiplier, self.slippage_multiplier)):
+                   (self.slippage_bps, self.cost_multiplier, self.slippage_multiplier, self.market_impact_bps)):
             raise ValueError('Costs must be finite and nonnegative')
         if not self.schedules:
             self.schedules = (CostSchedule(Date(2024, 10, 1), Date(2026, 3, 1)),
@@ -70,11 +72,21 @@ class CostModel:
                 return row
         if not self.allow_estimated_history:
             raise ValueError(f'No verified cost schedule for {day}; supply schedules or explicitly allow historical estimates')
-        # Deliberately visible stress proxies, not assertions about historical law.
-        return CostSchedule(Date(2010, 1, 1), brokerage_rate=.0003, exchange_rate=.0000345,
-            ipft_rate=0, sebi_rate=.000002, gst_rate=.18,
-            stamp_buy=.0003 if day < Date(2020, 7, 1) else .00015,
-            stamp_sell=.0003 if day < Date(2020, 7, 1) else 0, dp_sell=13.5, verified=False)
+        for parameters in historical_schedule_parameters():
+            row = CostSchedule(**parameters)
+            if row.effective_from <= day < row.effective_to:
+                return row
+        raise ValueError(f'No historical cost proxy for {day}; supported research starts in 2016')
+
+    def schedule_table(self):
+        schedules = list(self.schedules)
+        if self.allow_estimated_history:
+            schedules += [CostSchedule(**parameters) for parameters in historical_schedule_parameters()]
+        rows = [item for schedule in schedules for item in charge_table(schedule)]
+        for name, rate in [('slippage',self.slippage_bps),('market_impact',self.market_impact_bps)]:
+            rows.append(dict(effective_from=None,effective_to=None,product='DELIVERY',side='BOTH',
+                charge_type=name,rate_type='TURNOVER_BPS',rate=rate,source_reference='RESEARCH_ASSUMPTION',verified=False))
+        return rows
 
     def cost(self, *, date, side, product='DELIVERY', turnover):
         if side not in ('BUY', 'SELL') or product != 'DELIVERY':
@@ -82,14 +94,21 @@ class CostModel:
         if not math.isfinite(turnover) or turnover < 0:
             raise ValueError('Invalid turnover')
         row = self.schedule(date)
+        if not row.verified and not self.allow_estimated_history:
+            raise ValueError('Unverified cost schedule requires explicit historical-proxy opt-in')
         components = dict(brokerage=turnover*row.brokerage_rate, stt=turnover*row.stt_rate,
             exchange=turnover*row.exchange_rate, ipft=turnover*row.ipft_rate, sebi=turnover*row.sebi_rate,
             stamp_duty=turnover*(row.stamp_buy if side == 'BUY' else row.stamp_sell),
             dp_charge=row.dp_sell if side == 'SELL' and turnover > 0 else 0,
-            slippage=turnover*self.slippage_bps/10_000*self.slippage_multiplier)
-        components['gst'] = row.gst_rate * sum(components[key] for key in ('brokerage', 'exchange', 'ipft', 'sebi', 'dp_charge'))
+            slippage=turnover*self.slippage_bps/10_000*self.slippage_multiplier,
+            market_impact=turnover*self.market_impact_bps/10_000)
+        tax = row.gst_rate * sum(components[key] for key in ('brokerage', 'exchange', 'ipft', 'sebi', 'dp_charge'))
+        before_gst = Date.fromisoformat(str(date)[:10]) < Date(2017,7,1)
+        components['service_tax'] = tax if before_gst else 0
+        components['gst'] = 0 if before_gst else tax
         components = {key: value*self.cost_multiplier for key, value in components.items()}
         components['total'] = sum(components.values())
         components['schedule_verified'] = row.verified
+        components['cost_status'] = 'VERIFIED_STATUTORY_WITH_ASSUMPTIONS' if row.verified else 'HISTORICAL_COST_PROXY'
         components['cost_model_version'] = COST_MODEL_VERSION
         return components

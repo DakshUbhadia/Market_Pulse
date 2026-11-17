@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from quant.backtest.portfolio import capped_inverse_volatility
 
@@ -11,6 +12,26 @@ def index_returns(index, dates):
     if len(rows):
         result.iloc[0] = rows.close.iloc[0]/rows.open.iloc[0] - 1
     return result
+
+
+def total_return_index_returns(index, dates, sessions=None):
+    """Close-to-close TRI; requires the prior session, never invents TRI opens."""
+    frame = index.copy()
+    frame['trade_date'] = pd.to_datetime(frame.trade_date)
+    if frame.trade_date.duplicated().any():
+        raise ValueError('Duplicate TRI benchmark sessions')
+    close = frame.set_index('trade_date').sort_index().close
+    close = close.where(np.isfinite(close) & close.gt(0))
+    requested = pd.DatetimeIndex(dates)
+    # Validate the previous observation and every requested session explicitly.
+    preceding = close.index[close.index < requested[0]] if len(requested) else []
+    if sessions is not None and len(requested):
+        calendar = pd.DatetimeIndex(sessions)
+        preceding = calendar[calendar < requested[0]][-1:]
+    if not len(preceding) or close.reindex(requested.union(pd.DatetimeIndex([preceding[-1]]))).isna().any():
+        raise ValueError('Incomplete TRI history or missing prior close')
+    aligned = close.reindex(pd.DatetimeIndex([preceding[-1]]).append(requested))
+    return aligned.pct_change(fill_method=None).reindex(requested)
 
 
 def baseline_target(name):

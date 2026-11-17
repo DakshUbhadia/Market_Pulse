@@ -1,10 +1,10 @@
 """Monthly signals at close t; fills use only the next exchange-session open.
 
-Fractional split-adjusted research units are supported. This V1 simulator uses
-price returns on both stocks and benchmark indices; cash dividends are excluded.
+Fractional split-adjusted research units are supported. Supplying corporate
+actions enables gross ex-date cash dividends on prior-close holdings.
 Unquoted holdings stop the run rather than silently deleting delisting losses.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ from quant.backtest.portfolio import PortfolioConfig, target_portfolio
 from quant.backtest.costs import CostModel
 from quant.backtest.execution import executable, affordable_quantity
 from quant.universe.eligible import session_index
+from quant.backtest.corporate_actions import dividend_events, dividend_credits, DIVIDEND_CONVENTION
 
 
 @dataclass
@@ -22,6 +23,7 @@ class BacktestResult:
     holdings: pd.DataFrame
     limitations: list
     skipped_orders: pd.DataFrame
+    dividends: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def monthly_signal_dates(sessions):
@@ -30,12 +32,13 @@ def monthly_signal_dates(sessions):
 
 
 def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=None,
-                 cost_model=None, target_builder=None):
+                 cost_model=None, target_builder=None, corporate_actions=None):
     config, costs = portfolio or PortfolioConfig(), cost_model or CostModel()
     dates = session_index(sessions)
     first = pd.Timestamp(start) if start is not None else dates[0]
     last = pd.Timestamp(end) if end is not None else dates[-1]
     fields = ['trade_date','instrument_id','series','adjusted_open','adjusted_close','adjustment_status','volume']
+    fields += [name for name in ('split_factor','raw_close') if name in prices]
     frame = prices.loc[prices.series.eq('EQ') & prices.instrument_id.isin(scores.instrument_id.unique()), fields].copy()
     frame['trade_date'] = pd.to_datetime(frame.trade_date)
     frame = frame.dropna(subset=['instrument_id'])
@@ -52,12 +55,20 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
     equity, trades, holdings, skipped = [], [], [], []
     prior_nav = config.initial_cash
     estimated_costs = False
+    events = dividend_events(corporate_actions)
+    dividend_records = []
     for i, day in enumerate(dates):
         if day < first or day > last:
             continue
         today = (frame.iloc[by_day[day]].set_index('instrument_id').to_dict('index') if day in by_day else {})
         signal_day = dates[i-1] if i > 0 else None
         traded_value = 0.0
+        cash_income = 0.0
+        if day in events:
+            credits = dividend_credits(events[day], positions, today, day)
+            dividend_records.extend(credits)
+            cash_income = sum(row['cash_credit'] for row in credits)
+            cash += cash_income
         if signal_day in signals and signal_day not in by_signal:
             raise ValueError(f'Missing research rankings at rebalance close {signal_day.date()}')
         if signal_day in signals and signal_day in by_signal:
@@ -122,11 +133,14 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
         if cash < -1e-7 or nav <= 0:
             raise ValueError('Invalid cash/NAV in simulation')
         equity.append(dict(trade_date=day, nav=nav, cash=cash, daily_return=nav/prior_nav-1,
-                           turnover=traded_value/prior_nav, holdings_count=len(positions)))
+                           turnover=traded_value/prior_nav, holdings_count=len(positions), dividend_cash=cash_income))
         prior_nav = nav
-    limitations = ['PRICE_RETURN: dividends excluded consistently; no total-return alpha claim',
+    limitations = [('PRICE_RETURN: dividends excluded consistently; no total-return alpha claim' if corporate_actions is None
+                    else 'TOTAL_RETURN: ' + DIVIDEND_CONVENTION + '; actual payment lag and withholding excluded'),
                    'Fractional split-adjusted units; targets capped at rebalance, weights may drift between rebalances']
     if estimated_costs:
         limitations.append('ESTIMATED_HISTORICAL_COSTS: not eligible for a validated investment conclusion')
     return BacktestResult(pd.DataFrame(equity), pd.DataFrame(trades), pd.DataFrame(holdings), limitations,
-        pd.DataFrame(skipped, columns=['trade_date','signal_date','instrument_id','side','reason']))
+        pd.DataFrame(skipped, columns=['trade_date','signal_date','instrument_id','side','reason']),
+        pd.DataFrame(dividend_records, columns=['trade_date','event_id','instrument_id','quantity',
+            'dividend_per_share','split_factor','cash_credit','convention']))

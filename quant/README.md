@@ -194,7 +194,7 @@ Fundamentals, delivery, flows and macro are not V1 prerequisites.
 ```powershell
 quant/.venv/Scripts/python.exe -m quant.pipeline.backfill_benchmarks --from 2010-01-01 --to 2026-11-09
 quant/.venv/Scripts/python.exe -m quant.pipeline.weekly_audit --to 2026-11-09 --rebuild-adjusted
-quant/.venv/Scripts/python.exe -m quant.pipeline.check_research_ready --as-of 2026-11-09
+quant/.venv/Scripts/python.exe -m quant.pipeline.check_research_ready --as-of 2026-11-09 --backtest-start 2016-01-01
 quant/.venv/Scripts/python.exe -m quant.pipeline.audit_fundamentals
 quant/.venv/Scripts/python.exe -m quant.pipeline.audit_identities --to 2026-11-12
 quant/.venv/Scripts/python.exe -m quant.pipeline.build_features --as-of 2026-11-09
@@ -216,7 +216,10 @@ Daily validation uses a successful weekly audit no older than seven days; it
 does not repeat a full 2010 audit. A failed rebase revokes adjustment readiness.
 
 The universe uses each day's observed EQ bars and ISIN identities, rather than
-today's constituents. It requires 252 elapsed exchange sessions, 95% trading
+today's constituents. EQ-series fund units are excluded using that date's observed
+INF ISIN, because EQ alone does not identify a company share. No current ETF list
+is backfilled into historical membership. Feature version 1.0.1 records this
+universe correction; Factor V1 weights remain unchanged. It requires 252 elapsed exchange sessions, 95% trading
 presence, median 60-session traded value of INR 50 million, and resolved actions.
 Missing sessions stay missing, historical delisted rows remain in the data, and
 old bars are never carried forward into current membership. ISIN changes require
@@ -254,24 +257,38 @@ Missing or suspended opens produce recorded skipped orders, never future fills.
 Missing holding valuations stop the run and require verified settlement or
 delisting evidence; the simulator does not silently discard a losing security.
 
-Stock and benchmark results consistently use **price returns**, excluding cash
-dividends. Sharpe uses zero risk-free return and Sortino uses a zero minimum
+The preserved baseline uses **price returns**, excluding cash dividends. Add
+`--total-return` to credit gross cash dividends on the ex-date, before open orders,
+to positions held at the previous close. Ex-date buyers receive no dividend;
+ex-date sellers retain the entitlement. Cash per raw share is converted to the
+simulator's split-adjusted units. Cash is not automatically reinvested. Actual
+payment lags and withholding taxes are excluded by this research convention.
+Total-return runs require complete official Nifty 50/Nifty 500 TRI history and
+prefer TRI for metrics; price benchmarks remain secondary. TRI is close-only: its
+first return uses the preceding session close, with no invented open. Factor V1
+features and 63-session IC labels retain their frozen **price-return** definitions.
+Consequently those IC diagnostics do not claim total-return predictive accuracy. Sharpe uses zero risk-free return and Sortino uses a zero minimum
 acceptable return; both assumptions are recorded in every run. These results do
-not establish total-return alpha. Nifty 50 and Nifty
-500 are gross price-index comparisons; liquid equal weight, 12-1 momentum top-25
+not establish investment value. Nifty 50 and Nifty
+500 are gross index comparisons; liquid equal weight, 12-1 momentum top-25
 and inverse-volatility baselines share next-open execution and transaction costs.
 The baseline population is independent of Factor V1 feature completeness.
 
-The cost model deducts brokerage, delivery STT, exchange/IPFT charges, SEBI fees,
-GST, stamp duty, DP charges and slippage. Source-backed schedules cover October
-2024 onward with zero delivery brokerage and INR 13 DP before GST per sell.
-Earlier periods require `--estimate-historical-costs`: the conservative proxy
-uses 3 bps brokerage, 0.345 bps exchange, 0.02 bps SEBI, 18% indirect-tax stress,
-INR 13.50 DP, and 3 bps stamp duty on both sides before July 2020 (1.5 bps buy
-thereafter). These proxies are **not historical legal rates** or a claim about
-a particular broker/state. All runs record the assumption; no estimated-cost
-result can be labeled fully validated. Custom dated schedules can be supplied
-through the Python `CostModel` API.
+The cost model separates brokerage, delivery STT, exchange/IPFT charges, SEBI
+fees, service tax or GST, stamp duty, DP charges, slippage and market impact.
+`cost-schedule.json` exports effective dates (exclusive end), product, side,
+charge type, rate type, rate, source reference and verification for every input.
+Schedules include the June 2016 service-tax change, July 2017 GST transition,
+July 2020 buyer-only stamp duty, and exchange-fee eras. Source-backed exchange
+schedules cover October 2024 onward. Brokerage, DP, slippage and market impact
+remain explicit research assumptions. DP is charged per instrument sale day.
+
+Earlier eras require `--estimate-historical-costs` and retain
+`cost_status=HISTORICAL_COST_PROXY`: broker volume slabs, historical SEBI fees,
+state stamp arrangements and broker contracts have not all been verified.
+Individual known tax changes do not certify the whole schedule. Proxies begin in
+2016; there is no arbitrary-date modern-rate fallback. A custom unverified
+schedule also requires opt-in. No proxy-cost run can pass production validation.
 
 Primary references: [NSE delivery STT circular](https://nsearchives.nseindia.com/content/circulars/FATAX63809.pdf),
 [NSE October 2024 fees](https://nsearchives.nseindia.com/content/circulars/FA64232.pdf),
@@ -300,7 +317,18 @@ is exploratory and cannot pass the stress hurdle.
 Evidence reports assess OOS excess, IC, monotonic deciles, after-cost return,
 stress survival, yearly concentration, turnover, IR and Sharpe, coverage and all
 five baselines. Sector concentration remains unassessed until historical
-point-in-time classifications exist. `NOT_VALIDATED` may mean failed or
+point-in-time classifications exist. Return clusters provide a separate PIT
+diagnostic: 252 trailing session returns, correlation distance sqrt(2(1-rho)),
+single-link hierarchical clustering cut at distance 1.0. Membership is local to
+each signal date. Actual holdings produce maximum cluster weight, cluster count,
+effective cluster count and unknown weight. Missing histories stay unassessed.
+The initial 40% maximum cluster weight is diagnostic and does not change holdings.
+Evidence is split into STATISTICAL_SIGNAL, ECONOMICALLY_VIABLE and
+PRODUCTION_VALIDATED. Economic checks include a declared 40% drawdown ceiling.
+Production additionally requires verified costs, assessed PIT diversification,
+PIT data, completed forward testing and immutable recommendation history. The
+existing combined research hurdle remains available; public recommendations and
+ML promotion remain disabled. `NOT_VALIDATED` may mean failed or
 unmeasurable criteria; inspect the individual checks. V2 fundamentals, Elastic
 Net, paper trading, Mongo publishing and the `/quant` UI remain conditional on
 the guide's evidence gates. None is enabled by an attractive backtest alone.
@@ -313,8 +341,12 @@ However, the original NSE bhavcopy CSVs through June 21, 2011 omit the ISIN colu
 The first ISIN-bearing session is June 22, 2011. All 369 earlier sessions remain
 unresolved: they are retained in raw/normalized history, but cannot enter a
 resolved historical universe. A current identity table cannot repair this gap
-without dated evidence. Full 2010 research readiness therefore remains
-`NOT_READY`; actual rankings and empirical backtest conclusions remain gated.
+without dated evidence. Window-aware research readiness now preserves the full
+raw audit while accepting a later trustworthy signal window. Verified identity
+coverage begins on June 22, 2011; the conservative 252-return warmup ends on
+June 25, 2012. The local 2016+ window passed all readiness checks on November 13,
+2026. Later identity gaps, corrupt data or a failed rebuild revoke readiness.
+Data readiness does not imply validated model performance.
 
 `audit_identities` writes a dated identity-coverage report with yearly row counts,
 the affected sessions, and original archive URLs/SHA-256 values. NSE documents
@@ -322,4 +354,74 @@ symbol/series/ISIN masters in its [historical data specification](https://nsearc
 No verified historical master archive for these dates has been loaded. Recovery
 requires authoritative effective-date mapping evidence. Using today's master or
 backfilling the first future ISIN would introduce unsupported identity assumptions.
-The 2010 requirement is preserved; no partial-history exception is implicit.
+The complete 2010-present raw audit remains required. Early unresolved rows are
+retained and excluded from eligible universes; this is not a historical ISIN backfill.
+
+
+## Validation sequence and reproducibility
+
+The current-fixes plan is staged. Finish the Factor V1 evidence before developing
+Factor V2, Elastic Net, forward publishing or the quant UI. The local fundamental
+audit currently has zero filings; no reliable PIT fundamental window is established.
+The audit never treats filing counts alone as proof of universe-wide coverage.
+
+```powershell
+quant/.venv/Scripts/python.exe -m quant.pipeline.weekly_audit --to 2026-11-12 --rebuild-adjusted
+quant/.venv/Scripts/python.exe -m quant.pipeline.check_research_ready --as-of 2026-11-12 --backtest-start 2016-01-01
+quant/.venv/Scripts/python.exe -m quant.pipeline.audit_fundamentals
+quant/.venv/Scripts/python.exe -m quant.pipeline.build_features --as-of 2026-11-12
+quant/.venv/Scripts/python.exe -m quant.pipeline.run_factor_v1 --as-of 2026-11-12
+quant/.venv/Scripts/python.exe -m quant.pipeline.backfill_tri --from 2015-12-01 --to 2026-11-12
+quant/.venv/Scripts/python.exe -m quant.pipeline.run_backtest --from 2016-01-01 --to 2026-11-12 --estimate-historical-costs --total-return --hypothesis "Unchanged V1 with dated costs, cluster diagnostics and cash dividends"
+```
+
+Readiness reports expose raw start, observed verified identity start, first
+possible signal session, requested start and identity gaps. Boundaries and the
+default warmup live in `quant/boundaries.py`. Each successful full audit freezes
+an integrity artifact under `data/research/integrity`. Subsequent feature/ranking
+commands may reuse a proof only after cryptographic verification of the complete
+input inventory, relevant pipeline state, gate source files and dependencies.
+A changed, added or deleted partition invalidates it. The explicit readiness CLI
+always performs a fresh full audit.
+
+Full rebuilds flush raw identity buckets in small row groups, disable insertion
+order preservation, bound DuckDB memory/spill and release consumed scratch
+inputs as adjusted output grows. Use a data drive with sufficient working space.
+Recomputed partitions with exactly equal contents are not rewritten. A partial
+or failed rebuild keeps readiness revoked. Frozen inputs should be preserved
+with the corresponding source snapshot, rather than relying on a git hash alone.
+
+Every research attempt freezes model/feature versions, weights, universe,
+portfolio and run parameters before the readiness gate. The append-only
+`data/research/experiments.csv` records both STARTED and final outcome events
+under the same experiment ID, including blocked attempts. Immutable run JSON
+lives under `data/research/experiments`. Supply an explicit `--hypothesis` for
+later experiments. Do not tune after viewing the first result.
+
+Official TRI provenance is archived under `data/raw/nifty_indices/tri`; normalized
+history is separate in `data/normalized/index_tri`, never mixed with price indices.
+Yearly downloads must exactly match the official exchange calendar before
+publication. Source: [Nifty Indices historical data](https://niftyindices.com/reports/historical-data).
+Historical indirect-tax references: [CBIC stock-broking FAQ](https://cbic-gst.gov.in/sectoral-faq.html),
+[Government KKC history](https://ies.gov.in/arthapedia/concept/krishi-kalyan-cess-kkc),
+and [NSE April 2023 charges](https://nsearchives.nseindia.com/content/circulars/FA56129.pdf).
+
+
+On this workstation, C: ran out of working space during the full-history rebuild.
+A separate working copy was created at `D:/Market_Pulse_Quant_20261113/data` and
+`QUANT_DATA_DIR` in the local root `.env` was updated to that path. The original
+C: data and original frozen baseline inputs were retained. This is local setup;
+no D: dependency is hardcoded in the application or package defaults.
+
+
+The first original 2016+ baseline stopped at ESSAROIL on February 10, 2016:
+its held ISIN had no quoted bar after February 9. The failure is retained in the
+experiment ledger and frozen baseline archive. An official
+[exchange-filed exit letter](https://www.bseindia.com/xml-data/corpfiling/CorpAttachment/2016/2/0A5854E1_0389_40E7_8D3E_685DC087DF90_165210.pdf)
+confirms the suspension/delisting and a conditional tender offer. A cash offer is
+not evidence of an automatic payment date or an executable exchange fill. Full
+OOS portfolio conclusions remain blocked until PIT lifecycle and settlement
+accounting can value held delistings without invented exits or retrospective
+exclusions. The first snapshot's top 30 passed their checks, but a wider review
+found 55 fund units among 493 ranked EQ instruments. The stock-only universe fix
+preserves that snapshot in revisions and bumps the feature version.

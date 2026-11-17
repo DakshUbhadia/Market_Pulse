@@ -10,15 +10,25 @@ from quant.data.http import atomic_write
 from quant.pipeline.audit_prices import audit_prices
 from quant.pipeline.update_calendar import read_calendar
 from quant.pipeline.state import PipelineState
+from quant.boundaries import RAW_PRICE_START, identity_boundary
+from quant.universe.config import UniverseConfig
 
 
-def check_research_ready(config, *, as_of=None, history_start=date(2010, 1, 1), write=True):
+def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
+                         requested_backtest_start=None, min_history_sessions=None, write=True):
+    from quant.pipeline.research_proof import fingerprint_inputs, save_readiness_proof
     from quant.pipeline.cli import completed_day
     target = as_of or completed_day(config)
+    requested_start = requested_backtest_start or target
+    minimum = UniverseConfig().min_history_sessions if min_history_sessions is None else min_history_sessions
+    if requested_start > target:
+        raise ValueError('Requested research start is after as_of')
+    fingerprint = fingerprint_inputs(config,target) if write else None
     checks = dict(price_history_ready=False, calendar_ready=False, adjustments_ready=False,
                   index_history_ready=False, identity_ready=False, corporate_actions_ready=False)
     errors, excluded, unresolved_sessions = {}, set(), []
     coverage, latest = 0.0, None
+    expected, resolved_sessions = [], []
     try:
         calendar = read_calendar(config, history_start, target)
         expected = sorted(calendar.loc[calendar.is_trading_session, 'trade_date'].dt.date)
@@ -50,8 +60,10 @@ def check_research_ready(config, *, as_of=None, history_start=date(2010, 1, 1), 
                                 raise ValueError(f'{name} invalid OHLC')
                     else:
                         traded_EQ = frame[frame.series.eq('EQ') & frame.volume.gt(0)]
-                        if traded_EQ.empty or not traded_EQ.instrument_id.notna().any():
+                        if traded_EQ.empty or not traded_EQ.instrument_id.notna().all():
                             unresolved_sessions.append(str(day))
+                        else:
+                            resolved_sessions.append(day)
                         if frame.duplicated(['trade_date', 'symbol', 'series']).any():
                             raise ValueError('Duplicate adjusted price keys')
                         # Bhavcopies retain nontraded securities with zero OHLC.
@@ -59,9 +71,9 @@ def check_research_ready(config, *, as_of=None, history_start=date(2010, 1, 1), 
                         # traded EQ bars or invent opens for suspended names.
                         ok = frame[frame.adjustment_status.eq('OK') & frame.series.eq('EQ') & frame.volume.gt(0)]
                         fields = ['adjusted_open', 'adjusted_high', 'adjusted_low', 'adjusted_close']
-                        if ok.empty and str(day) in unresolved_sessions:
-                            raise ValueError('No resolved trading EQ identities; dated historical master evidence required')
-                        if ok.empty or not np.isfinite(ok[fields].to_numpy(dtype=float)).all() or (ok[fields] <= 0).any().any():
+                        unresolved_only = (not traded_EQ.empty and traded_EQ.instrument_id.isna().all()
+                            and traded_EQ.adjustment_status.eq('UNRESOLVED_IDENTITY').all())
+                        if (ok.empty and not unresolved_only) or not np.isfinite(ok[fields].to_numpy(dtype=float)).all() or (ok[fields] <= 0).any().any():
                             raise ValueError('Adjusted executable OHLC unavailable')
                         if ((ok.adjusted_high < ok[['adjusted_open', 'adjusted_close', 'adjusted_low']].max(axis=1))
                                 | (ok.adjusted_low > ok[['adjusted_open', 'adjusted_close', 'adjusted_high']].min(axis=1))).any():
@@ -87,11 +99,16 @@ def check_research_ready(config, *, as_of=None, history_start=date(2010, 1, 1), 
                                     and (ids.valid_from <= ids.valid_to).all())
     except (OSError, ValueError, KeyError) as error:
         errors['identity'] = str(error)
-    if unresolved_sessions:
+    boundary = identity_boundary(expected, resolved_sessions, requested_start, minimum)
+    if not boundary['identity_ready_for_requested_window']:
         checks['identity_ready'] = False
-        errors['historical_identity'] = dict(sessions_without_resolved_EQ=len(unresolved_sessions),
+    identity_diagnostics = None
+    if unresolved_sessions:
+        identity_diagnostics = dict(sessions_without_resolved_EQ=len(unresolved_sessions),
             first_date=unresolved_sessions[0], last_date=unresolved_sessions[-1],
             remediation='Load dated historical symbol/series/ISIN evidence; do not backfill from today\'s master')
+        if not boundary['identity_ready_for_requested_window']:
+            errors['historical_identity'] = identity_diagnostics
     state = PipelineState(config).data
     actions = state.get('nse_corporate_actions', {})
     checks['corporate_actions_ready'] = (actions.get('status') == 'READY'
@@ -131,17 +148,29 @@ def check_research_ready(config, *, as_of=None, history_start=date(2010, 1, 1), 
         checks['adjustments_ready'] = False
         errors['adjustment_version'] = str(error)
     checks = {name: bool(value) for name, value in checks.items()}
+    if write and fingerprint != fingerprint_inputs(config,target):
+        checks['inputs_unchanged_during_audit'] = False
+        errors['input_change'] = 'Research inputs or gate sources changed during the audit; repeat it'
     result = dict(status='READY' if all(checks.values()) else 'NOT_READY', **checks,
-                  full_history_start=str(history_start), latest_session=str(latest) if latest else None,
+                  full_history_start=str(history_start), raw_price_start=audit.get('earliest_date', str(history_start)) if expected and 'audit' in locals() else None,
+                  **boundary, latest_session=str(latest) if latest else None,
+                  historical_identity_diagnostics=identity_diagnostics,
                   as_of=str(target), coverage=coverage, excluded_symbols=sorted(excluded), errors=errors,
                   generated_at=datetime.now(ZoneInfo(config.timezone)).isoformat(), recommendations_allowed=False)
     if write:
         atomic_write(config.data_dir / 'reports/research-readiness.json', json.dumps(result, indent=2).encode())
+        if history_start == RAW_PRICE_START:
+            save_readiness_proof(config,result,fingerprint)
     return result
 
 
-def require_research_ready(config, as_of):
-    result = check_research_ready(config, as_of=as_of)
+def require_research_ready(config, as_of, requested_backtest_start=None):
+    from quant.pipeline.research_proof import cached_readiness
+    requested_start = requested_backtest_start or as_of
+    result = cached_readiness(config,as_of,requested_start,UniverseConfig().min_history_sessions)
+    if result is not None:
+        return result
+    result = check_research_ready(config, as_of=as_of, requested_backtest_start=requested_backtest_start)
     if result['status'] != 'READY':
         raise ValueError('Research data NOT_READY; inspect data/reports/research-readiness.json')
     return result
@@ -151,8 +180,10 @@ def main():
     from quant.pipeline.cli import parser_config
     parser, config = parser_config(__doc__)
     parser.add_argument('--as-of', type=date.fromisoformat)
+    parser.add_argument('--backtest-start', type=date.fromisoformat)
     args = parser.parse_args()
-    result = check_research_ready(args.config(config), as_of=args.as_of or args.end)
+    result = check_research_ready(args.config(config), as_of=args.as_of or args.end,
+                                  requested_backtest_start=args.backtest_start)
     print(json.dumps({k: v for k, v in result.items() if k not in ('excluded_symbols', 'errors')}, indent=2))
     return 0 if result['status'] == 'READY' else 1
 
