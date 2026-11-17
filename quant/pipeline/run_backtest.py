@@ -1,4 +1,6 @@
 """Gated, reproducible V1 research and rolling OOS evaluation; no publishing."""
+from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
+from quant.lifecycle.state import UnvaluedHolding
 import json
 from datetime import date
 
@@ -12,7 +14,7 @@ from quant.backtest.metrics import performance_metrics, diagnostics
 from quant.backtest.bootstrap import block_bootstrap
 from quant.backtest.walk_forward import walk_forward, rolling_windows
 from quant.backtest.robustness import robustness_runs
-from quant.backtest.report import evaluate_evidence
+from quant.backtest.report import evaluate_evidence, BASELINE_DIAGNOSTIC_RULE
 from quant.backtest.artifacts import save_backtest
 from quant.features.matrix import build_feature_matrix
 from quant.features.labels import forward_labels
@@ -22,15 +24,16 @@ from quant.pipeline.check_research_ready import require_research_ready
 from quant.storage.research_store import input_manifest, load_research_data, write_json, verify_manifest
 from quant.version import MODEL_VERSION, FEATURE_VERSION, COST_MODEL_VERSION
 from quant.version import PORTFOLIO_ACCOUNTING_VERSION
+from quant.version import EVIDENCE_POLICY_VERSION
 from quant.backtest.lifecycle import LIFECYCLE_POLICY_VERSION, SCENARIOS
 from quant.pipeline.backfill_lifecycle import load_lifecycle
-from quant.risk.clusters import rebalance_cluster_diagnostics, CLUSTER_VERSION
+from quant.risk.clusters import rebalance_cluster_diagnostics, cluster_sensitivity, CLUSTER_VERSION
 from quant.storage.duckdb_store import query_dataset
 from quant.storage.parquet_store import write_parquet
 
 
 def run_research(config, start, end, *, estimate_historical_costs=False, full_robustness=True,
-                 hypothesis='Frozen untuned Factor V1 baseline', total_return=False, lifecycle_scenario='KNOWN_EVENT_NEXT_OPEN_EXIT'):
+                 hypothesis='Frozen untuned Factor V1 baseline', total_return=False, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO):
     from quant.backtest.experiments import begin_experiment, append_experiment
     record, experiment_path = begin_experiment(config, hypothesis, dict(start=str(start), end=str(end),
         estimate_historical_costs=estimate_historical_costs, full_robustness=full_robustness,
@@ -40,6 +43,10 @@ def run_research(config, start, end, *, estimate_historical_costs=False, full_ro
             estimate_historical_costs=estimate_historical_costs, full_robustness=full_robustness, total_return=total_return, lifecycle_scenario=lifecycle_scenario)
     except Exception as error:
         record.update(result_summary=f'{type(error).__name__}: {error}', decision='BLOCKED')
+        if isinstance(error,UnvaluedHolding):
+            record['parameters']['unresolved_held_lifecycle_events'] = 1
+            record['parameters']['blocked_holding'] = dict(instrument_id=error.instrument_id,
+                trade_date=str(error.trade_date.date()),lifecycle_scenario=lifecycle_scenario)
         write_json(experiment_path / 'outcome.json', record)
         append_experiment(config, record)
         raise
@@ -49,7 +56,7 @@ def run_research(config, start, end, *, estimate_historical_costs=False, full_ro
     return path, evidence
 
 
-def _run_research(config, start, end, *, estimate_historical_costs=False, full_robustness=True, total_return=False, lifecycle_scenario='KNOWN_EVENT_NEXT_OPEN_EXIT'):
+def _run_research(config, start, end, *, estimate_historical_costs=False, full_robustness=True, total_return=False, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO):
     readiness = require_research_ready(config, end, start)
     manifest = input_manifest(config, end)
     prices, benchmark_frame, sessions, delivery, indices = load_research_data(config, end)
@@ -76,8 +83,10 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
     for name in ('NIFTY 50', 'NIFTY 500'):
         returns = (total_return_index_returns(tri[tri.index_name.eq(name + ' TRI')], result.equity_curve.trade_date, sessions)
                    if total_return else index_returns(indices[indices.index_name == name], result.equity_curve.trade_date))
-        baselines[name] = {'total_return': float((1+returns).prod()-1),
-            'basis': 'GROSS_TOTAL_RETURN_INDEX' if total_return else 'GROSS_PRICE_INDEX'}
+        benchmark_curve = pd.DataFrame(dict(trade_date=result.equity_curve.trade_date,
+            daily_return=returns.to_numpy(),nav=portfolio.initial_cash*(1+returns.to_numpy()).cumprod(),turnover=0.))
+        baselines[name],_ = performance_metrics(benchmark_curve,market)
+        baselines[name]['basis'] = 'GROSS_TOTAL_RETURN_INDEX' if total_return else 'GROSS_PRICE_INDEX'
     for name in ('liquid_equal_weight', 'momentum_12_1_top25', 'inverse_volatility'):
         alternative = run_backtest(prices, features, sessions, start=start, end=end, portfolio=portfolio,
                                    cost_model=costs, target_builder=baseline_target(name), corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario)
@@ -90,7 +99,7 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
     evidence = evaluate_evidence(metrics, ic_summary, deciles, stress.get('cost_1_5x', {}).get('metrics', {}),
         result.equity_curve, market, costs_verified=all(costs.schedule(day).verified for day in result.equity_curve.trade_date), baselines=baselines,
         cluster_concentration=float(exposure.max_cluster_weight.max()) if not exposure.empty else None,
-        clusters_assessed=assessed, pit_data_verified=readiness['status']=='READY')
+        clusters_assessed=assessed, pit_data_verified=readiness['status']=='READY' and readiness.get('lifecycle_data_ready',False))
     verify_manifest(config, manifest)
     run_config = dict(**manifest, model_version=MODEL_VERSION, feature_version=FEATURE_VERSION,
         cost_model_version=COST_MODEL_VERSION, date_range={'from': str(start), 'to': str(end)},
@@ -99,6 +108,8 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         return_basis='TOTAL_RETURN' if total_return else 'PRICE', label_return_basis='PRICE',
         portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION if total_return else 'price_1.0.0',
         cluster_version=CLUSTER_VERSION, lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,
+        evidence_policy_version=EVIDENCE_POLICY_VERSION,
+        baseline_comparison_policy=BASELINE_DIAGNOSTIC_RULE,
         lifecycle_scenario=lifecycle_scenario, lifecycle_event_count=len(lifecycle_events),
         risk_free_rate_annual=0.0, sortino_minimum_acceptable_return=0.0,
         turnover_definition='ANNUALIZED_TWO_WAY_TRADED_NOTIONAL_OVER_NAV',
@@ -107,9 +118,15 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
     path = save_backtest(root, config=run_config, metrics=metrics, result=result, ic=ic, deciles=deciles,
                           rolling=rolling, evidence=evidence, extra=stress)
     write_json(path / 'benchmarks.json', baselines)
+    write_json(path / 'baseline-comparison.json',evidence['baseline_comparison'])
+    write_parquet(pd.DataFrame(evidence['baseline_comparison']),path/'baseline-comparison.parquet')
     write_json(path / 'cost-schedule.json', costs.schedule_table())
     write_parquet(clusters, path / 'clusters.parquet')
     write_json(path / 'cluster-exposure.json', exposure.to_dict('records'))
+    sensitivity = cluster_sensitivity(prices,scores,sessions,result.holdings,result.equity_curve)
+    write_parquet(sensitivity,path/'cluster-sensitivity.parquet')
+    from quant.pipeline.audit_lifecycle import audit_lifecycle
+    write_json(path/'lifecycle-audit.json',audit_lifecycle(config,as_of=end,holdings=result.holdings,write=False))
     if total_return:
         write_json(path / 'secondary-price-benchmarks.json', {name:float((1+index_returns(
             indices[indices.index_name.eq(name)],result.equity_curve.trade_date)).prod()-1) for name in ('NIFTY 50','NIFTY 500')})
@@ -140,7 +157,7 @@ def main():
     parser.set_defaults(start=DEFAULT_BACKTEST_START)
     parser.add_argument('--estimate-historical-costs', action='store_true')
     parser.add_argument('--total-return', action='store_true', help='Gross ex-date cash dividends, evaluated against official TRI')
-    parser.add_argument('--lifecycle-scenario', choices=SCENARIOS, default='KNOWN_EVENT_NEXT_OPEN_EXIT')
+    parser.add_argument('--lifecycle-scenario', choices=SCENARIOS, default=DEFAULT_LIFECYCLE_SCENARIO)
     parser.add_argument('--hypothesis', default='Frozen untuned Factor V1 baseline')
     parser.add_argument('--skip-robustness', action='store_true', help='Exploratory run only; cannot pass the cost-stress hurdle')
     args = parser.parse_args()
@@ -152,6 +169,8 @@ def main():
         write_json(args.config(config).data_dir / 'reports' / f'backtest-blocked-{args.end}.json',
             dict(status='BLOCKED', date_range={'from':str(args.start),'to':str(args.end)}, reason=str(error),
                  public_recommendations_allowed=False, ML_authorized=False,
+                 lifecycle_scenario=args.lifecycle_scenario,lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,
+                 unresolved_held_lifecycle_events=1 if isinstance(error,UnvaluedHolding) else None,
                  estimate_historical_costs=args.estimate_historical_costs))
         print(f'Research run blocked: {error}')
         return 1

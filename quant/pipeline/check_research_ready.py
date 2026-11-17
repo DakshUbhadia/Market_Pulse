@@ -148,6 +148,11 @@ def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
         checks['adjustments_ready'] = False
         errors['adjustment_version'] = str(error)
     checks = {name: bool(value) for name, value in checks.items()}
+    from quant.pipeline.audit_lifecycle import audit_lifecycle
+    lifecycle = audit_lifecycle(config,as_of=target,write=False)
+    if lifecycle['status'] == 'BLOCKED':
+        checks['lifecycle_evidence_integrity'] = False
+        errors['lifecycle'] = lifecycle['errors']
     if write and fingerprint != fingerprint_inputs(config,target):
         checks['inputs_unchanged_during_audit'] = False
         errors['input_change'] = 'Research inputs or gate sources changed during the audit; repeat it'
@@ -156,6 +161,10 @@ def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
                   **boundary, latest_session=str(latest) if latest else None,
                   historical_identity_diagnostics=identity_diagnostics,
                   as_of=str(target), coverage=coverage, excluded_symbols=sorted(excluded), errors=errors,
+                  lifecycle_data_ready=lifecycle['lifecycle_data_ready'],
+                  lifecycle_coverage_start=lifecycle['lifecycle_coverage_start'],
+                  unresolved_held_lifecycle_events=lifecycle['unresolved_held_lifecycle_events'],
+                  production_research_ready=all(checks.values()) and lifecycle['lifecycle_data_ready'],
                   generated_at=datetime.now(ZoneInfo(config.timezone)).isoformat(), recommendations_allowed=False)
     if write:
         atomic_write(config.data_dir / 'reports/research-readiness.json', json.dumps(result, indent=2).encode())

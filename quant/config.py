@@ -22,6 +22,12 @@ def boolean(value):
     return value.strip().lower() == 'true'
 
 
+def fetch_env(source):
+    """New acquisition switches override their deprecated ENABLE aliases."""
+    return field(default_factory=lambda: boolean(os.getenv('QUANT_FETCH_' + source,
+        os.getenv('QUANT_ENABLE_' + source, 'false'))))
+
+
 @dataclass(frozen=True)
 class Config:
     data_dir: Path = env('QUANT_DATA_DIR', './data', Path)
@@ -35,17 +41,23 @@ class Config:
     rbi_api_base: str = env('QUANT_RBI_API_BASE', 'https://data-api.dbie.rbihub.in')
     mongo_publish: bool = env('QUANT_MONGO_PUBLISH', 'false', boolean)
     enable_angel: bool = env('QUANT_ENABLE_ANGEL', 'false', boolean)
-    enable_fundamentals: bool = env('QUANT_ENABLE_FUNDAMENTALS', 'false', boolean)
-    enable_shareholding: bool = env('QUANT_ENABLE_SHAREHOLDING', 'false', boolean)
-    enable_announcements: bool = env('QUANT_ENABLE_ANNOUNCEMENTS', 'false', boolean)
-    enable_fiidii: bool = env('QUANT_ENABLE_FIIDII', 'false', boolean)
-    enable_rbi: bool = env('QUANT_ENABLE_RBI', 'false', boolean)
+    enable_fundamentals: bool = fetch_env('FUNDAMENTALS')
+    enable_shareholding: bool = fetch_env('SHAREHOLDING')
+    enable_announcements: bool = fetch_env('ANNOUNCEMENTS')
+    enable_fiidii: bool = fetch_env('FIIDII')
+    enable_rbi: bool = fetch_env('RBI')
+    fetch_lifecycle: bool = env('QUANT_FETCH_LIFECYCLE', 'false', boolean)
+    model_use_fundamentals: bool = env('QUANT_MODEL_USE_FUNDAMENTALS', 'false', boolean)
+    model_use_ownership: bool = env('QUANT_MODEL_USE_OWNERSHIP', 'false', boolean)
+    model_use_macro: bool = env('QUANT_MODEL_USE_MACRO', 'false', boolean)
     enable_derivatives: bool = env('QUANT_ENABLE_DERIVATIVES', 'false', boolean)
 
     def __post_init__(self):
         path = Path(self.data_dir).expanduser()
         object.__setattr__(self, 'data_dir', path if path.is_absolute() else REPO_ROOT / path)
         ZoneInfo(self.timezone)
+        if self.model_use_fundamentals or self.model_use_ownership or self.model_use_macro:
+            raise ValueError('Optional model inputs remain gated until their PIT research is validated')
         if not math.isfinite(self.timeout) or self.timeout <= 0:
             raise ValueError('QUANT_HTTP_TIMEOUT_SECONDS must be positive and finite')
         if not math.isfinite(self.request_interval) or self.request_interval < 0:
@@ -56,6 +68,26 @@ class Config:
             url = urlsplit(getattr(self, name))
             if url.scheme != 'https' or not url.hostname or url.username or url.password or url.query or url.fragment:
                 raise ValueError(f'{name} must be an HTTPS base URL without credentials or query parameters')
+
+    @property
+    def fetch_fundamentals(self):
+        return self.enable_fundamentals
+
+    @property
+    def fetch_shareholding(self):
+        return self.enable_shareholding
+
+    @property
+    def fetch_announcements(self):
+        return self.enable_announcements
+
+    @property
+    def fetch_fiidii(self):
+        return self.enable_fiidii
+
+    @property
+    def fetch_rbi(self):
+        return self.enable_rbi
 
     @property
     def prices_dir(self) -> Path:

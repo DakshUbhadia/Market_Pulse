@@ -13,13 +13,15 @@ from quant.pipeline.check_research_ready import require_research_ready
 from quant.models.factor_v1 import score_factor_v1
 from quant.storage.parquet_store import write_parquet
 from quant.storage.research_store import verify_manifest, write_json, digest_file
-from quant.version import MODEL_VERSION
+from quant.version import MODEL_VERSION, FEATURE_VERSION
 
 
 def run_factor_v1(config, as_of):
     require_research_ready(config, as_of)
     feature_path = config.data_dir / 'features/factor_v1' / f'year={as_of.year}' / f'{as_of}.parquet'
     manifest = json.loads(feature_path.with_suffix('.manifest.json').read_text())
+    if manifest.get('feature_version') != FEATURE_VERSION:
+        raise ValueError('Feature version changed; regenerate the feature snapshot while retaining its revision')
     verify_manifest(config, manifest)
     if digest_file(feature_path) != manifest['feature_sha256']:
         raise ValueError('Feature artifact checksum differs from its manifest')

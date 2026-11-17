@@ -4,6 +4,7 @@ Fractional split-adjusted research units are supported. Supplying corporate
 actions enables gross ex-date cash dividends on prior-close holdings.
 Unquoted holdings stop the run rather than silently deleting delisting losses.
 """
+from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -14,7 +15,7 @@ from quant.backtest.costs import CostModel
 from quant.backtest.execution import executable, affordable_quantity
 from quant.universe.eligible import session_index
 from quant.backtest.corporate_actions import dividend_events, dividend_credits, DIVIDEND_CONVENTION
-from quant.backtest.lifecycle import Lifecycle, simulation_time, share_factor
+from quant.backtest.lifecycle import Lifecycle, simulation_time, share_factor, UnvaluedHolding
 
 
 @dataclass
@@ -35,7 +36,7 @@ def monthly_signal_dates(sessions):
 
 def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=None,
                  cost_model=None, target_builder=None, corporate_actions=None, lifecycle_events=None,
-                 lifecycle_scenario='KNOWN_EVENT_NEXT_OPEN_EXIT'):
+                 lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO):
     config, costs = portfolio or PortfolioConfig(), cost_model or CostModel()
     dates = session_index(sessions)
     first = pd.Timestamp(start) if start is not None else dates[0]
@@ -189,7 +190,7 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
         for identity, quantity in positions.items():
             bar = today.get(identity)
             if bar is None or not np.isfinite(bar.get('adjusted_close', np.nan)) or bar['adjusted_close'] <= 0:
-                raise ValueError(f'Unvalued holding {identity} on {day.date()}; verified delisting/settlement evidence required')
+                raise UnvaluedHolding(identity,day)
             value = quantity*bar['adjusted_close']
             nav += value
             holdings.append(dict(trade_date=day, instrument_id=identity, quantity=quantity, value=value))

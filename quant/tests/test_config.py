@@ -44,3 +44,21 @@ def test_invalid_configuration(overrides):
 def test_paths_do_not_depend_on_scheduler_working_directory(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert Config(data_dir=Path('data')).data_dir == REPO_ROOT / 'data'
+
+
+def test_fetch_switch_overrides_legacy_enable_without_activating_model(monkeypatch):
+    monkeypatch.setenv('QUANT_ENABLE_FUNDAMENTALS','false')
+    monkeypatch.setenv('QUANT_FETCH_FUNDAMENTALS','true')
+    monkeypatch.setenv('QUANT_MODEL_USE_FUNDAMENTALS','false')
+    config = Config()
+    assert config.fetch_fundamentals and config.enable_fundamentals
+    assert not config.model_use_fundamentals
+    monkeypatch.setenv('QUANT_FETCH_FUNDAMENTALS','false')
+    monkeypatch.setenv('QUANT_ENABLE_FUNDAMENTALS','true')
+    assert not Config().fetch_fundamentals
+
+
+def test_optional_model_inputs_cannot_be_activated_without_validation(monkeypatch):
+    monkeypatch.setenv('QUANT_MODEL_USE_MACRO','true')
+    with pytest.raises(ValueError,match='gated'):
+        Config()

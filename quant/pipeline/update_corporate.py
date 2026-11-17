@@ -68,9 +68,9 @@ def _update_sources(config, start, end, *, actions=True, filings=True):
     history = pd.read_parquet(path) if path.exists() else pd.DataFrame()
     report = {}
     sources = [('corporate_actions', True, nse_corporate_actions, nse_corporate_actions.parse_corporate_actions),
-               ('financials', config.enable_fundamentals, nse_financials, nse_financials.parse_financial_filings),
-               ('shareholding', config.enable_shareholding, nse_shareholding, nse_shareholding.parse_shareholding),
-               ('announcements', config.enable_announcements, nse_announcements, nse_announcements.parse_announcements)]
+               ('financials', config.fetch_fundamentals, nse_financials, nse_financials.parse_financial_filings),
+               ('shareholding', config.fetch_shareholding, nse_shareholding, nse_shareholding.parse_shareholding),
+               ('announcements', config.fetch_announcements, nse_announcements, nse_announcements.parse_announcements)]
     sources = [source for source in sources if (actions if source[0] == 'corporate_actions' else filings)]
     with NseClient(config) as client:
         for name, enabled, adapter, parse in sources:

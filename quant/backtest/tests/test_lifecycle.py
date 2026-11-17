@@ -152,6 +152,7 @@ def test_essaroil_original_notice_exits_existing_holding_without_assuming_tender
     prices = prices[prices.trade_date < '2016-02-10']
     costs = CostModel(slippage_bps=0,schedules=(replace(zero_cost().schedules[0],effective_from=date(2015,1,1)),))
     result = run_backtest(prices,scores,sessions,cost_model=costs,lifecycle_events=normalize_events([record]),
+        lifecycle_scenario='KNOWN_EVENT_NEXT_OPEN_EXIT',
         portfolio=PortfolioConfig(holdings=1,max_weight=1,entry_percentile=0,exit_percentile=0))
     sales = result.trades.query("side == 'SELL'")
     assert sales.trade_date.tolist() == [pd.Timestamp('2016-01-28')]

@@ -21,6 +21,9 @@ def save_backtest(root, *, config, metrics, result, ic, deciles, rolling, eviden
         write_json(path / 'robustness.json', extra)
     report = ('# Factor V1 research report\n\n'
               f'Evidence status: {evidence["status"]}. Public recommendations remain disabled.\n\n'
+              f'Evidence policy: {config.get("evidence_policy_version", "UNVERSIONED")}. '
+              f'Lifecycle policy/scenario: {config.get("lifecycle_policy_version", "UNVERSIONED")} / '
+              f'{config.get("lifecycle_scenario", "UNSPECIFIED")}.\n\n'
               f'Score percentiles are ranks, not profit probabilities. Return basis: {config.get("return_basis", "PRICE")}.\n\n'
               + '\n'.join(f'- {key}: {value}' for key, value in metrics.items()) + '\n\n'
               + '\n'.join(f'- {key}: {"PASS" if value else "UNMET"}' for key, value in evidence['checks'].items())

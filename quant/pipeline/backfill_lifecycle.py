@@ -21,6 +21,10 @@ def ingest_reviewed(config, records):
         if not canonical or record.get('instrument_id') != canonical:
             raise ValueError('Reviewed lifecycle identity must match the canonical ISIN identity')
         url = record['source_url']
+        from urllib.parse import urlsplit
+        source_exchange = 'BSE' if urlsplit(url).hostname == 'www.bseindia.com' else 'NSE'
+        if record.get('source_exchange') != source_exchange:
+            raise ValueError('Lifecycle source exchange does not match its official host')
         if url not in sources:
             sources[url] = archive_source(config,url)
             time.sleep(config.request_interval)

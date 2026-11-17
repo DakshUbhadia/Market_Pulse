@@ -1,6 +1,6 @@
 """Build a research snapshot only after independent readiness checks pass."""
 import argparse
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from dataclasses import replace
 
@@ -32,10 +32,11 @@ def build_features(config, as_of):
     write_parquet(frame, target)
     write_parquet(frame[['as_of', 'instrument_id', 'symbol', 'series', 'eligible', 'history_sessions',
                          'trading_presence_252', 'adv60', 'exclusion_reason',
-                         'lifecycle_status','entry_allowed','lifecycle_reason']],
+                         'lifecycle_status','entry_allowed','lifecycle_reason','entry_block_reason','offer_available']],
                   config.data_dir / 'normalized/universe' / f'year={as_of.year}' / f'{as_of}.parquet')
     manifest = input_manifest(config, as_of)
-    manifest.update(feature_version=FEATURE_VERSION, universe_settings=vars(universe), feature_sha256=digest_file(target))
+    manifest.update(feature_version=FEATURE_VERSION, universe_settings=vars(universe), feature_sha256=digest_file(target),
+                    generated_at=datetime.now(timezone.utc).isoformat())
     write_json(target.with_suffix('.manifest.json'), manifest)
     return frame, target
 

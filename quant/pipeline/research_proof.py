@@ -14,21 +14,31 @@ from quant.data.http import atomic_write
 
 GATE_SOURCES = ('boundaries.py','universe/config.py','pipeline/check_research_ready.py',
     'pipeline/research_proof.py','pipeline/audit_prices.py','pipeline/update_calendar.py',
-    'features/adjustments.py','data/security_history.py','data/nse_calendar.py','data/nse_bhavcopy.py')
+    'features/adjustments.py','data/security_history.py','data/nse_calendar.py','data/nse_bhavcopy.py',
+    'pipeline/audit_lifecycle.py','pipeline/backfill_lifecycle.py','lifecycle/schema.py','lifecycle/state.py','lifecycle/policy.py')
 
 
 def fingerprint_inputs(config, as_of):
     from quant.config import REPO_ROOT
     files = []
-    for dataset in ('prices','adjusted_prices','indices','corporate_actions'):
+    for dataset in ('prices','adjusted_prices','indices','corporate_actions','lifecycle'):
         for path in sorted((config.data_dir/'normalized'/dataset).rglob('*.parquet')):
-            if dataset == 'corporate_actions' or path.stem <= str(as_of):
+            if dataset in ('corporate_actions','lifecycle') or path.stem <= str(as_of):
                 files.append(path)
+    import pandas as pd
+    lifecycle_path = config.data_dir/'normalized/lifecycle/events.parquet'
+    if lifecycle_path.exists():
+        try:
+            lifecycle = pd.read_parquet(lifecycle_path)
+            files.extend(config.data_dir/path for path in lifecycle.get('raw_path',pd.Series(dtype=str)).dropna().unique()
+                if (config.data_dir/path).resolve().is_relative_to(config.data_dir.resolve()))
+        except (OSError,ValueError):
+            pass  # The evidence audit reports malformed normalized data; retain its file digest.
     files += [config.calendar_path, config.data_dir/'normalized/security_history/identities.parquet']
     state_path = config.data_dir/'state/pipeline_state.json'
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     return dict(inputs={str(path.relative_to(config.data_dir)):digest_file(path) for path in files if path.is_file()},
-        pipeline_state={key:state.get(key) for key in ('adjusted_prices','nse_corporate_actions')},
+        pipeline_state={key:state.get(key) for key in ('adjusted_prices','nse_corporate_actions','lifecycle')},
         dependencies={name:importlib.metadata.version(name) for name in ('numpy','pandas','pyarrow')},
         gate_sources={name:digest_file(REPO_ROOT/'quant'/name) for name in GATE_SOURCES})
 

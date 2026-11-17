@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import numpy as np
 import pandas as pd
 
@@ -35,6 +33,7 @@ def build_feature_matrix(prices, benchmark, sessions, *, universe_config=None, d
     for panel in panels(prices, sessions):
         base = eligibility(panel, universe_config)
         base['lifecycle_status'], base['entry_allowed'], base['lifecycle_reason'] = 'ACTIVE', True, ''
+        base['entry_block_reason'], base['offer_available'] = '', False
         if lifecycle_events is not None and not lifecycle_events.empty:
             from quant.backtest.lifecycle import overlay_universe
             base = overlay_universe(base.reset_index(), lifecycle_events).set_index('as_of')
@@ -71,5 +70,4 @@ def build_feature_matrix(prices, benchmark, sessions, *, universe_config=None, d
         result = result[result.as_of == pd.Timestamp(as_of)].copy()
     result = normalize_cross_section(result, SCORE_FEATURES)
     result['feature_version'] = FEATURE_VERSION
-    result['generated_at'] = datetime.now(timezone.utc).isoformat()
     return result

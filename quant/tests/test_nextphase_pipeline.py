@@ -37,7 +37,7 @@ def test_clean_pipeline_builds_adjustments_before_enabled_filing_stage(tmp_path,
         return run
     monkeypatch.setattr(pipeline,'refresh_calendar',refresh)
     monkeypatch.setattr(pipeline,'update_market_eod',market)
-    for attribute,name in [('update_corporate_actions','actions'),('build_adjusted','adjusted'),
+    for attribute,name in [('update_corporate_actions','actions'),('update_lifecycle','lifecycle'),('build_adjusted','adjusted'),
                            ('update_corporate_filings','filings'),('update_macro','macro')]:
         monkeypatch.setattr(pipeline,attribute,stage(name))
     def validate(*args, **kwargs):
@@ -46,7 +46,7 @@ def test_clean_pipeline_builds_adjustments_before_enabled_filing_stage(tmp_path,
         return {'status':'NOT_READY' if failed_source else 'READY'}
     monkeypatch.setattr(pipeline,'validate_data',validate)
     result=pipeline.update_all(config,date(2024,7,8),date(2024,7,9))
-    assert calls == ['calendar','market','actions','adjusted','filings','macro','validate']
+    assert calls == ['calendar','market','actions','lifecycle','adjusted','filings','macro','validate']
     assert result['status']==('NOT_READY' if failed_source else 'READY')
 
 

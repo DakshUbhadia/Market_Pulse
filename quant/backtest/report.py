@@ -2,6 +2,26 @@
 import numpy as np
 import pandas as pd
 from quant.backtest.validation import validation_levels
+from quant.version import EVIDENCE_POLICY_VERSION
+
+BASELINE_METRICS = ('annualized_excess_return','information_ratio','Sharpe','max_drawdown','turnover')
+BASELINE_DIAGNOSTIC_RULE = 'DIAGNOSTIC_ONLY_LEGACY_GATE_UNCHANGED'
+
+
+def baseline_comparison(metrics, baselines):
+    """Predeclared diagnostics; legacy promotion gates remain unchanged."""
+    rows = []
+    for name, measured in sorted((baselines or {}).items()):
+        row = dict(baseline=name, evidence_policy_version=EVIDENCE_POLICY_VERSION,
+                   rule=BASELINE_DIAGNOSTIC_RULE)
+        for key in BASELINE_METRICS:
+            strategy, baseline = metrics.get(key), measured.get(key)
+            valid = strategy is not None and baseline is not None and np.isfinite([strategy,baseline]).all()
+            row.update({f'strategy_{key}':strategy,f'baseline_{key}':baseline,
+                        f'difference_{key}':float(strategy-baseline) if valid else None})
+        row['assessed'] = all(row[f'difference_{key}'] is not None for key in BASELINE_METRICS)
+        rows.append(row)
+    return rows
 
 
 def evaluate_evidence(metrics, ic_summary, deciles, cost_stress, curve, benchmark, *,
@@ -42,6 +62,9 @@ def evaluate_evidence(metrics, ic_summary, deciles, cost_stress, curve, benchmar
         recommendation_history_tracked=recommendation_history_tracked)
     research_checks = {key:value for key,value in conditions.items() if key != 'diversified_across_sectors'}
     return dict(status='PASSES_RESEARCH_HURDLES' if all(research_checks.values()) else 'NOT_VALIDATED',
+                evidence_policy_version=EVIDENCE_POLICY_VERSION,
+                baseline_comparison=baseline_comparison(metrics,baselines),
+                legacy_beats_all_baselines=conditions['beats_simple_baselines'],
                 checks=conditions, decile_monotonicity=monotonic, largest_positive_year_fraction=dominance,
                 validation_levels=levels,
                 highest_validation_level=next((name for name in reversed(list(levels)) if levels[name]['passed']), 'NOT_VALIDATED'),

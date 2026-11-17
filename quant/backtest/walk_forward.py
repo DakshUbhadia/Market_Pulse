@@ -1,3 +1,4 @@
+from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from datetime import date
 
 import pandas as pd
@@ -20,7 +21,7 @@ def purged_training_labels(labels, window, sessions, *, embargo_sessions=63):
                   & labels.label_available & (labels.exit_date <= cutoff)].copy()
 
 
-def walk_forward(prices, scores, labels, sessions, *, windows=None, portfolio=None, cost_model=None, corporate_actions=None, lifecycle_events=None, lifecycle_scenario='KNOWN_EVENT_NEXT_OPEN_EXIT'):
+def walk_forward(prices, scores, labels, sessions, *, windows=None, portfolio=None, cost_model=None, corporate_actions=None, lifecycle_events=None, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO):
     from quant.backtest.engine import run_backtest
     output = []
     for window in windows or rolling_windows():
