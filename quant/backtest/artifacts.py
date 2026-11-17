@@ -6,6 +6,31 @@ from quant.storage.research_store import write_json
 from quant.data.http import atomic_write
 
 
+def seal_backtest(path):
+    """Written last, after all diagnostics/windows; incomplete runs have no seal."""
+    from quant.storage.research_store import digest_file
+    files = {item.relative_to(path).as_posix(): digest_file(item)
+             for item in sorted(path.rglob('*')) if item.is_file() and item != path/'completion.json'}
+    write_json(path/'completion.json', dict(status='COMPLETE', files=files))
+
+
+def verify_backtest_seal(path):
+    import json
+    from pathlib import Path
+    from quant.storage.research_store import digest_file
+    path = Path(path).resolve()
+    seal = json.loads((path/'completion.json').read_text(encoding='utf-8'))
+    current = {item.relative_to(path).as_posix() for item in path.rglob('*')
+               if item.is_file() and item != path/'completion.json'}
+    if seal.get('status') != 'COMPLETE' or set(seal.get('files', {})) != current:
+        raise ValueError('Backtest artifact set is incomplete or changed')
+    for name, expected in seal['files'].items():
+        item = (path/name).resolve()
+        if not item.is_relative_to(path) or digest_file(item) != expected:
+            raise ValueError('Frozen backtest artifact checksum changed')
+    return seal
+
+
 def save_backtest(root, *, config, metrics, result, ic, deciles, rolling, evidence, extra=None):
     path = root / ('run-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S') + '-' + uuid4().hex[:8])
     path.mkdir(parents=True, exist_ok=False)

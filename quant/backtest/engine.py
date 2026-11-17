@@ -4,7 +4,7 @@ Fractional split-adjusted research units are supported. Supplying corporate
 actions enables gross ex-date cash dividends on prior-close holdings.
 Unquoted holdings stop the run rather than silently deleting delisting losses.
 """
-from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
+from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO, resolve_lifecycle_events
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -36,7 +36,10 @@ def monthly_signal_dates(sessions):
 
 def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=None,
                  cost_model=None, target_builder=None, corporate_actions=None, lifecycle_events=None,
-                 lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO):
+                 lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO, lifecycle=None, signal_dates=None):
+    # Session order: state/economics, executable holdings, orders, dividends,
+    # valuation. Dividend entitlement is captured from the preceding close.
+    lifecycle_events = resolve_lifecycle_events(lifecycle, lifecycle_events)
     config, costs = portfolio or PortfolioConfig(), cost_model or CostModel()
     dates = session_index(sessions)
     first = pd.Timestamp(start) if start is not None else dates[0]
@@ -58,7 +61,7 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
     # only today's bars and each monthly cross section during a simulation.
     by_day = frame.groupby('trade_date', sort=False).indices
     by_signal = {pd.Timestamp(day): locations for day, locations in scores.groupby('as_of', sort=False).indices.items()}
-    signals = monthly_signal_dates(dates)
+    signals = monthly_signal_dates(dates) if signal_dates is None else set(pd.to_datetime(signal_dates))
     cash, positions, basis = config.initial_cash, {}, {}
     equity, trades, holdings, skipped = [], [], [], []
     prior_nav = config.initial_cash
@@ -66,6 +69,7 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
     events = dividend_events(corporate_actions)
     dividend_records = []
     lifecycle_records, processed, last_bars = [], set(), {}
+    offer_entitlements = {}
     for i, day in enumerate(dates):
         if day < first or day > last:
             continue
@@ -73,22 +77,36 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
         signal_day = dates[i-1] if i > 0 else None
         traded_value = 0.0
         cash_income = 0.0
-        if day in events:
-            credits = dividend_credits(events[day], positions, today, day)
-            dividend_records.extend(credits)
-            cash_income = sum(row['cash_credit'] for row in credits)
-            cash += cash_income
+        credits = dividend_credits(events[day], positions.copy(), {**last_bars, **today}, day) if day in events else []
         opening = simulation_time(day, '09:15')
+        if lifecycle_scenario == 'FORMAL_EXIT_OFFER_PARTICIPATION':
+            # Only shares already held by the offer deadline may participate.
+            # Later purchases cannot acquire a retroactive tender entitlement.
+            for identity in policy.by_identity:
+                for offer in policy.known(identity,opening).to_dict('records'):
+                    key = offer['lifecycle_event_id']
+                    if (offer['event_type'] in ('EXIT_OFFER','TENDER_OFFER') and offer['optional']
+                            and key not in offer_entitlements and pd.notna(offer['offer_end'])
+                            and offer['offer_end'] <= day):
+                        quantity = positions.get(identity,0.)
+                        offer_entitlements[key] = quantity*share_factor(last_bars.get(identity,{})) if quantity else 0.
         for identity in list(positions):
             for event in policy.resolutions(identity, opening, processed):
                 quantity = positions[identity]
-                raw_quantity = quantity * share_factor(today.get(identity, last_bars.get(identity, {})))
+                factor = share_factor(today.get(identity, last_bars.get(identity, {})))
+                raw_quantity = quantity * factor
                 kind = event['event_type']
+                if kind in ('EXIT_OFFER','TENDER_OFFER'):
+                    raw_quantity = min(raw_quantity,offer_entitlements.get(event['lifecycle_event_id'],0.))
+                    if raw_quantity <= 0:
+                        continue
+                    quantity = raw_quantity/factor
                 credit, successor_quantity = 0., 0.
-                if kind == 'CASH_SETTLEMENT':
-                    if not np.isfinite(event['cash_per_raw_share']) or event['cash_per_raw_share'] < 0:
+                if kind in ('CASH_SETTLEMENT', 'EXIT_OFFER', 'TENDER_OFFER'):
+                    amount = event['cash_per_raw_share'] if kind == 'CASH_SETTLEMENT' else event['offer_price']
+                    if not np.isfinite(amount) or amount < 0:
                         raise ValueError('Invalid mandatory settlement')
-                    credit = raw_quantity * event['cash_per_raw_share']
+                    credit = raw_quantity * amount
                     cash += credit
                 elif kind == 'ZERO_RECOVERY':
                     if event['cash_per_raw_share'] != 0:
@@ -102,12 +120,19 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
                     existing = positions.get(successor, 0.)
                     basis[successor] = (quantity*basis[identity] + existing*basis.get(successor,0)) / (existing+successor_quantity)
                     positions[successor] = existing+successor_quantity
-                positions.pop(identity)
-                basis.pop(identity, None)
+                original_basis = quantity * basis[identity]
+                remaining = positions[identity]-quantity
+                if remaining <= 1e-10:
+                    positions.pop(identity)
+                    basis.pop(identity, None)
+                else:
+                    positions[identity] = remaining
                 processed.add(event['lifecycle_event_id'])
                 lifecycle_records.append(dict(trade_date=day, instrument_id=identity,
                     event_id=event['lifecycle_event_id'], event_type=kind, raw_quantity=raw_quantity,
-                    cash_credit=credit, successor_quantity=successor_quantity, scenario=lifecycle_scenario))
+                    cash_credit=credit, successor_quantity=successor_quantity,
+                    successor_instrument_id=event.get('successor_instrument_id'),
+                    transferred_cost_basis=original_basis, scenario=lifecycle_scenario))
         # Dated risk exits run every session, before monthly portfolio orders.
         if lifecycle_scenario == 'KNOWN_EVENT_NEXT_OPEN_EXIT':
             for identity in list(positions):
@@ -169,7 +194,7 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
                     basis.pop(identity, None)
             for identity, amount in target.items():
                 bar = today.get(identity)
-                if not executable(bar):
+                if not executable(bar) or not policy.status(identity, opening)['trading_allowed']:
                     continue
                 price = bar['adjusted_open']
                 desired = max(0, amount/price - positions.get(identity, 0))
@@ -186,24 +211,36 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
                 trades.append(dict(trade_date=day, signal_date=signal_day, instrument_id=identity, side='BUY',
                     quantity=quantity, price=price, turnover=turnover, realized_pnl=np.nan, **fee))
                 traded_value += turnover
+        dividend_records.extend(credits)
+        cash_income = sum(row['cash_credit'] for row in credits)
+        cash += cash_income
         nav = cash
-        for identity, quantity in positions.items():
+        for identity, quantity in list(positions.items()):
             bar = today.get(identity)
-            if bar is None or not np.isfinite(bar.get('adjusted_close', np.nan)) or bar['adjusted_close'] <= 0:
+            if (not executable(bar) or not policy.status(identity, simulation_time(day,'15:30'))['trading_allowed']
+                    or not np.isfinite(bar.get('adjusted_close', np.nan)) or bar['adjusted_close'] <= 0):
+                if lifecycle_scenario == 'ZERO_RECOVERY_STRESS':
+                    lifecycle_records.append(dict(trade_date=day, instrument_id=identity,
+                        event_id=None, event_type='HYPOTHETICAL_ZERO_RECOVERY', cash_credit=0.,
+                        written_off_cost_basis=quantity*basis[identity], scenario=lifecycle_scenario))
+                    positions.pop(identity)
+                    basis.pop(identity)
+                    continue
                 raise UnvaluedHolding(identity,day)
             value = quantity*bar['adjusted_close']
             nav += value
             holdings.append(dict(trade_date=day, instrument_id=identity, quantity=quantity, value=value))
         last_bars.update(today)
-        if cash < -1e-7 or nav <= 0:
+        if cash < -1e-7 or nav < 0 or (nav == 0 and lifecycle_scenario != 'ZERO_RECOVERY_STRESS'):
             raise ValueError('Invalid cash/NAV in simulation')
-        equity.append(dict(trade_date=day, nav=nav, cash=cash, daily_return=nav/prior_nav-1,
-                           turnover=traded_value/prior_nav, holdings_count=len(positions), dividend_cash=cash_income))
+        equity.append(dict(trade_date=day, nav=nav, cash=cash, daily_return=nav/prior_nav-1 if prior_nav else 0.,
+                           turnover=traded_value/prior_nav if prior_nav else 0., holdings_count=len(positions), dividend_cash=cash_income))
         prior_nav = nav
     limitations = [('PRICE_RETURN: dividends excluded consistently; no total-return alpha claim' if corporate_actions is None
                     else 'TOTAL_RETURN: ' + DIVIDEND_CONVENTION + '; actual payment lag and withholding excluded'),
                    'Fractional split-adjusted units; targets capped at rebalance, weights may drift between rebalances']
-    limitations.append(f'LIFECYCLE_SCENARIO: {lifecycle_scenario}; optional tenders never assumed; unresolved valuations block')
+    limitations.append(f'LIFECYCLE_SCENARIO: {lifecycle_scenario}; optional participation only in explicit offer scenario; '
+                       'zero write-offs only in explicit stress scenario; otherwise unresolved valuations block')
     if estimated_costs:
         limitations.append('ESTIMATED_HISTORICAL_COSTS: not eligible for a validated investment conclusion')
     return BacktestResult(pd.DataFrame(equity), pd.DataFrame(trades), pd.DataFrame(holdings), limitations,

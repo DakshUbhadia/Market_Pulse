@@ -14,9 +14,9 @@ class UnvaluedHolding(ValueError):
 RISK_TYPES = set('SUSPENSION_ANNOUNCED SUSPENDED DELISTING_ANNOUNCED DELISTED '
     'VOLUNTARY_DELISTING COMPULSORY_DELISTING MERGER_ANNOUNCED MERGER_EFFECTIVE '
     'SHARE_CONVERSION CASH_SETTLEMENT EXIT_OFFER DEMERGER SECURITY_CANCELLED ZERO_RECOVERY DISSEMINATION_BOARD UNKNOWN'.split())
-STATES = {'SUSPENSION_ANNOUNCED':'SUSPENSION_ANNOUNCED', 'SUSPENDED':'SUSPENDED',
-    'DELISTING_ANNOUNCED':'DELISTING_ANNOUNCED','DELISTED':'DELISTED',
-    'VOLUNTARY_DELISTING':'DELISTING_ANNOUNCED','COMPULSORY_DELISTING':'DELISTED',
+STATES = {'SUSPENSION_ANNOUNCED':'SUSPENSION_PENDING', 'SUSPENDED':'SUSPENDED',
+    'DELISTING_ANNOUNCED':'DELISTING_PENDING','DELISTED':'DELISTED',
+    'VOLUNTARY_DELISTING':'DELISTING_PENDING','COMPULSORY_DELISTING':'DELISTED',
     'MERGER_ANNOUNCED':'MERGER_PENDING','MERGER_EFFECTIVE':'MERGER_PENDING',
     'CASH_SETTLEMENT':'CASH_SETTLED','SHARE_CONVERSION':'CONVERTED',
     'RELISTING':'RELISTED','SUCCESSOR_LISTING':'ACTIVE','TENDER_OFFER':'TENDER_AVAILABLE',
@@ -68,13 +68,19 @@ class Lifecycle:
             if kind in RISK_TYPES:
                 risk, reason = True, kind
             if event.effective_date <= day or kind.endswith('_ANNOUNCED'):
-                state = STATES.get(kind, 'UNKNOWN')
+                state = STATES.get(kind, 'UNRESOLVED')
             elif kind in RISK_TYPES:
-                state = 'SUSPENSION_ANNOUNCED' if 'SUSPEN' in kind else 'DELISTING_ANNOUNCED'
+                state = ('SUSPENSION_PENDING' if 'SUSPEN' in kind else
+                         'MERGER_PENDING' if kind in ('MERGER_EFFECTIVE','SHARE_CONVERSION') else
+                         'DELISTING_PENDING' if 'DELIST' in kind else 'LIFECYCLE_RISK_ANNOUNCED')
         offers = known[known.event_type.isin(['EXIT_OFFER','TENDER_OFFER'])] if not known.empty else known
         offer_available = bool(not offers.empty and ((offers.offer_start <= day) & (offers.offer_end >= day)).any())
+        active = offers[(offers.offer_start <= day) & (offers.offer_end >= day)] if not offers.empty else offers
+        offer = active.iloc[-1] if not active.empty else {}
         return dict(lifecycle_status=state, entry_allowed=not risk, lifecycle_reason=reason,
-                    entry_block_reason=reason, trading_allowed=tradable, offer_available=offer_available)
+                    entry_block_reason=reason, trading_allowed=tradable, offer_available=offer_available,
+                    offer_price=offer.get('offer_price', np.nan), offer_start=offer.get('offer_start', pd.NaT),
+                    offer_end=offer.get('offer_end', pd.NaT))
 
     def resolutions(self, identity, timestamp, processed):
         known = self.known(identity, timestamp)
@@ -83,6 +89,15 @@ class Lifecycle:
         day = timestamp.tz_convert('Asia/Kolkata').tz_localize(None).normalize()
         rows = []
         for row in known.to_dict('records'):
+            if (self.scenario == 'FORMAL_EXIT_OFFER_PARTICIPATION'
+                    and row['event_type'] in ('EXIT_OFFER','TENDER_OFFER') and row['optional']
+                    and row['lifecycle_event_id'] not in processed
+                    and pd.notna(row['settlement_date']) and row['settlement_date'] == day
+                    and pd.notna(row['offer_start']) and row['announced_at'] <= simulation_time(row['offer_end'], '23:59:59')
+                    and row['offer_start'] <= row['offer_end'] <= day
+                    and np.isfinite(row['offer_price']) and row['offer_price'] >= 0):
+                rows.append(row)
+                continue
             if row['lifecycle_event_id'] in processed or not row['mandatory'] or row['optional']:
                 continue
             due = row['settlement_date'] if row['event_type'] == 'CASH_SETTLEMENT' else row['effective_date']
@@ -107,11 +122,13 @@ def overlay_universe(frame, events):
     result = frame.copy()
     result['lifecycle_status'], result['entry_allowed'], result['lifecycle_reason'] = 'ACTIVE', True, ''
     result['trading_allowed'], result['offer_available'], result['entry_block_reason'] = True, False, ''
+    result['offer_price'] = np.nan
+    result['offer_start'], result['offer_end'] = pd.NaT, pd.NaT
     affected = result.instrument_id.isin(policy.by_identity)
     for index,row in result.loc[affected].iterrows():
         for key,value in policy.status(row.instrument_id, simulation_time(row.as_of,'15:30')).items():
             result.at[index,key] = value
     blocked = ~result.entry_allowed
-    result.loc[blocked & result.exclusion_reason.eq(''), 'exclusion_reason'] = 'KNOWN_LIFECYCLE_RISK'
+    result.loc[blocked & result.exclusion_reason.eq(''), 'exclusion_reason'] = 'LIFECYCLE_RISK'
     result['eligible'] &= result.entry_allowed
     return result

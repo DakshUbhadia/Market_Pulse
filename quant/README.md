@@ -511,7 +511,7 @@ Implemented in this pass:
   undocumented zero recoveries are introduced.
 - Lifecycle events and policy/scenario metadata in full research, baselines,
   robustness, walk-forward and manifests. Adding lifecycle evidence invalidates
-  an earlier feature manifest. Feature version is `factor_v1_features_1.0.2`.
+  an earlier feature manifest. See `quant/version.py` for current versions.
 - An ESSAROIL fixture tied to the checksum of the official February 16, 2016 exit
   letter. Its publication cutoff conservatively uses document-day end. The
   letter does not prove the January notice's publication timestamp, and the
@@ -533,11 +533,13 @@ The importer downloads and archives the document, verifies its bytes, and fills
 raw provenance. Existing event IDs cannot be overwritten. Publication timing is
 never substituted with the download timestamp.
 
-The default `KNOWN_EVENT_NEXT_OPEN_EXIT` scenario applies deterministic risk exits
-plus documented mandatory economics. `MANDATORY_ONLY` disables proactive risk
-exits for sensitivity analysis. Optional offer participation and hypothetical
-zero recovery are deliberately rejected until their independent assumption and
-execution policies exist. Both scenarios retain the investability overlay.
+The primary baseline is `MANDATORY_ECONOMIC_EVENTS_ONLY`; `MANDATORY_ONLY` is its
+alias. `KNOWN_EVENT_NEXT_OPEN_EXIT` additionally exits dated risks at the next
+executable open. All scenarios retain the investability overlay. Explicit
+`FORMAL_EXIT_OFFER_PARTICIPATION` requires an optional offer with a documented
+price, deadline and settlement date, and shares held by the deadline. It cannot
+bridge an unvalued suspension interval. `ZERO_RECOVERY_STRESS` explicitly records
+unvalued holdings as hypothetical write-offs; it supplies no recovery evidence.
 
 Operational gates still require verification outside unit tests: authenticated
 GitHub branch protection for the `Quant unit tests` check, a green remote run,
@@ -569,3 +571,9 @@ The implementation commit is local. A non-interactive push failed because no
 GitHub credentials were available. Remote CI and branch protection must be
 verified after authentication is restored; historical baseline and later stages
 remain gated until then.
+
+The completion and forward-testing implementation, current operational blockers,
+and commands are documented in [PHASE_V1_STATUS.md](PHASE_V1_STATUS.md). The new
+paper pipeline accepts completed, checksummed price and total-return baselines,
+freezes signals before the next exchange open, reuses historical accounting,
+and appends matured outcomes separately. It never backfills forward signals.

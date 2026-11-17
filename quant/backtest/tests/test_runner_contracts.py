@@ -82,3 +82,34 @@ def test_total_return_walk_forward_preserves_actions_and_policy(monkeypatch):
                  lifecycle_scenario='KNOWN_EVENT_NEXT_OPEN_EXIT')
     assert len(calls)==1 and calls[0]['corporate_actions'] is actions
     assert calls[0]['lifecycle_scenario'] == 'KNOWN_EVENT_NEXT_OPEN_EXIT'
+
+
+@pytest.mark.parametrize('module_name',['robustness','walk_forward'])
+def test_documented_lifecycle_keyword_reaches_each_simulation(monkeypatch,module_name):
+    from quant.backtest import robustness, walk_forward
+    from quant.universe.config import UniverseConfig
+    module = robustness if module_name == 'robustness' else walk_forward
+    actions,events = pd.DataFrame({'action':[1]}),pd.DataFrame({'event':[2]})
+    dates = pd.bdate_range('2024-01-01',periods=4)
+    calls = []
+    curve = pd.DataFrame(dict(trade_date=dates,nav=1e6,daily_return=0.,turnover=0.))
+    def simulation(*args,**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(equity_curve=curve,trades=pd.DataFrame())
+    if module_name == 'robustness':
+        monkeypatch.setattr(module,'run_backtest',simulation)
+        monkeypatch.setattr(module,'build_feature_matrix',lambda *a,**k:pd.DataFrame())
+        monkeypatch.setattr(module,'score_factor_v1',lambda f:f)
+        module.robustness_runs(pd.DataFrame(),pd.DataFrame(),pd.Series(0.,index=dates),dates,
+            start=dates[0],end=dates[-1],portfolio=PortfolioConfig(),cost_model=CostModel(),
+            universe_config=UniverseConfig(),benchmark_frame=pd.DataFrame(),lifecycle=events,corporate_actions=actions)
+        assert len(calls) == 13
+    else:
+        monkeypatch.setattr('quant.backtest.engine.run_backtest',simulation)
+        module.walk_forward(pd.DataFrame(),pd.DataFrame(dict(as_of=dates)),
+            pd.DataFrame(columns=['as_of','exit_date','label_available']),dates,
+            windows=[dict(train_start=date(2018,1,1),train_end=date(2023,12,31),
+                          test_start=date(2024,1,1),test_end=date(2024,12,31))],
+            lifecycle=events,corporate_actions=actions)
+        assert len(calls) == 1
+    assert all(row['lifecycle_events'] is events and row['corporate_actions'] is actions for row in calls)

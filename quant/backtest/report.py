@@ -40,6 +40,7 @@ def evaluate_evidence(metrics, ic_summary, deciles, cost_stress, curve, benchmar
     conditions = dict(
         positive_OOS_excess=metrics.get('annualized_excess_return', 0) > 0,
         positive_mean_IC=(ic_summary.get('mean_IC') or 0) > 0,
+        positive_median_IC=(ic_summary.get('median_IC') or 0) > 0,
         majority_positive_IC=(ic_summary.get('positive_IC_fraction') or 0) >= .55,
         monotonic_deciles=bool(np.isfinite(monotonic) and monotonic >= .7 and values.iloc[-1] > values.iloc[0]),
         positive_net_performance=metrics.get('annualized_return', 0) > 0,
@@ -48,6 +49,7 @@ def evaluate_evidence(metrics, ic_summary, deciles, cost_stress, curve, benchmar
         diversified_across_sectors=sector_concentration is not None and sector_concentration <= .4,
         diversified_across_clusters=bool(clusters_assessed and cluster_concentration is not None and cluster_concentration <= .4),
         manageable_turnover=metrics.get('turnover', float('inf')) <= 12,
+        reasonable_drawdown=metrics.get('max_drawdown', -1) >= -.4,
         OOS_IR_above_0_5=(metrics.get('information_ratio') or 0) > .5,
         net_Sharpe_above_0_7=(metrics.get('Sharpe') or 0) > .7,
         adequate_OOS_length=metrics.get('observations', 0) >= 504,

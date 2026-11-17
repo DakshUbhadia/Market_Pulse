@@ -34,7 +34,9 @@ def archive_source(config, url, session=None):
         suffix = 'bin'
     path = config.data_dir/'raw/lifecycle'/f'{now:%Y%m%dT%H%M%S%f}-{uuid4().hex[:8]}.{suffix}'
     atomic_write(path,response.content)
-    metadata = dict(source_url=url,source_sha256=sha256(response.content),raw_path=str(path.relative_to(config.data_dir)),
+    metadata = dict(source_url=url,source_sha256=sha256(response.content),sha256=sha256(response.content),
+                    source_exchange='BSE' if parsed.hostname == 'www.bseindia.com' else 'NSE',
+                    raw_path=str(path.relative_to(config.data_dir)),fetched_at=now.isoformat(),
                     first_seen_at=now.isoformat(),http_status=response.status_code)
     write_json(path.with_suffix(path.suffix+'.metadata.json'),metadata)
     response.raise_for_status()

@@ -15,7 +15,7 @@ from quant.backtest.bootstrap import block_bootstrap
 from quant.backtest.walk_forward import walk_forward, rolling_windows
 from quant.backtest.robustness import robustness_runs
 from quant.backtest.report import evaluate_evidence, BASELINE_DIAGNOSTIC_RULE
-from quant.backtest.artifacts import save_backtest
+from quant.backtest.artifacts import save_backtest, seal_backtest
 from quant.features.matrix import build_feature_matrix
 from quant.features.labels import forward_labels
 from quant.models.factor_v1 import score_factor_v1
@@ -147,6 +147,7 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
                         embargo_sessions=window['embargo_sessions']), metrics=measured, result=window['result'],
             ic=ic_window, deciles=deciles_window, rolling=rolling_window,
             evidence={'status':'WINDOW_ONLY_NOT_INDEPENDENT_VALIDATION','checks':{}})
+    seal_backtest(path)
     return path, evidence
 
 

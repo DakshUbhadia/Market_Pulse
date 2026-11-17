@@ -28,6 +28,7 @@
 # Local Markdown documentation and implementation plans
 *.md
 !quant/README.md
+!quant/PHASE_V1_STATUS.md
 
 # debug
 npm-debug.log*
@@ -51,6 +52,7 @@ next-env.d.ts
 # Quant research data and local Python environment
 /data/
 /quant/.venv/
+/.venv/
 **/.pytest_cache/
 **/__pycache__/
 *.pyc

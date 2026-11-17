@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pandas as pd
 
 from quant.universe.eligible import panels, eligibility
 from quant.features.momentum import momentum_features
@@ -34,6 +35,8 @@ def build_feature_matrix(prices, benchmark, sessions, *, universe_config=None, d
         base = eligibility(panel, universe_config)
         base['lifecycle_status'], base['entry_allowed'], base['lifecycle_reason'] = 'ACTIVE', True, ''
         base['entry_block_reason'], base['offer_available'] = '', False
+        base['offer_price'] = np.nan
+        base['offer_start'], base['offer_end'] = pd.NaT, pd.NaT
         if lifecycle_events is not None and not lifecycle_events.empty:
             from quant.backtest.lifecycle import overlay_universe
             base = overlay_universe(base.reset_index(), lifecycle_events).set_index('as_of')

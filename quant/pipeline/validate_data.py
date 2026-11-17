@@ -21,6 +21,10 @@ def validate_data(config, start, end, *, run_errors=None, incremental=False):
     now = datetime.now(ZoneInfo(config.timezone))
     sources = source_status(config, state.data, as_of=now.date())
     errors = dict(run_errors or {})
+    from quant.pipeline.audit_lifecycle import audit_lifecycle
+    lifecycle = audit_lifecycle(config,as_of=end,write=False)
+    if lifecycle['status'] == 'BLOCKED':
+        errors['lifecycle'] = '; '.join(lifecycle['errors']) or 'Unresolved held lifecycle evidence'
     sessions = set()
     try:
         calendar = read_calendar(config, start, end)
@@ -122,6 +126,7 @@ def validate_data(config, start, end, *, run_errors=None, incremental=False):
         'as_of': str(end), 'generated_at': now.isoformat(), 'status': 'READY' if ready else 'NOT_READY',
         'recommendation_allowed': False, 'publication_gate': 'DISABLED_RESEARCH_PHASE',
         'sources': sources, 'price_audit': audit,
+        'lifecycle_health': lifecycle,
         'excluded_symbols': excluded, 'errors': errors,
         'full_history_ready': historical_ready,
         'fundamental_research_allowed': (ready and sources['nse_financials']['status'] == 'READY'

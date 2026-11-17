@@ -54,6 +54,9 @@ def normalize_events(records):
             if row['event_type'] == 'SHARE_CONVERSION' and (
                     not row['mandatory'] or not row['successor_instrument_id'] or not row['conversion_ratio'] > 0):
                 raise ValueError('Conversion requires mandatory successor economics')
+            if row['event_type'] == 'ZERO_RECOVERY' and (
+                    not row['mandatory'] or row['optional'] or row['cash_per_raw_share'] != 0):
+                raise ValueError('Zero recovery requires mandatory verified zero economics')
         row['parser_version'] = PARSER_VERSION
         stable = {key:value for key,value in row.items() if key not in
                   ('lifecycle_event_id','raw_path','first_seen_at','parser_version')}

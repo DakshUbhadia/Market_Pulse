@@ -3,7 +3,7 @@
 
 def validation_levels(checks, *, acceptable_drawdown, pit_data_verified=False,
                       forward_test_completed=False, recommendation_history_tracked=False):
-    statistical_names = ('positive_mean_IC','majority_positive_IC','monotonic_deciles',
+    statistical_names = ('positive_mean_IC','positive_median_IC','majority_positive_IC','monotonic_deciles',
                          'adequate_OOS_length','mature_label_coverage')
     economic_names = ('positive_OOS_excess','positive_net_performance','survives_1_5x_costs',
                       'manageable_turnover','beats_simple_baselines','diversified_across_years')

@@ -48,6 +48,11 @@ def test_unexpected_suspension_does_not_invent_fill():
         simulate([event(announced='2024-11-08T08:00:00+05:30')],absent='2024-11-08')
 
 
+def test_suspended_holding_cannot_be_valued_using_a_stale_print():
+    with pytest.raises(ValueError,match='Unvalued holding'):
+        simulate([event(announced='2024-11-08T08:00:00+05:30')],scenario='MANDATORY_ONLY')
+
+
 def test_mandatory_cash_settlement_credits_on_documented_date():
     result = simulate([event('CASH_SETTLEMENT',mandatory=True,settlement_date='2024-11-08',
         cash_per_raw_share=120)],absent='2024-11-08',scenario='MANDATORY_ONLY')
@@ -131,6 +136,45 @@ def test_essaroil_official_exit_letter_cannot_create_earlier_knowledge_or_cash()
 def test_mandatory_cash_uses_split_adjusted_units_once():
     from quant.backtest.lifecycle import share_factor
     assert 200 * share_factor(dict(raw_close=100,adjusted_close=50)) * 12 == 1200
+
+
+def test_lifecycle_pending_states_and_offer_details_are_point_in_time():
+    policy = Lifecycle(normalize_events([event()]))
+    assert policy.status('id-000',simulation_time('2024-11-05','09:15'))['lifecycle_status'] == 'SUSPENSION_PENDING'
+    assert policy.status('id-000',simulation_time('2024-11-08','09:15'))['lifecycle_status'] == 'SUSPENDED'
+    offer = Lifecycle(normalize_events([event('EXIT_OFFER',optional=True,offer_price=120,
+        offer_start='2024-11-05',offer_end='2024-11-07')]))
+    assert not offer.status('id-000',simulation_time('2024-11-04','15:30'))['offer_available']
+    status = offer.status('id-000',simulation_time('2024-11-05','15:30'))
+    assert status['offer_available'] and status['offer_price'] == 120
+
+
+def test_explicit_offer_scenario_requires_documented_settlement():
+    result = simulate([event('EXIT_OFFER',optional=True,offer_price=120,offer_start='2024-11-05',
+        offer_end='2024-11-07',settlement_date='2024-11-08')],absent='2024-11-08',
+        scenario='FORMAL_EXIT_OFFER_PARTICIPATION')
+    assert result.lifecycle.event_type.tolist() == ['EXIT_OFFER']
+    assert result.lifecycle.cash_credit.sum() == pytest.approx(1_200_000)
+    with pytest.raises(ValueError,match='Unvalued holding'):
+        simulate([event('EXIT_OFFER',optional=True,offer_price=120,offer_start='2024-11-05',
+            offer_end='2024-11-07')],absent='2024-11-08',scenario='FORMAL_EXIT_OFFER_PARTICIPATION')
+
+
+def test_zero_recovery_stress_records_writeoff_and_does_not_change_baseline():
+    record = event(announced='2024-11-08T08:00:00+05:30')
+    stressed = simulate([record],absent='2024-11-08',scenario='ZERO_RECOVERY_STRESS')
+    assert stressed.lifecycle.event_type.tolist() == ['HYPOTHETICAL_ZERO_RECOVERY']
+    assert stressed.lifecycle.written_off_cost_basis.iloc[0] == pytest.approx(1_000_000)
+    assert stressed.equity_curve.nav.iloc[-1] == pytest.approx(0.,abs=1e-8)
+    with pytest.raises(ValueError,match='Unvalued holding'):
+        simulate([record],absent='2024-11-08',scenario='MANDATORY_ECONOMIC_EVENTS_ONLY')
+
+
+def test_conversion_preserves_total_cost_basis_lineage():
+    result = simulate([event('SHARE_CONVERSION',mandatory=True,conversion_ratio=2,
+        successor_instrument_id='id-001')],absent='2024-11-08',scenario='MANDATORY_ONLY',successor=True)
+    assert result.lifecycle.successor_instrument_id.tolist() == ['id-001']
+    assert result.lifecycle.transferred_cost_basis.iloc[0] == pytest.approx(1_000_000)
 
 
 def test_notice_published_after_open_waits_for_next_session():

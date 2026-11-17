@@ -73,3 +73,19 @@ def test_ex_date_seller_retains_entitlement_and_executable_prices_are_unchanged(
     assert result.trades.query("side == 'SELL'").trade_date.tolist() == [pd.Timestamp('2024-12-02')]
     assert result.dividends.trade_date.tolist() == [pd.Timestamp('2024-12-02')]
     pd.testing.assert_frame_equal(prices,original)
+
+
+def test_dividends_are_processed_after_open_orders_without_lending_ex_date_cash():
+    from quant.backtest.engine import run_backtest
+    from quant.backtest.portfolio import PortfolioConfig
+    from quant.tests.research_fixtures import market_fixture, execution_scores
+    from quant.backtest.tests.test_simulation import zero_cost
+    prices,_,sessions = market_fixture(stocks=2,days=65,start='2024-10-01')
+    prices['adjusted_open'] = prices['adjusted_close'] = prices['raw_close'] = 100.
+    def target(selected,current,config):
+        return pd.Series({'id-001':1.}) if selected.as_of.iloc[0] >= pd.Timestamp('2024-11-29') else pd.Series({'id-000':1.})
+    result = run_backtest(prices,execution_scores(prices),sessions,cost_model=zero_cost(),
+        portfolio=PortfolioConfig(holdings=1,max_weight=1),target_builder=target,
+        corporate_actions=event(pd.Timestamp('2024-12-02')).assign(instrument_id='id-000'))
+    assert result.dividends.cash_credit.sum() == pytest.approx(20_000)
+    assert result.equity_curve.set_index('trade_date').loc['2024-12-02','cash'] == pytest.approx(20_000)

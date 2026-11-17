@@ -32,7 +32,8 @@ def build_features(config, as_of):
     write_parquet(frame, target)
     write_parquet(frame[['as_of', 'instrument_id', 'symbol', 'series', 'eligible', 'history_sessions',
                          'trading_presence_252', 'adv60', 'exclusion_reason',
-                         'lifecycle_status','entry_allowed','lifecycle_reason','entry_block_reason','offer_available']],
+                         'lifecycle_status','entry_allowed','lifecycle_reason','entry_block_reason','offer_available',
+                         'offer_price','offer_start','offer_end']],
                   config.data_dir / 'normalized/universe' / f'year={as_of.year}' / f'{as_of}.parquet')
     manifest = input_manifest(config, as_of)
     manifest.update(feature_version=FEATURE_VERSION, universe_settings=vars(universe), feature_sha256=digest_file(target),

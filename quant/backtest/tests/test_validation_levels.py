@@ -2,7 +2,7 @@ from quant.backtest.validation import validation_levels
 
 
 def test_statistical_and_economic_evidence_do_not_imply_production_validation():
-    checks = dict.fromkeys(['positive_mean_IC','majority_positive_IC','monotonic_deciles',
+    checks = dict.fromkeys(['positive_mean_IC','positive_median_IC','majority_positive_IC','monotonic_deciles',
         'adequate_OOS_length','mature_label_coverage','positive_OOS_excess','positive_net_performance',
         'survives_1_5x_costs','manageable_turnover','beats_simple_baselines','diversified_across_years',
         'verified_cost_schedule','diversified_across_clusters','OOS_IR_above_0_5','net_Sharpe_above_0_7'], True)
