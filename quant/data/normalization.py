@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from quant.data.http import sha256
-from quant.storage.parquet_store import write_parquet
+from quant.storage.parquet_store import read_parquet_file, write_parquet
 
 MISSING = ['', '-', '--', 'NA', 'N/A', 'null', None]
 
@@ -89,7 +89,7 @@ def write_observation(frame, root, digest, observed_at):
     path = root / f'year={at.year}' / f'month={at.month:02d}' / f'{digest}.parquet'
     frame = frame.copy()
     if path.exists() and 'first_seen_at' in frame:
-        previous = pd.read_parquet(path)
+        previous = read_parquet_file(path)
         identity = next((key for key in ('filing_id', 'event_id', 'source_record_id', 'version') if key in frame and key in previous), None)
         if identity and 'first_seen_at' in previous:
             first = previous.groupby(identity).first_seen_at.min()

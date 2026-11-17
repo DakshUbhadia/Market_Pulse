@@ -9,6 +9,7 @@ from quant.pipeline.cli import completed_day
 from quant.pipeline.state import PipelineState
 from quant.pipeline.update_calendar import refresh_calendar
 from quant.pipeline.update_all import update_all
+from quant.storage.parquet_store import read_parquet_file
 
 
 def calculate_update_window(calendar, state, *, target=None, overlap=5):
@@ -31,7 +32,7 @@ def scheduled_update(config, *, target=None):
     target = target or completed_day(config)
     state = PipelineState(config)
     if config.calendar_path.exists():
-        calendar = pd.read_parquet(config.calendar_path)
+        calendar = read_parquet_file(config.calendar_path)
         # Refresh only the recent calendar tail, preserving previously verified years.
         refresh_start = min(target, calendar.trade_date.max().date()) - pd.Timedelta(days=40)
         calendar, _ = refresh_calendar(config, pd.Timestamp(refresh_start).date(), target, incremental=True)

@@ -12,6 +12,7 @@ from quant.data.security_history import resolve_identity
 from quant.data.shareholding_xbrl import parse_shareholding_xbrl
 from quant.data.xbrl import extract_financials
 from quant.pipeline.state import PipelineState
+from quant.storage.parquet_store import read_parquet_file
 
 
 def windows(start, end, days=30):
@@ -65,7 +66,7 @@ def archive_filings(client, frame, dataset, history):
 def _update_sources(config, start, end, *, actions=True, filings=True):
     state = PipelineState(config)
     path = config.data_dir / 'normalized' / 'security_history' / 'identities.parquet'
-    history = pd.read_parquet(path) if path.exists() else pd.DataFrame()
+    history = read_parquet_file(path) if path.exists() else pd.DataFrame()
     report = {}
     sources = [('corporate_actions', True, nse_corporate_actions, nse_corporate_actions.parse_corporate_actions),
                ('financials', config.fetch_fundamentals, nse_financials, nse_financials.parse_financial_filings),

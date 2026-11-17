@@ -8,6 +8,7 @@ import pandas as pd
 
 from quant.data.nse_bhavcopy import validate_bars
 from quant.data.nse_client import NseSourceError, RawResponse
+from quant.storage.parquet_store import read_parquet_file
 
 PARSER_VERSION = '1.0.0'
 HOLIDAY_PATH = '/api/holiday-master'
@@ -131,7 +132,7 @@ def loaded_bhavcopy_evidence(config, start: date, end: date, *, on_frame=None):
             candidate = date.fromisoformat(path.stem)
             if not start <= candidate <= end:
                 continue
-            frame = pd.read_parquet(path)
+            frame = read_parquet_file(path)
             if on_frame is not None:
                 on_frame(frame, candidate)
             validate_bars(frame)

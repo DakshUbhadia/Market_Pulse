@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from zipfile import BadZipFile
 
 import pandas as pd
+
 import requests
 
 from quant.config import Config
@@ -18,6 +19,7 @@ from quant.data.nse_calendar import HOLIDAY_CIRCULARS, parse_holiday_circular
 from quant.data.nse_index_sessions import fetch_index_sessions
 from quant.data.nse_client import NseClient, NseSourceError
 from quant.storage.parquet_store import write_parquet, write_prices
+from quant.storage.parquet_store import read_parquet_file
 
 
 def confirm_special_sessions(config, events, start, end):
@@ -61,7 +63,7 @@ def refresh_calendar(config: Config, start: date, end: date, *, client=None, inc
     # Preserve previously covered years when a scheduled update requests a shorter range.
     previous = pd.DataFrame()
     if config.calendar_path.exists():
-        previous = pd.read_parquet(config.calendar_path)
+        previous = read_parquet_file(config.calendar_path)
         if not previous.empty and not incremental:
             start = min(start, previous.trade_date.min().date())
             end = max(end, previous.trade_date.max().date())
@@ -124,7 +126,7 @@ def read_calendar(config: Config, start: date, end: date):
     health_path = config.data_dir / 'reports' / 'calendar-health.json'
     if health_path.exists() and json.loads(health_path.read_text())['status'] == 'FAILED':
         raise ValueError('Last calendar refresh failed; refresh successfully before backfilling')
-    frame = pd.read_parquet(config.calendar_path)
+    frame = read_parquet_file(config.calendar_path)
     frame = frame[(frame.trade_date.dt.date >= start) & (frame.trade_date.dt.date <= end)].copy()
     if len(frame) != (end - start).days + 1 or frame.trade_date.duplicated().any():
         raise ValueError('Generated calendar does not cover the requested date range')
@@ -135,7 +137,7 @@ def read_calendar(config: Config, start: date, end: date):
 
 def reconcile_calendar(config: Config, start: date, end: date):
     """Reconcile after ingestion without another web request."""
-    frame = pd.read_parquet(config.calendar_path)
+    frame = read_parquet_file(config.calendar_path)
     observations, invalid = loaded_bhavcopy_evidence(config, start, end)
     selected = frame.trade_date.dt.date.between(start, end)
     # Do not retain prior successful verification when a partition is now missing/corrupt.

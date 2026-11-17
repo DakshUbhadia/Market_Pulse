@@ -5,13 +5,12 @@ from datetime import date
 from pathlib import Path
 from dataclasses import replace
 
-import pandas as pd
 
 from quant.config import Config
 from quant.data.http import atomic_write
 from quant.pipeline.check_research_ready import require_research_ready
 from quant.models.factor_v1 import score_factor_v1
-from quant.storage.parquet_store import write_parquet
+from quant.storage.parquet_store import read_parquet_file, write_parquet
 from quant.storage.research_store import verify_manifest, write_json, digest_file
 from quant.version import MODEL_VERSION, FEATURE_VERSION
 
@@ -25,7 +24,7 @@ def run_factor_v1(config, as_of):
     verify_manifest(config, manifest)
     if digest_file(feature_path) != manifest['feature_sha256']:
         raise ValueError('Feature artifact checksum differs from its manifest')
-    result = score_factor_v1(pd.read_parquet(feature_path))
+    result = score_factor_v1(read_parquet_file(feature_path))
     if result.empty:
         raise ValueError('No stocks have complete point-in-time V1 features')
     root = config.data_dir / 'artifacts/factor_v1'

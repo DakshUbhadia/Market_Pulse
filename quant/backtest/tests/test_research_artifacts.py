@@ -40,6 +40,7 @@ def test_liquid_baseline_population_is_independent_of_factor_completeness():
     assert set(weights.index)=={'a','b'}
 
 
+@pytest.mark.usefixtures('hive_partition_reads')
 def test_incremental_action_rebases_older_prices_and_keeps_return_seam(tmp_path):
     from quant.data.security_history import attach_identities, build_security_history
     from quant.storage.parquet_store import write_parquet

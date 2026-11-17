@@ -11,11 +11,13 @@ from uuid import uuid4
 
 from quant.storage.research_store import digest_file, write_json
 from quant.data.http import atomic_write
+from quant.storage.parquet_store import read_parquet_file
 
 GATE_SOURCES = ('boundaries.py','universe/config.py','pipeline/check_research_ready.py',
     'pipeline/research_proof.py','pipeline/audit_prices.py','pipeline/update_calendar.py',
     'features/adjustments.py','data/security_history.py','data/nse_calendar.py','data/nse_bhavcopy.py',
-    'pipeline/audit_lifecycle.py','pipeline/backfill_lifecycle.py','lifecycle/schema.py','lifecycle/state.py','lifecycle/policy.py')
+    'pipeline/audit_lifecycle.py','pipeline/backfill_lifecycle.py','lifecycle/schema.py','lifecycle/state.py','lifecycle/policy.py',
+    'storage/parquet_store.py')
 
 
 def fingerprint_inputs(config, as_of):
@@ -29,7 +31,7 @@ def fingerprint_inputs(config, as_of):
     lifecycle_path = config.data_dir/'normalized/lifecycle/events.parquet'
     if lifecycle_path.exists():
         try:
-            lifecycle = pd.read_parquet(lifecycle_path)
+            lifecycle = read_parquet_file(lifecycle_path)
             files.extend(config.data_dir/path for path in lifecycle.get('raw_path',pd.Series(dtype=str)).dropna().unique()
                 if (config.data_dir/path).resolve().is_relative_to(config.data_dir.resolve()))
         except (OSError,ValueError):
