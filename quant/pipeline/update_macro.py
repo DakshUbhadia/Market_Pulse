@@ -13,7 +13,7 @@ from quant.pipeline.state import PipelineState
 
 def update_macro(config, start, end):
     state = PipelineState(config)
-    if not config.enable_rbi:
+    if not config.fetch_rbi:
         state.record('rbi', status='DISABLED')
         return {'status': 'DISABLED'}
     now = datetime.now(ZoneInfo(config.timezone))

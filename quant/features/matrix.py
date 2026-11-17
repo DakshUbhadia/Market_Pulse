@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import numpy as np
 import pandas as pd
 
@@ -17,7 +15,7 @@ SCORE_FEATURES = ['mom_63', 'mom_126_ex_21', 'mom_252_ex_21', 'distance_52w_high
 
 
 def build_feature_matrix(prices, benchmark, sessions, *, universe_config=None, delivery=None,
-                         as_of=None, medium_lookback=126, long_lookback=252, eligible_only=False):
+                         as_of=None, medium_lookback=126, long_lookback=252, eligible_only=False, lifecycle_events=None):
     prices = prices.copy()
     if as_of is not None:
         prices = prices[pd.to_datetime(prices.trade_date) <= pd.Timestamp(as_of)]
@@ -34,6 +32,11 @@ def build_feature_matrix(prices, benchmark, sessions, *, universe_config=None, d
     rows = []
     for panel in panels(prices, sessions):
         base = eligibility(panel, universe_config)
+        base['lifecycle_status'], base['entry_allowed'], base['lifecycle_reason'] = 'ACTIVE', True, ''
+        base['entry_block_reason'], base['offer_available'] = '', False
+        if lifecycle_events is not None and not lifecycle_events.empty:
+            from quant.backtest.lifecycle import overlay_universe
+            base = overlay_universe(base.reset_index(), lifecycle_events).set_index('as_of')
         if eligible_only and not base.eligible.any():
             continue
         if eligible_only:
@@ -67,5 +70,4 @@ def build_feature_matrix(prices, benchmark, sessions, *, universe_config=None, d
         result = result[result.as_of == pd.Timestamp(as_of)].copy()
     result = normalize_cross_section(result, SCORE_FEATURES)
     result['feature_version'] = FEATURE_VERSION
-    result['generated_at'] = datetime.now(timezone.utc).isoformat()
     return result

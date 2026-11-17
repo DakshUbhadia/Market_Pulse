@@ -96,7 +96,7 @@ def update_market_eod(config, start, end, *, incremental=False):
         except (ValueError, OSError, KeyError) as error:
             report['security_history'] = {'status': 'FAILED', 'error': str(error)}
         state.record('security_history', **report['security_history'])
-        if config.enable_fiidii:
+        if config.fetch_fiidii:
             try:
                 with NseClient(config) as client:
                     payload = client.get_json(FLOWS_PATH, dataset='flows')

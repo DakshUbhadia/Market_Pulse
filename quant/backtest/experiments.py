@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from quant.data.http import atomic_write
 from quant.storage.research_store import clean_json, git_commit, write_json, digest_file
-from quant.version import MODEL_VERSION, FEATURE_VERSION, COST_MODEL_VERSION
+from quant.version import MODEL_VERSION, FEATURE_VERSION, COST_MODEL_VERSION, EVIDENCE_POLICY_VERSION
 from quant.pipeline.state import state_lock
 
 FIELDS = ['experiment_id', 'git_commit', 'model_version', 'feature_version', 'hypothesis',
@@ -15,6 +15,8 @@ FIELDS = ['experiment_id', 'git_commit', 'model_version', 'feature_version', 'hy
 
 
 def begin_experiment(config, hypothesis, parameters):
+    from quant.backtest.report import BASELINE_DIAGNOSTIC_RULE
+    from quant.lifecycle.policy import LIFECYCLE_POLICY_VERSION
     from quant.models.factor_v1 import WEIGHTS
     from quant.backtest.portfolio import PortfolioConfig
     from quant.universe.config import UniverseConfig
@@ -28,7 +30,9 @@ def begin_experiment(config, hypothesis, parameters):
         feature_version=FEATURE_VERSION, hypothesis=hypothesis,
         parameters=clean_json(dict(parameters, factor_weights=WEIGHTS,
             portfolio=PortfolioConfig(), universe=UniverseConfig(), cost_model_version=COST_MODEL_VERSION,
-            cost_settings=vars(costs), cost_schedule=costs.schedule_table(), source_code_sha256=code)),
+            cost_settings=vars(costs), cost_schedule=costs.schedule_table(), source_code_sha256=code,
+            evidence_policy_version=EVIDENCE_POLICY_VERSION,lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,
+            baseline_comparison_policy=BASELINE_DIAGNOSTIC_RULE)),
         date_run=datetime.now(timezone.utc).isoformat(), result_summary='STARTED', decision='PENDING')
     path = config.data_dir / 'research/experiments' / identifier
     path.mkdir(parents=True, exist_ok=False)

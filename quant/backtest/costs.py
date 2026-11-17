@@ -13,6 +13,7 @@ from datetime import date as Date
 
 from quant.version import COST_MODEL_VERSION
 from quant.backtest.cost_history import historical_schedule_parameters, charge_table
+from quant.backtest.broker_profiles import resolve_broker_profile
 
 SOURCES = ['https://nsearchives.nseindia.com/content/circulars/FATAX63809.pdf',
            'https://nsearchives.nseindia.com/content/circulars/FA64232.pdf',
@@ -41,6 +42,7 @@ class CostSchedule:
 
 @dataclass
 class CostModel:
+    broker_profile: str = field(default_factory=lambda: os.getenv('QUANT_BROKER_PROFILE', 'GENERIC_ZERO_DELIVERY'))
     slippage_bps: float = field(default_factory=lambda: float(os.getenv('QUANT_BASE_SLIPPAGE_BPS', '5')))
     cost_multiplier: float = 1
     slippage_multiplier: float = 1
@@ -49,12 +51,15 @@ class CostModel:
     schedules: tuple = ()
 
     def __post_init__(self):
+        profile = resolve_broker_profile(self.broker_profile)
         if not all(math.isfinite(value) and value >= 0 for value in
                    (self.slippage_bps, self.cost_multiplier, self.slippage_multiplier, self.market_impact_bps)):
             raise ValueError('Costs must be finite and nonnegative')
         if not self.schedules:
-            self.schedules = (CostSchedule(Date(2024, 10, 1), Date(2026, 3, 1)),
-                              CostSchedule(Date(2026, 3, 1), exchange_rate=.000030699, ipft_rate=.000000001))
+            self.schedules = (CostSchedule(Date(2024, 10, 1), Date(2026, 3, 1),
+                                  brokerage_rate=profile.brokerage_rate,dp_sell=profile.dp_sell),
+                              CostSchedule(Date(2026, 3, 1), exchange_rate=.000030699, ipft_rate=.000000001,
+                                  brokerage_rate=profile.brokerage_rate,dp_sell=profile.dp_sell))
         self.schedules = tuple(sorted(self.schedules, key=lambda row: row.effective_from))
         for i, row in enumerate(self.schedules):
             if row.effective_to is not None and row.effective_to <= row.effective_from:

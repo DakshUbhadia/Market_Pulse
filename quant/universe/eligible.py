@@ -63,7 +63,7 @@ def eligibility(panel, config=None):
     return result
 
 
-def build_eligible_universe(prices, sessions, *, as_of=None, config=None):
+def build_eligible_universe(prices, sessions, *, as_of=None, config=None, lifecycle_events=None):
     if as_of is not None:
         prices = prices[pd.to_datetime(prices.trade_date) <= pd.Timestamp(as_of)]
         sessions = session_index(sessions)[session_index(sessions) <= pd.Timestamp(as_of)]
@@ -71,5 +71,7 @@ def build_eligible_universe(prices, sessions, *, as_of=None, config=None):
     if not rows:
         return pd.DataFrame()
     result = pd.concat(rows, ignore_index=True)
+    from quant.backtest.lifecycle import overlay_universe
+    result = overlay_universe(result, lifecycle_events)
     # An absent/delisted security is never included by carrying an old row forward.
     return result[result.as_of.eq(pd.Timestamp(as_of))] if as_of is not None else result

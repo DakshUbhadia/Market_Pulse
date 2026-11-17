@@ -5,6 +5,7 @@ import duckdb
 import pandas as pd
 
 DATASETS = {
+    'lifecycle': 'announced_at',
     'prices': 'trade_date', 'delivery': 'trade_date', 'adjusted_prices': 'trade_date',
     'instruments': 'snapshot_date', 'corporate_actions': 'ex_date', 'indices': 'trade_date',
     'vix': 'trade_date', 'financials': 'exchange_disseminated_at',

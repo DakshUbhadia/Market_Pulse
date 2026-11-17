@@ -18,6 +18,11 @@ def sha256(content: bytes) -> str:
 
 
 def atomic_write(path: Path, content: bytes) -> None:
+    # Nested immutable research runs can exceed Windows' legacy MAX_PATH.
+    path = Path(path).absolute()
+    if os.name == 'nt' and not str(path).startswith('\\\\?\\'):
+        value = str(path)
+        path = Path('\\\\?\\UNC\\' + value[2:] if value.startswith('\\\\') else '\\\\?\\' + value)
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as stream:
         temporary = Path(stream.name)

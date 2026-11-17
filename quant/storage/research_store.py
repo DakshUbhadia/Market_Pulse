@@ -53,10 +53,10 @@ def input_manifest(config, as_of):
     from quant.config import REPO_ROOT
     import importlib.metadata
     files = []
-    for dataset in ('adjusted_prices', 'indices', 'delivery', 'corporate_actions', 'index_tri'):
+    for dataset in ('adjusted_prices', 'indices', 'delivery', 'corporate_actions', 'index_tri', 'lifecycle'):
         for filename in dataset_files(config.data_dir, dataset):
             path = Path(filename)
-            if dataset not in ('corporate_actions','index_tri') and path.stem > str(as_of)[:10]:
+            if dataset not in ('corporate_actions','index_tri','lifecycle') and path.stem > str(as_of)[:10]:
                 continue
             files.append(dict(path=str(path.relative_to(config.data_dir)), bytes=path.stat().st_size,
                               sha256=digest_file(path)))
@@ -64,9 +64,15 @@ def input_manifest(config, as_of):
         if path.exists():
             files.append(dict(path=str(path.relative_to(config.data_dir)),
                               bytes=path.stat().st_size, sha256=digest_file(path)))
+    from quant.pipeline.backfill_lifecycle import load_lifecycle
+    lifecycle = load_lifecycle(config)
+    if not lifecycle.empty:
+        for name in sorted(lifecycle.raw_path.dropna().unique()):
+            path = config.data_dir/name
+            files.append(dict(path=str(path.relative_to(config.data_dir)),bytes=path.stat().st_size,sha256=digest_file(path)))
     encoded = json.dumps(files, sort_keys=True).encode()
     code_files = list((REPO_ROOT / 'quant').glob('*.py'))
-    for name in ('data', 'features', 'models', 'pipeline', 'storage', 'universe', 'backtest', 'risk'):
+    for name in ('data', 'features', 'models', 'pipeline', 'storage', 'universe', 'backtest', 'risk', 'lifecycle'):
         code_files.extend(path for path in (REPO_ROOT / 'quant' / name).rglob('*.py') if 'tests' not in path.parts)
     code = {str(path.relative_to(REPO_ROOT)): digest_file(path) for path in sorted(set(code_files))}
     dependencies = {name: importlib.metadata.version(name) for name in ('pandas', 'numpy', 'duckdb', 'pyarrow')}
@@ -76,6 +82,11 @@ def input_manifest(config, as_of):
 
 def verify_manifest(config, manifest):
     from quant.config import REPO_ROOT
+    # Adding lifecycle evidence also invalidates a previously frozen snapshot.
+    recorded = {item['path'] for item in manifest['files'] if item['path'].replace('\\','/').startswith('normalized/lifecycle/')}
+    current = {str(Path(path).relative_to(config.data_dir)) for path in dataset_files(config.data_dir,'lifecycle')}
+    if current != recorded:
+        raise ValueError('Lifecycle evidence changed; rebuild research inputs')
     for item in manifest['files']:
         path = (config.data_dir / item['path']).resolve()
         if not path.is_relative_to(config.data_dir.resolve()) or digest_file(path) != item['sha256']:

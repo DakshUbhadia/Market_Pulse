@@ -1,0 +1,20 @@
+{
+  "lifecycle_event_id": "nse-essaroil-suspension-100409001",
+  "instrument_id": "6c788a58-de33-575a-9f7a-188d887aa97a",
+  "symbol": "ESSAROIL",
+  "isin": "INE011A01019",
+  "event_type": "SUSPENDED",
+  "announced_at": "2016-01-27T18:24:00+05:30",
+  "effective_date": "2016-02-10",
+  "last_trading_date": "2016-02-09",
+  "mandatory": false,
+  "optional": false,
+  "source_exchange": "NSE",
+  "source_url": "https://www.nseindia.in/api/corporate-announcements?index=equities&symbol=ESSAROIL&from_date=27-01-2016&to_date=27-01-2016",
+  "source_sha256": "5ad88290e3ad5e9389a10970c9b514813c30471c045441c4694af9c3fb938471",
+  "raw_path": "raw\\nse\\lifecycle\\2026-11-17\\121453042171-5ad88290e3ad5e93-f99dc991.json",
+  "verification_status": "VERIFIED",
+  "first_seen_at": "2026-11-17T12:14:53.042171+05:30",
+  "publication_field": "an_dt",
+  "exchange_sequence": "100409001"
+}

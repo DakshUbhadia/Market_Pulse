@@ -114,3 +114,12 @@ def test_reject_foreign_host_and_redirect(tmp_path):
         with pytest.raises(NseSourceError, match='302'):
             client.get_json('/api/example')
     assert transport.get.call_args.kwargs['allow_redirects'] is False
+
+
+def test_official_origin_migration_is_followed_once_and_archived(tmp_path):
+    transport = session(response(status=301,headers={'Location':'https://www.nseindia.in/'}),
+        response(),response(b'{"ok":true}'))
+    with NseClient(config(tmp_path),session_factory=lambda:transport) as client:
+        assert client.get_json('/api/example') == {'ok':True}
+    assert transport.get.call_args_list[1].args[0] == 'https://www.nseindia.in/'
+    assert len(list((tmp_path/'raw/nse/session').rglob('*.html'))) == 2

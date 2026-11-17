@@ -9,6 +9,7 @@ from quant.pipeline.update_corporate import update_corporate_actions, update_cor
 from quant.pipeline.update_macro import update_macro
 from quant.pipeline.validate_data import validate_data
 from quant.pipeline.build_adjusted import build_adjusted
+from quant.pipeline.update_lifecycle import update_lifecycle
 
 
 def update_all(config, start, end, *, incremental=False):
@@ -29,6 +30,7 @@ def update_all(config, start, end, *, incremental=False):
         state.record('nse_calendar', status='FAILED', error=str(error))
     if 'calendar' not in errors:
         for name, update in [('market_eod', update_market_eod), ('corporate_actions', update_corporate_actions),
+                             ('lifecycle', update_lifecycle),
                              ('adjusted_prices', build_adjusted), ('corporate_filings', update_corporate_filings),
                              ('macro', update_macro)]:
             try:
@@ -38,6 +40,8 @@ def update_all(config, start, end, *, incremental=False):
                     results[name] = update(config, start, end)
                 if name == 'market_eod' and any(results[name].get(source, {}).get('status') != 'READY' for source in core):
                     errors[name] = 'Required market sources failed; inspect the market EOD report'
+                if name == 'lifecycle' and results[name].get('status') == 'BLOCKED':
+                    errors[name] = 'Lifecycle evidence audit failed'
             except Exception as error:
                 errors[name] = str(error)
                 if name == 'adjusted_prices':
