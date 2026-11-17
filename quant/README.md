@@ -488,10 +488,24 @@ proxies still prevent production validation. Do not start V2 or ML while these
 gates remain unmet.
 
 
-Local validation on November 17: 190 non-integration tests passed, all 11 live
+Local validation on November 17: 192 non-integration tests passed, all 11 live
 integration tests passed after the NSE origin migration fix, `pip check` passed,
 and syntax compilation passed. Six official lifecycle inventories were archived
 (14 proposed, 460 delisted, 12 voluntary applications, 15 progress rows, and two
 suspension lists with 36 and 1 rows). These counts describe downloaded rows, not
 verified PIT lifecycle coverage. Branch-protection update returned HTTP 401
 because no authenticated GitHub API session was available.
+
+The original NSE ESSAROIL announcement was subsequently retrieved and archived
+from the official corporate-announcements API (exchange sequence `100409001`,
+announcement timestamp January 27, 2016, 18:24 IST). A separate fixture now proves
+that an existing holding exits at the January 28 open, while future entry is
+blocked; no tender payment is assumed. The verified suspension and exit-offer
+records were imported into the configured local research dataset. This resolves
+the evidence needed for this security's risk overlay; it does not certify full
+historical lifecycle coverage or a completed OOS result.
+
+The implementation commit is local. A non-interactive push failed because no
+GitHub credentials were available. Remote CI and branch protection must be
+verified after authentication is restored; historical baseline and later stages
+remain gated until then.

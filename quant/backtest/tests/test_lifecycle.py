@@ -136,3 +136,25 @@ def test_mandatory_cash_uses_split_adjusted_units_once():
 def test_notice_published_after_open_waits_for_next_session():
     result = simulate([event(announced='2024-11-05T09:16:00+05:30')])
     assert result.trades.query("side == 'SELL'").trade_date.tolist() == [pd.Timestamp('2024-11-06')]
+
+
+def test_essaroil_original_notice_exits_existing_holding_without_assuming_tender():
+    import json
+    from pathlib import Path
+    from dataclasses import replace
+    from quant.backtest.costs import CostModel
+    record = json.loads((Path(__file__).parent/'fixtures/essaroil_suspension.json').read_text())
+    prices,_,sessions = market_fixture(stocks=1,days=65,start='2015-12-01')
+    scores = execution_scores(prices)
+    scores['instrument_id'] = record['instrument_id']
+    prices['instrument_id'] = record['instrument_id']
+    prices['adjusted_open'] = prices['adjusted_close'] = prices['raw_close'] = 100.
+    prices = prices[prices.trade_date < '2016-02-10']
+    costs = CostModel(slippage_bps=0,schedules=(replace(zero_cost().schedules[0],effective_from=date(2015,1,1)),))
+    result = run_backtest(prices,scores,sessions,cost_model=costs,lifecycle_events=normalize_events([record]),
+        portfolio=PortfolioConfig(holdings=1,max_weight=1,entry_percentile=0,exit_percentile=0))
+    sales = result.trades.query("side == 'SELL'")
+    assert sales.trade_date.tolist() == [pd.Timestamp('2016-01-28')]
+    assert sales.exit_reason.tolist() == ['KNOWN_LIFECYCLE_RISK']
+    assert result.lifecycle.empty  # No tender or automatic settlement.
+    assert result.equity_curve.nav.iloc[-1] == pytest.approx(1_000_000)

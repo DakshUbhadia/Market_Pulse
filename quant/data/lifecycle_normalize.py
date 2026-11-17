@@ -55,8 +55,10 @@ def normalize_events(records):
                     not row['mandatory'] or not row['successor_instrument_id'] or not row['conversion_ratio'] > 0):
                 raise ValueError('Conversion requires mandatory successor economics')
         row['parser_version'] = PARSER_VERSION
+        stable = {key:value for key,value in row.items() if key not in
+                  ('lifecycle_event_id','raw_path','first_seen_at','parser_version')}
         row['lifecycle_event_id'] = item.get('lifecycle_event_id') or hashlib.sha256(
-            json.dumps(row, sort_keys=True, default=str).encode()).hexdigest()
+            json.dumps(stable, sort_keys=True, default=str).encode()).hexdigest()
         rows.append(row)
     result = pd.DataFrame(rows, columns=COLUMNS)
     if result.lifecycle_event_id.duplicated().any():
