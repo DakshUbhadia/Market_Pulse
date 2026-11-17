@@ -3,6 +3,19 @@ import pytest
 
 from quant.data.nse_corporate_actions import parse_subject
 from quant.features.adjustments import adjust_prices
+
+
+def test_total_return_close_handles_dividend_followed_by_split():
+    days = pd.bdate_range('2024-01-01',periods=4)
+    frame = pd.DataFrame(dict(trade_date=days,symbol='A',series='EQ',instrument_id='a',
+        open=[100,98,49,50],high=[100,98,49,50],low=[100,98,49,50],close=[100,98,49,50]))
+    actions = pd.DataFrame([
+        dict(event_id='div',instrument_id='a',symbol='A',ex_date=days[1],action_type='DIVIDEND',
+            parse_status='PARSED',cash_amount=2,ratio_numerator=None,ratio_denominator=None),
+        dict(event_id='split',instrument_id='a',symbol='A',ex_date=days[2],action_type='SPLIT',
+            parse_status='PARSED',cash_amount=None,ratio_numerator=2,ratio_denominator=1)])
+    result = adjust_prices(frame,actions)
+    assert result.total_return_close.tolist() == pytest.approx([49,49,49,50])
 from quant.features.returns import calculate_returns
 
 

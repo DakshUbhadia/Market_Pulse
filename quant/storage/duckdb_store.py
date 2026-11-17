@@ -10,6 +10,7 @@ DATASETS = {
     'vix': 'trade_date', 'financials': 'exchange_disseminated_at',
     'shareholding': 'broadcast_at', 'announcements': 'announcement_timestamp',
     'macro': 'publication_date', 'fii_dii': 'trade_date',
+    'index_tri': 'trade_date',
 }
 
 

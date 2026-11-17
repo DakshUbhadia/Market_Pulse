@@ -37,6 +37,9 @@ def audit_fundamentals(config):
               'unsupported_taxonomy_scope': 'Unparsed downloaded XBRL; includes unsupported or ambiguous contexts requiring review',
               'by_year_and_entity_type': groups,
               'entity_types': list(CATEGORIES), 'fundamental_scoring_enabled': False,
+              'first_year_with_reliable_PIT_fundamentals': None,
+              'coverage_gate_status': 'NOT_READY_NO_FILINGS' if frame.empty else 'UNASSESSED_UNIVERSE_COVERAGE_REQUIRED',
+              'reliable_window_established': False,
               'total_filings_discovered': sum(row['filings_discovered'] for row in groups)}
     atomic_write(config.data_dir / 'reports' / f'fundamentals-audit-{now:%Y%m%d}.json', json.dumps(report, indent=2).encode())
     return report

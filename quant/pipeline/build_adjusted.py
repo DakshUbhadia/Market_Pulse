@@ -104,19 +104,28 @@ def _build_partitions(config, start, end, actions):
         with duckdb.connect(':memory:') as connection:
             connection.execute("SET threads=1")
             connection.execute("SET memory_limit='512MB'")
+            connection.execute("SET preserve_insertion_order=false")
             connection.execute("SET temp_directory=?", [str(work / 'spill')])
+            connection.execute("SET max_temp_directory_size='8GB'")
+            connection.execute("SET partitioned_write_flush_threshold=4096")
+            connection.execute("SET partitioned_write_max_open_files=32")
             connection.execute('COPY (SELECT *, hash(coalesce(nullif(trim(isin), \'\'), symbol)) % 32 AS _bucket '
                 'FROM read_parquet(?, hive_partitioning=false, union_by_name=true)) TO ? '
-                '(FORMAT PARQUET, PARTITION_BY (_bucket))', [files, str(work / 'raw')])
+                '(FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE 4096, PARTITION_BY (_bucket))',
+                [files,str(work/'raw')])
             output = work / 'adjusted'
             output.mkdir()
-            for number, bucket in enumerate(sorted((work / 'raw').iterdir())):
+            for number,bucket in enumerate(sorted((work/'raw').iterdir())):
                 bars = connection.execute('SELECT * FROM read_parquet(?, hive_partitioning=false, union_by_name=true)',
-                                          [[str(path) for path in bucket.glob('*.parquet')]]).fetchdf()
+                    [[str(path) for path in bucket.glob('*.parquet')]]).fetchdf()
                 adjusted = calculate_returns(adjust_prices(bars, actions))
                 excluded.update(adjusted.loc[adjusted.adjustment_status != 'OK', 'symbol'].dropna())
                 rows += len(adjusted)
                 write_parquet(adjusted.sort_values('trade_date'), output / f'{number}.parquet', row_group_size=4096)
+                # Release consumed scratch inputs as adjusted output grows.
+                for consumed in bucket.glob('*.parquet'):
+                    consumed.unlink()
+                bucket.rmdir()
                 print(f'Adjusted identity bucket {number+1}/32', flush=True)
             # Date-sorted, small row groups permit bounded month reads. A global
             # 8-million-row sort can spill several GB on developer machines.
@@ -126,7 +135,21 @@ def _build_partitions(config, start, end, actions):
                 following = month + pd.offsets.MonthBegin()
                 daily = connection.execute('SELECT * FROM read_parquet(?, hive_partitioning=false, union_by_name=true) '
                     'WHERE trade_date >= ? AND trade_date < ?', [adjusted_files, month, following]).fetchdf()
-                partitions += len(write_daily(daily, config.data_dir / 'normalized/adjusted_prices'))
+                for day, group in daily.groupby('trade_date'):
+                    path = config.data_dir / 'normalized/adjusted_prices' / f'year={day.year}/month={day.month:02d}/{day:%Y-%m-%d}.parquet'
+                    unchanged = False
+                    if path.exists():
+                        try:
+                            pd.testing.assert_frame_equal(
+                                pd.read_parquet(path).sort_values(['symbol','series']).reset_index(drop=True),
+                                group.sort_values(['symbol','series']).reset_index(drop=True),
+                                check_dtype=False,check_exact=True,check_datetimelike_compat=True,check_like=True)
+                            unchanged = True
+                        except (AssertionError,OSError,ValueError):
+                            pass
+                    if not unchanged:
+                        write_parquet(group,path)
+                    partitions += 1
                 print(f'Published adjusted OHLC {month:%Y-%m}', flush=True)
                 month = following
     return rows, partitions, sorted(excluded)

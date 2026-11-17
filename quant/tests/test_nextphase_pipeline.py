@@ -147,23 +147,23 @@ def test_historical_gate_uses_build_anchor_and_checks_unresolved_exclusions(tmp_
         pd.DataFrame(dict(trade_date=sessions[sessions<=pd.Timestamp(b)],is_trading_session=True)))
     monkeypatch.setattr('quant.pipeline.check_research_ready.audit_prices',lambda cfg,a,b,**kwargs:
         dict(status='READY',coverage_percent=100,latest_date=str(b)))
-    assert check_research_ready(config,as_of=sessions[1].date(),history_start=start)['status']=='READY'
+    assert check_research_ready(config,as_of=sessions[1].date(),history_start=start,min_history_sessions=1)['status']=='READY'
     first_path=tmp_path/f'normalized/adjusted_prices/year={start.year}/month={start.month:02d}/{start}.parquet'
     original=pd.read_parquet(first_path)
     unresolved=original.copy(); unresolved['instrument_id']=None
     unresolved['adjustment_status']='UNRESOLVED_IDENTITY'
     write_parquet(unresolved,first_path)
-    result=check_research_ready(config,as_of=sessions[1].date(),history_start=start)
+    result=check_research_ready(config,as_of=sessions[1].date(),history_start=start,min_history_sessions=1)
     assert not result['identity_ready'] and result['errors']['historical_identity']['sessions_without_resolved_EQ']==1
     write_parquet(original,first_path)
     ledger.record('adjusted_prices',status='READY',**{'from':str(sessions[1].date())})
-    assert not check_research_ready(config,as_of=sessions[1].date(),history_start=start)['adjustments_ready']
+    assert not check_research_ready(config,as_of=sessions[1].date(),history_start=start,min_history_sessions=1)['adjustments_ready']
     ledger.record('adjusted_prices',status='READY',**{'from':str(start)})
     # A forged executable status must not allow an unresolved action into signals.
     event['parse_status']='NEEDS_REVIEW'
     write_parquet(event,tmp_path/'normalized/corporate_actions/events.parquet')
     ledger.record('adjusted_prices',status='READY',corporate_action_version=action_version(event))
-    result=check_research_ready(config,as_of=end,history_start=start)
+    result=check_research_ready(config,as_of=end,history_start=start,min_history_sessions=1)
     assert not result['adjustments_ready'] and 'unresolved_action_exclusion' in result['errors']
 
 

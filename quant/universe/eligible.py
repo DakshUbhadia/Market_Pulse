@@ -44,6 +44,11 @@ def eligibility(panel, config=None):
     tests = [
         (panel.series != 'EQ', 'NON_EQ_SERIES'),
         (panel.instrument_id.isna(), 'IDENTITY_UNRESOLVED'),
+        # EQ is a trading series, not proof of a company share: ETFs also
+        # trade in EQ. Use the ISIN observed on this date, never a current
+        # constituent list or a future observation of this instrument.
+        (panel.get('isin', pd.Series('', index=panel.index)).astype('string').str.startswith('INF', na=False),
+         'NON_EQUITY_FUND'),
         (panel.adjustment_status.ne('OK') & panel.observed, 'CORPORATE_ACTION_UNRESOLVED'),
         (panel.history_sessions < config.min_history_sessions, 'INSUFFICIENT_HISTORY'),
         (result.trading_presence_252 < config.min_trading_presence, 'INSUFFICIENT_TRADING_PRESENCE'),

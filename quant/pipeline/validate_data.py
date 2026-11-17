@@ -11,6 +11,7 @@ from quant.data.source_registry import source_status
 from quant.pipeline.audit_prices import audit_prices
 from quant.pipeline.state import PipelineState
 from quant.pipeline.update_calendar import read_calendar
+from quant.boundaries import RAW_PRICE_START
 
 
 def validate_data(config, start, end, *, run_errors=None, incremental=False):
@@ -100,17 +101,17 @@ def validate_data(config, start, end, *, run_errors=None, incremental=False):
         sources['nse_corporate_actions']['status'] = 'FAILED'
         errors['corporate_actions'] = str(error)
     essential = [name for name, row in sources.items() if row.get('required')]
-    historical_ready = start <= date(2010, 1, 1) and audit['status'] == 'READY'
+    historical_ready = start <= RAW_PRICE_START and audit['status'] == 'READY'
     if incremental:
         prior = state.data.get('weekly_integrity', {})
-        historical_ready = prior.get('status') == 'READY' and prior.get('from') == '2010-01-01'
+        historical_ready = prior.get('status') == 'READY' and prior.get('from') == str(RAW_PRICE_START)
         try:
             historical_ready = historical_ready and (pd.Timestamp(now)-pd.Timestamp(prior['last_successful_at'])).days <= 7
         except (ValueError, KeyError, TypeError):
             historical_ready = False
-    elif start > date(2010, 1, 1):
+    elif start > RAW_PRICE_START:
         try:
-            historical_ready = audit_prices(config, date(2010, 1, 1), end, write=False)['status'] == 'READY'
+            historical_ready = audit_prices(config, RAW_PRICE_START, end, write=False)['status'] == 'READY'
         except (OSError, ValueError, KeyError):
             historical_ready = False
     ready = (not errors and historical_ready and audit['status'] == 'READY'

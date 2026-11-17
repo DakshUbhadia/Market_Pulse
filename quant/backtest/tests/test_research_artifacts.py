@@ -84,3 +84,65 @@ def test_full_research_runner_writes_reproducible_artifact_contract(tmp_path, mo
     assert list((path/'walk_forward/2024').glob('run-*/metrics.json'))
     curve=pd.read_parquet(path/'equity_curve.parquet')
     assert curve.nav.gt(0).all() and curve.cash.ge(-1e-7).all()
+
+
+def test_total_return_runner_records_tri_basis_clusters_and_production_gate(tmp_path, monkeypatch):
+    prices,benchmark,sessions = market_fixture(stocks=12,days=300,start='2023-01-02')
+    indices = pd.concat([benchmark.assign(index_name=name) for name in ('NIFTY 50','NIFTY 500')])
+    tri = indices.assign(index_name=indices.index_name + ' TRI')
+    actions = pd.DataFrame(columns=['event_id','action_type','ex_date','instrument_id','cash_amount','parse_status'])
+    monkeypatch.setattr(runner,'require_research_ready',lambda *args: dict(status='READY'))
+    monkeypatch.setattr(runner,'load_research_data',lambda *args: (prices,benchmark,sessions,None,indices))
+    monkeypatch.setattr(runner,'input_manifest',lambda *args: dict(input_sha256='synthetic',git_commit='test',files=[]))
+    monkeypatch.setattr(runner,'query_dataset',lambda root,name,**kwargs: actions if name=='corporate_actions' else tri)
+    path,evidence = runner.run_research(Config(data_dir=tmp_path),sessions[270].date(),sessions[-1].date(),
+        estimate_historical_costs=True,full_robustness=False,total_return=True)
+    manifest = json.loads((path/'config.json').read_text())
+    assert manifest['return_basis']=='TOTAL_RETURN' and manifest['label_return_basis']=='PRICE'
+    assert not evidence['validation_levels']['PRODUCTION_VALIDATED']['passed']
+    assert (path/'clusters.parquet').is_file() and (path/'cluster-exposure.json').is_file()
+    assert all(row.get('basis')=='GROSS_TOTAL_RETURN_INDEX' for name,row in
+        json.loads((path/'benchmarks.json').read_text()).items() if name.startswith('NIFTY'))
+    assert (tmp_path/'research/experiments.csv').is_file()
+
+
+def test_blocked_attempt_is_frozen_and_appended_before_gate_failure(tmp_path,monkeypatch):
+    monkeypatch.setattr(runner,'require_research_ready',lambda *args: (_ for _ in ()).throw(ValueError('synthetic blocker')))
+    with pytest.raises(ValueError,match='synthetic blocker'):
+        runner.run_research(Config(data_dir=tmp_path),date(2016,1,1),date(2024,1,1))
+    records = pd.read_csv(tmp_path/'research/experiments.csv')
+    assert records.decision.tolist()==['PENDING','BLOCKED']
+    assert records.experiment_id.nunique()==1
+    assert list((tmp_path/'research/experiments').glob('*/frozen-baseline.json'))
+    assert list((tmp_path/'research/experiments').glob('*/outcome.json'))
+
+
+def test_total_return_runner_records_tri_basis_clusters_and_production_gate(tmp_path, monkeypatch):
+    prices,benchmark,sessions = market_fixture(stocks=12,days=300,start='2023-01-02')
+    indices = pd.concat([benchmark.assign(index_name=name) for name in ('NIFTY 50','NIFTY 500')])
+    tri = indices.assign(index_name=indices.index_name + ' TRI')
+    actions = pd.DataFrame(columns=['event_id','action_type','ex_date','instrument_id','cash_amount','parse_status'])
+    monkeypatch.setattr(runner,'require_research_ready',lambda *args: dict(status='READY'))
+    monkeypatch.setattr(runner,'load_research_data',lambda *args: (prices,benchmark,sessions,None,indices))
+    monkeypatch.setattr(runner,'input_manifest',lambda *args: dict(input_sha256='synthetic',git_commit='test',files=[]))
+    monkeypatch.setattr(runner,'query_dataset',lambda root,name,**kwargs: actions if name=='corporate_actions' else tri)
+    path,evidence = runner.run_research(Config(data_dir=tmp_path),sessions[270].date(),sessions[-1].date(),
+        estimate_historical_costs=True,full_robustness=False,total_return=True)
+    manifest = json.loads((path/'config.json').read_text())
+    assert manifest['return_basis']=='TOTAL_RETURN' and manifest['label_return_basis']=='PRICE'
+    assert not evidence['validation_levels']['PRODUCTION_VALIDATED']['passed']
+    assert (path/'clusters.parquet').is_file() and (path/'cluster-exposure.json').is_file()
+    assert all(row.get('basis')=='GROSS_TOTAL_RETURN_INDEX' for name,row in
+        json.loads((path/'benchmarks.json').read_text()).items() if name.startswith('NIFTY'))
+    assert (tmp_path/'research/experiments.csv').is_file()
+
+
+def test_blocked_attempt_is_frozen_and_appended_before_gate_failure(tmp_path,monkeypatch):
+    monkeypatch.setattr(runner,'require_research_ready',lambda *args: (_ for _ in ()).throw(ValueError('synthetic blocker')))
+    with pytest.raises(ValueError,match='synthetic blocker'):
+        runner.run_research(Config(data_dir=tmp_path),date(2016,1,1),date(2024,1,1))
+    records = pd.read_csv(tmp_path/'research/experiments.csv')
+    assert records.decision.tolist()==['PENDING','BLOCKED']
+    assert records.experiment_id.nunique()==1
+    assert list((tmp_path/'research/experiments').glob('*/frozen-baseline.json'))
+    assert list((tmp_path/'research/experiments').glob('*/outcome.json'))

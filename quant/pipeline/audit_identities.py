@@ -8,11 +8,12 @@ import pandas as pd
 
 from quant.pipeline.update_calendar import read_calendar
 from quant.storage.research_store import write_json
+from quant.boundaries import RAW_PRICE_START
 
 MASTER_DOCUMENTATION = 'https://nsearchives.nseindia.com/content/press/Data_details_CM.pdf'
 
 
-def audit_identities(config, start=date(2010, 1, 1), end=None):
+def audit_identities(config, start=RAW_PRICE_START, end=None):
     from quant.pipeline.cli import completed_day
     end = end or completed_day(config)
     calendar = read_calendar(config, start, end)
@@ -55,7 +56,7 @@ def audit_identities(config, start=date(2010, 1, 1), end=None):
 def main():
     from quant.pipeline.cli import parser_config
     parser, config = parser_config(__doc__)
-    parser.set_defaults(start=date(2010, 1, 1))
+    parser.set_defaults(start=RAW_PRICE_START)
     args = parser.parse_args()
     try:
         report = audit_identities(args.config(config), args.start, args.end)
