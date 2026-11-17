@@ -12,6 +12,7 @@ from quant.pipeline.update_calendar import read_calendar
 from quant.pipeline.state import PipelineState
 from quant.boundaries import RAW_PRICE_START, identity_boundary
 from quant.universe.config import UniverseConfig
+from quant.storage.parquet_store import read_parquet_file
 
 
 def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
@@ -44,7 +45,7 @@ def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
             for day in expected:
                 path = config.data_dir / 'normalized' / dataset / f'year={day.year}/month={day.month:02d}/{day}.parquet'
                 try:
-                    frame = pd.read_parquet(path)
+                    frame = read_parquet_file(path)
                     if frame.empty or not pd.to_datetime(frame.trade_date).dt.date.eq(day).all():
                         raise ValueError('Incorrect dataset date')
                     if dataset == 'indices':
@@ -79,7 +80,7 @@ def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
                                 | (ok.adjusted_low > ok[['adjusted_open', 'adjusted_close', 'adjusted_high']].min(axis=1))).any():
                             raise ValueError('Invalid adjusted OHLC')
                         excluded.update(frame.loc[frame.adjustment_status != 'OK', 'symbol'].dropna())
-                        raw = pd.read_parquet(config.prices_dir / f'year={day.year}/month={day.month:02d}/{day}.parquet',
+                        raw = read_parquet_file(config.prices_dir / f'year={day.year}/month={day.month:02d}/{day}.parquet',
                                               columns=['trade_date', 'symbol', 'series', 'source_hash'])
                         merged = frame.merge(raw, on=['trade_date', 'symbol', 'series'], how='outer', indicator=True)
                         if not merged['_merge'].eq('both').all() or not merged.source_price_sha256.eq(merged.source_hash_y if 'source_hash_y' in merged else merged.source_hash).fillna(False).all():
@@ -94,7 +95,7 @@ def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
     except (OSError, ValueError, KeyError) as error:
         errors['calendar_or_prices'] = str(error)
     try:
-        ids = pd.read_parquet(config.data_dir / 'normalized/security_history/identities.parquet')
+        ids = read_parquet_file(config.data_dir / 'normalized/security_history/identities.parquet')
         checks['identity_ready'] = (not ids.empty and (ids.identity_status == 'RESOLVED').any()
                                     and (ids.valid_from <= ids.valid_to).all())
     except (OSError, ValueError, KeyError) as error:
@@ -122,7 +123,7 @@ def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
     try:
         from quant.features.adjustments import action_version
         files = list((config.data_dir / 'normalized/corporate_actions').rglob('*.parquet'))
-        actions_frame = pd.concat([pd.read_parquet(path) for path in files]).drop_duplicates('event_id') if files else pd.DataFrame()
+        actions_frame = pd.concat([read_parquet_file(path) for path in files]).drop_duplicates('event_id') if files else pd.DataFrame()
         if not actions_frame.empty:
             # Stored adjustments are anchored to their build date. Future split
             # scaling cancels in historical returns and never supplies a signal.
@@ -135,7 +136,7 @@ def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
             unresolved = actions_frame[(~actions_frame.parse_status.isin(['PARSED','NON_ADJUSTING'])
                 | (actions_frame.instrument_id.isna() & actions_frame.parse_status.ne('NON_ADJUSTING')))
                 & (pd.to_datetime(actions_frame.ex_date).dt.date <= latest)]
-            latest_prices = pd.read_parquet(config.data_dir / 'normalized/adjusted_prices' /
+            latest_prices = read_parquet_file(config.data_dir / 'normalized/adjusted_prices' /
                 f'year={latest.year}/month={latest.month:02d}/{latest}.parquet')
             for event in unresolved.itertuples():
                 affected = (latest_prices.instrument_id.eq(event.instrument_id) if pd.notna(event.instrument_id)

@@ -5,12 +5,13 @@ from datetime import date, datetime, timezone
 from uuid import uuid4
 
 import pandas as pd
+
 import requests
 
 from quant.data.http import atomic_write, sha256
 from quant.data.nifty_tri import SOURCE_URL, SOURCE_PAGE, BENCHMARKS, parse_tri
 from quant.pipeline.update_calendar import read_calendar
-from quant.storage.parquet_store import write_parquet
+from quant.storage.parquet_store import read_parquet_file, write_parquet
 from quant.storage.research_store import write_json
 
 
@@ -49,7 +50,7 @@ def backfill_tri(config, start, end):
     # outside the refreshed range and archive the previous version before replace.
     path = config.data_dir / 'normalized/index_tri/history.parquet'
     if path.exists():
-        old = pd.read_parquet(path)
+        old = read_parquet_file(path)
         archive = path.parent / 'history-revisions' / (sha256(path.read_bytes()) + '.bin')
         if not archive.exists():
             atomic_write(archive, path.read_bytes())

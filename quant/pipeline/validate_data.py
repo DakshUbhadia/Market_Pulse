@@ -4,6 +4,7 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+
 import numpy as np
 
 from quant.data.http import atomic_write
@@ -12,6 +13,7 @@ from quant.pipeline.audit_prices import audit_prices
 from quant.pipeline.state import PipelineState
 from quant.pipeline.update_calendar import read_calendar
 from quant.boundaries import RAW_PRICE_START
+from quant.storage.parquet_store import read_parquet_file
 
 
 def validate_data(config, start, end, *, run_errors=None, incremental=False):
@@ -48,7 +50,7 @@ def validate_data(config, start, end, *, run_errors=None, incremental=False):
                 missing.append(str(day))
                 continue
             try:
-                frame = pd.read_parquet(path)
+                frame = read_parquet_file(path)
                 if frame.empty or not pd.to_datetime(frame.trade_date).dt.date.eq(day).all():
                     raise ValueError('Missing rows or incorrect partition date')
                 if dataset in ('indices', 'vix'):
@@ -80,7 +82,7 @@ def validate_data(config, start, end, *, run_errors=None, incremental=False):
     for source, path, required in [('nse_security_master', master, ['symbol', 'series', 'isin']),
                                    ('security_history', identities, ['symbol', 'series', 'identity_status'])]:
         try:
-            frame = pd.read_parquet(path, columns=required)
+            frame = read_parquet_file(path, columns=required)
             if frame.empty:
                 raise ValueError('Empty identity dataset')
         except (OSError, ValueError, KeyError) as error:
@@ -93,7 +95,7 @@ def validate_data(config, start, end, *, run_errors=None, incremental=False):
     action_files = list((config.data_dir / 'normalized' / 'corporate_actions').rglob('*.parquet'))
     try:
         if action_files:
-            actions = pd.concat([pd.read_parquet(path) for path in action_files]).drop_duplicates('event_id')
+            actions = pd.concat([read_parquet_file(path) for path in action_files]).drop_duplicates('event_id')
             bad = actions[(~actions.parse_status.isin(['PARSED', 'NON_ADJUSTING']))
                           & (pd.to_datetime(actions.ex_date).dt.date <= end)]
             excluded = sorted(bad.symbol.dropna().unique().tolist())

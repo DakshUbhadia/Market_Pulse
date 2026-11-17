@@ -8,7 +8,7 @@ import pandas as pd
 from quant.data.http import sha256
 from quant.data.nse_lifecycle import SOURCE_PAGES, archive_source, inventory_links
 from quant.data.lifecycle_normalize import normalize_events
-from quant.storage.parquet_store import write_parquet
+from quant.storage.parquet_store import read_parquet_file, write_parquet
 from quant.storage.research_store import write_json
 
 
@@ -38,7 +38,7 @@ def ingest_reviewed(config, records):
         raise ValueError('No reviewed lifecycle events supplied')
     path = config.data_dir/'normalized/lifecycle/events.parquet'
     if path.exists():
-        previous = pd.read_parquet(path)
+        previous = read_parquet_file(path)
         duplicate = set(previous.lifecycle_event_id) & set(frame.lifecycle_event_id)
         if duplicate:
             raise ValueError('Lifecycle IDs are immutable; submit new evidence IDs for revisions')
@@ -75,7 +75,7 @@ def load_lifecycle(config):
     path = config.data_dir/'normalized/lifecycle/events.parquet'
     if not path.exists():
         return pd.DataFrame()
-    frame = pd.read_parquet(path)
+    frame = read_parquet_file(path)
     for row in frame[frame.verification_status.eq('VERIFIED')].itertuples():
         raw = (config.data_dir/row.raw_path).resolve()
         if not raw.is_relative_to(config.data_dir.resolve()) or sha256(raw.read_bytes()) != row.source_sha256:

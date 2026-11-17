@@ -13,7 +13,7 @@ from quant.pipeline.audit_prices import audit_prices
 from quant.pipeline.state import PipelineState
 from quant.data.normalization import write_daily
 from quant.data.http import atomic_write
-from quant.storage.parquet_store import write_parquet
+from quant.storage.parquet_store import read_parquet_file, write_parquet
 from quant.storage.duckdb_store import query_prices
 
 
@@ -40,7 +40,7 @@ def _incremental_partitions(config, start, end, actions, prior, fingerprints):
         symbols.update(actions.loc[actions.instrument_id.isin(ids), 'symbol'])
     isins = set()
     if ids:
-        identities = pd.read_parquet(config.data_dir / 'normalized/security_history/identities.parquet')
+        identities = read_parquet_file(config.data_dir / 'normalized/security_history/identities.parquet')
         matched = identities[identities.instrument_id.isin(ids)]
         if not ids.issubset(set(matched.instrument_id)):
             raise ValueError('Changed action identity lacks historical ISIN evidence; full rebase required')
@@ -69,7 +69,7 @@ def _incremental_partitions(config, start, end, actions, prior, fingerprints):
     root = config.data_dir / 'normalized/adjusted_prices'
     for day, replacement in historical.groupby('trade_date') if not historical.empty else []:
         path = root / f'year={day.year}/month={day.month:02d}/{day:%Y-%m-%d}.parquet'
-        old = pd.read_parquet(path)
+        old = read_parquet_file(path)
         combined = pd.concat([old.loc[~affected(old)], replacement], ignore_index=True)
         write_parquet(combined, path)
         partitions += 1
@@ -141,7 +141,7 @@ def _build_partitions(config, start, end, actions):
                     if path.exists():
                         try:
                             pd.testing.assert_frame_equal(
-                                pd.read_parquet(path).sort_values(['symbol','series']).reset_index(drop=True),
+                                read_parquet_file(path).sort_values(['symbol','series']).reset_index(drop=True),
                                 group.sort_values(['symbol','series']).reset_index(drop=True),
                                 check_dtype=False,check_exact=True,check_datetimelike_compat=True,check_like=True)
                             unchanged = True
@@ -169,7 +169,7 @@ def build_adjusted(config, start, end, *, incremental=False):
     if audit_prices(config, start, end)['status'] != 'READY':
         raise ValueError('Price audit must pass before adjusted prices can be generated')
     files = list((config.data_dir / 'normalized' / 'corporate_actions').rglob('*.parquet'))
-    actions = pd.concat([pd.read_parquet(path) for path in files], ignore_index=True) if files else pd.DataFrame()
+    actions = pd.concat([read_parquet_file(path) for path in files], ignore_index=True) if files else pd.DataFrame()
     if not actions.empty:
         actions = actions.drop_duplicates('event_id')
         actions = actions[pd.to_datetime(actions.ex_date).dt.date <= end]

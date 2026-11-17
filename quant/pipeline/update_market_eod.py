@@ -14,7 +14,7 @@ from quant.pipeline.bootstrap_history import run as bootstrap
 from quant.pipeline.state import PipelineState
 from quant.pipeline.update_calendar import read_calendar, reconcile_calendar
 from quant.storage.duckdb_store import query_prices
-from quant.storage.parquet_store import write_parquet
+from quant.storage.parquet_store import read_parquet_file, write_parquet
 
 
 def daily_path(config, dataset, day):
@@ -87,9 +87,8 @@ def update_market_eod(config, start, end, *, incremental=False):
             history = build_security_history(observations)
             identity_path = config.data_dir / 'normalized' / 'security_history' / 'identities.parquet'
             if incremental and identity_path.exists():
-                import pandas as pd
                 from quant.data.security_history import extend_security_history
-                history = extend_security_history(pd.read_parquet(identity_path), history, start)
+                history = extend_security_history(read_parquet_file(identity_path), history, start)
             write_parquet(history, config.data_dir / 'normalized' / 'security_history' / 'identities.parquet')
             unresolved = int((history.identity_status == 'UNRESOLVED').sum())
             report['security_history'] = {'status': 'READY', 'intervals': len(history), 'unresolved': unresolved}

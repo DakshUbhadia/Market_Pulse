@@ -120,6 +120,7 @@ def test_overlap_refresh_retains_previous_raw_version(tmp_path):
     assert any(item.read_bytes()==b'first' for item in (tmp_path/'revisions').iterdir() if not item.name.endswith('.json'))
 
 
+@pytest.mark.usefixtures('hive_partition_reads')
 def test_historical_gate_uses_build_anchor_and_checks_unresolved_exclusions(tmp_path,monkeypatch):
     from quant.data.normalization import write_daily
     from quant.storage.parquet_store import write_parquet

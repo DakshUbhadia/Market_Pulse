@@ -7,13 +7,14 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from quant.data.http import atomic_write
+from quant.storage.parquet_store import read_parquet_file
 
 CATEGORIES = ('industrial', 'bank', 'nbfc', 'insurance', 'reit', 'invit', 'other')
 
 
 def audit_fundamentals(config):
     files = list((config.data_dir / 'normalized/financials').rglob('*.parquet'))
-    frame = pd.concat([pd.read_parquet(path) for path in files], ignore_index=True) if files else pd.DataFrame()
+    frame = pd.concat([read_parquet_file(path) for path in files], ignore_index=True) if files else pd.DataFrame()
     groups = []
     if not frame.empty:
         frame = frame.sort_values('first_seen_at').drop_duplicates('filing_id')

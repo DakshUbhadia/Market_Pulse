@@ -8,7 +8,7 @@ from quant.data.http import atomic_write, sha256
 from quant.data.nse_client import NseClient
 from quant.data.normalization import records, numeric, dates, keys
 from quant.pipeline.update_market_eod import daily_path
-from quant.storage.parquet_store import write_parquet
+from quant.storage.parquet_store import read_parquet_file, write_parquet
 
 ALIASES = {'NIFTY 50': {'NIFTY 50', 'CNX NIFTY', 'S&P CNX NIFTY'},
            'NIFTY 500': {'NIFTY 500', 'CNX 500', 'S&P CNX 500'}}
@@ -76,7 +76,7 @@ def backfill_benchmarks(config, start, end):
             for day, group in pd.concat(blocks).groupby('trade_date'):
                 path = daily_path(config, 'indices', day.date())
                 if path.exists():
-                    old = pd.read_parquet(path)
+                    old = read_parquet_file(path)
                     group = pd.concat([old[~old.index_name.isin(ALIASES)], group], ignore_index=True)
                 write_parquet(group, path)
             print(f'{month:%Y-%m}: benchmark history normalized', flush=True)
