@@ -47,6 +47,7 @@ def parse_xbrl(content):
             except InvalidOperation:
                 pass  # Text facts stay in the raw instance, not a numeric financial observation.
         facts.append({'concept': local(element.tag), 'namespace': element.tag.split('}')[0].lstrip('{'),
+                      'text_value': element.text.strip() if element.text else None,
                       'context_id': reference, 'period_start': context.get('startDate'),
                       'period_end': context.get('endDate') or context.get('instant'),
                       'entity': context.get('identifier'), 'dimensions': context['dimensions'],
@@ -55,34 +56,34 @@ def parse_xbrl(content):
     return facts
 
 
-def extract_financials(content, period_end, *, consolidated=False, bank=False, period_start=None):
-    from quant.data.financial_taxonomy import BANK, ORDINARY
+def extract_financials(content, period_end, *, consolidated=False, bank=False, period_start=None, entity_type=None):
+    from quant.data.taxonomy_registry import concept_rules, TAXONOMY_VERSION
+    from quant.data.xbrl_context import declarations, matches_context, conflicting_period_contexts
     facts = parse_xbrl(content)
-    target = pd.Timestamp(period_end).date()
+    family = entity_type or ('IND_AS_BANK' if bank else 'IND_AS_INDUSTRIAL')
+    rules = concept_rules(family)
+    declared = declarations(facts, rules[0].namespaces)
+    invalid_contexts = conflicting_period_contexts(facts, rules[0].namespaces)
     result = {}
-    for field, concepts in (BANK if bank else ORDINARY).items():
+    for rule in rules:
         candidates = []
         for fact in facts:
-            if fact['concept'] not in concepts or not fact['period_end'] or fact['value'] is None:
+            if (fact['concept'] not in rule.concepts or fact['namespace'] not in rule.namespaces
+                    or fact['value'] is None or not fact['unit'] or fact['context_id'] in invalid_contexts):
                 continue
-            if pd.Timestamp(fact['period_end']).date() != target or fact['has_typed_dimensions']:
+            if not matches_context(fact, rule, period_start=period_start, period_end=period_end,
+                                   basis='CONSOLIDATED' if consolidated else 'STANDALONE', declared=declared):
                 continue
-            dims = fact['dimensions']
-            # Only an explicit consolidation dimension is accepted; segments are not totals.
-            consolidation = [value for dimension, value in dims.items()
-                             if 'Consolidat' in dimension or 'Standalone' in dimension]
-            if len(dims) != len(consolidation):
-                continue
-            if consolidation and not any(('Consolidated' if consolidated else 'Standalone') in v for v in consolidation):
-                continue
-            if consolidated and not consolidation:
-                continue  # An unlabelled context cannot prove consolidation.
-            if period_start is not None and fact['period_start'] and pd.Timestamp(fact['period_start']) != pd.Timestamp(period_start):
+            unit = ET.fromstring(fact['unit'])
+            measures = [e.text.split(':')[-1] for e in unit.iter() if local(e.tag) == 'measure' and e.text]
+            expected = {'INR': ['INR'], 'PURE': ['pure'], 'INR_PER_SHARE': ['INR', 'shares']}[rule.unit_kind]
+            if measures != expected:
                 continue
             candidates.append(fact)
         # Two durations (quarter/YTD), units, or values are ambiguous; never select an arbitrary fact.
         signatures = {(fact['period_start'], fact['period_end'], fact['unit'], fact['value']) for fact in candidates}
-        result[field] = float(candidates[0]['value']) if len(signatures) == 1 else None
+        result[rule.canonical_field] = float(candidates[0]['value']) if len(signatures) == 1 else None
     result['parser_status'] = 'PARSED' if any(value is not None for value in result.values()) else 'NEEDS_REVIEW'
-    result['financial_schema'] = 'BANK' if bank else 'ORDINARY'
+    result['financial_schema'] = 'BANK' if family == 'IND_AS_BANK' else 'ORDINARY' if family == 'IND_AS_INDUSTRIAL' else family
+    result.update(entity_type=family, parser_version='financial_xbrl_2.0.0', taxonomy_version=TAXONOMY_VERSION)
     return result

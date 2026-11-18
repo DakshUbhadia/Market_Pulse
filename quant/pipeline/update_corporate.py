@@ -23,6 +23,13 @@ def windows(start, end, days=30):
 
 
 def archive_filings(client, frame, dataset, history):
+    frame=frame.copy()
+    # A metadata-only row can infer all-null textual columns as float64.
+    # Pandas 3 rejects inserting a document hash into such a column on resume.
+    for name in ('instrument_id','document_sha256','document_raw_path','parser_status',
+                 'financial_schema','entity_type','parser_version','taxonomy_version'):
+        if name in frame:
+            frame[name]=frame[name].astype(object)
     review = []
     for i, row in frame.iterrows():
         if not row.get('instrument_id'):
@@ -42,12 +49,14 @@ def archive_filings(client, frame, dataset, history):
             frame.loc[i, 'document_sha256'] = raw.sha256
             frame.loc[i, 'document_raw_path'] = str(raw.path)
             if dataset == 'financials':
-                if pd.isna(row.get('bank')) or row.standalone_or_consolidated not in ('Consolidated', 'Non-Consolidated', 'Standalone'):
+                if row.standalone_or_consolidated not in ('Consolidated', 'Non-Consolidated', 'Standalone'):
                     raise ValueError('Unknown financial institution type or consolidation basis')
+                from quant.data.taxonomy_registry import filing_family
+                family = filing_family(row)
                 start = row.get('period_start')
                 values = extract_financials(content, row.period_end,
                     consolidated=row.standalone_or_consolidated == 'Consolidated',
-                    bank=bool(row.get('bank')), period_start=start if pd.notna(start) else None)
+                    bank=family == 'IND_AS_BANK', entity_type=family, period_start=start if pd.notna(start) else None)
             else:
                 values = parse_shareholding_xbrl(content, row.as_on_date)
                 values['parser_status'] = 'PARSED' if any(value is not None for value in values.values()) else 'NEEDS_REVIEW'
@@ -60,7 +69,8 @@ def archive_filings(client, frame, dataset, history):
             if pd.isna(frame.loc[i, 'instrument_id']):
                 review.append({'filing_id': row.filing_id, 'reason': 'UNRESOLVED_IDENTITY'})
         except (ValueError, OSError, NseSourceError) as error:
-            review.append({'filing_id': row.filing_id, 'reason': str(error)})
+            review.append({'filing_id': row.filing_id, 'reason': str(error),
+                           'source_status':getattr(error,'status',None)})
             frame.loc[i, 'parser_status'] = 'NEEDS_REVIEW'
     return frame, review
 

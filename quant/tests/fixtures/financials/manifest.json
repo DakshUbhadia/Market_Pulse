@@ -1,0 +1,61 @@
+{
+  "fixtures": [
+    {
+      "file": "TATATECH-Consolidated.xml",
+      "sha256": "8b13570ef7bdc390525db3a188fcf06d4581185342a5447bbddaac29cbe57d7e",
+      "source_url": "https://nsearchives.nseindia.in/corporate/xbrl/INDAS_101537_1036282_25012024053748.xml",
+      "period_start": "2023-10-01",
+      "period_end": "2023-12-31",
+      "basis": "Consolidated",
+      "entity_type": "IND_AS_INDUSTRIAL",
+      "expected": {
+        "revenue": 12894500000.0,
+        "pat": 1702200000.0
+      },
+      "review_scope": "Selected undimensioned quarter facts checked directly against archived XML; no human review claimed"
+    },
+    {
+      "file": "TATATECH-Non-Consolidated.xml",
+      "sha256": "a81fcaffd6449d6423dafc8d68f1615df1a204ff25443bd4b14f49edf1578c40",
+      "source_url": "https://nsearchives.nseindia.in/corporate/xbrl/INDAS_101535_1036251_25012024052939.xml",
+      "period_start": "2023-10-01",
+      "period_end": "2023-12-31",
+      "basis": "Non-Consolidated",
+      "entity_type": "IND_AS_INDUSTRIAL",
+      "expected": {
+        "revenue": 6959800000.0,
+        "pat": 940700000.0
+      },
+      "review_scope": "Selected undimensioned quarter facts checked directly against archived XML; no human review claimed"
+    },
+    {
+      "file": "PRUDENT-Non-Consolidated.xml",
+      "sha256": "1d1c85411a36bece6316f2dc4fbbad3e62d472f665bef917631b232cf9de7896",
+      "source_url": "https://nsearchives.nseindia.in/corporate/xbrl/NBFC_INDAS_101542_1036308_25012024054438.xml",
+      "period_start": "2023-10-01",
+      "period_end": "2023-12-31",
+      "basis": "Non-Consolidated",
+      "entity_type": "IND_AS_NBFC",
+      "expected": {
+        "revenue": 1724762000.0,
+        "pat": 266031000.0
+      },
+      "review_scope": "Selected undimensioned quarter facts checked directly against archived XML; no human review claimed"
+    },
+    {
+      "file": "ICICIBANK-Consolidated.xml",
+      "sha256": "9593aa22296856bd8a3dea90d256bda1f429adce4553469503a1509c276c28e4",
+      "source_url": "https://nsearchives.nseindia.in/corporate/xbrl/BANKING_101243_1031897_20012024042602.xml",
+      "period_start": "2023-10-01",
+      "period_end": "2023-12-31",
+      "basis": "Consolidated",
+      "entity_type": "IND_AS_BANK",
+      "expected": {
+        "pat": 112551900000.0,
+        "interest_income": 408652300000.0
+      },
+      "review_scope": "Selected undimensioned quarter monetary facts checked against archived XML; incorrectly INR-tagged ROA remains missing"
+    }
+  ],
+  "coverage": "Initial industrial, bank and NBFC specimens. Broader named-company/annual/revision corpus remains to be acquired."
+}

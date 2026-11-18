@@ -1,0 +1,35 @@
+{
+  "review_status": "DRAFT",
+  "reviewed_by": null,
+  "return_basis": "PRICE",
+  "min_group_size": 20,
+  "block_weights": {
+    "momentum": 0.14285714285714285,
+    "relative_strength": 0.14285714285714285,
+    "quality": 0.14285714285714285,
+    "growth": 0.14285714285714285,
+    "value": 0.14285714285714285,
+    "low_risk": 0.14285714285714285,
+    "liquidity": 0.14285714285714285
+  },
+  "evaluation_windows": [],
+  "acceptance": {
+    "min_oos_sessions": 504,
+    "min_mean_ic_improvement": 0.005,
+    "min_ir_improvement": 0.1,
+    "max_drawdown_deterioration": 0.02,
+    "max_turnover": 12,
+    "min_label_coverage": 0.995
+  },
+  "risk": {
+    "capital": null,
+    "volatility_targets": [0.12, 0.15],
+    "constraints": {
+      "max_weight": 0.05,
+      "max_cluster_weight": 0.25,
+      "adv_fraction": 0.01,
+      "turnover_penalty": 0.001,
+      "gross_exposure": 1.0
+    }
+  }
+}

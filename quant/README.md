@@ -534,3 +534,127 @@ positive baseline decisions and resolved held-event accounting. Completion seals
 cannot be overwritten to bless changed artifacts. Fundamental backfill,
 universe-level coverage, PIT snapshots and historical-share reconstruction are
 evidence infrastructure; Factor V2 remains disabled.
+
+## Fresh NSE source diagnostics
+
+Run `python -m quant.pipeline.probe_nse_source` to make a fresh calendar smoke
+request using the configured transport. `--data-dir <directory>` selects where
+raw responses and reports are archived. Each invocation writes a unique report
+under `reports/source-probes/`, including source hashes, transport settings,
+HTTP status and provenance. A successful HTTP response must also parse as a
+calendar containing at least five holidays. This diagnostic does not replace
+the full live suite or certify research readiness.
+
+The command exits zero for `LIVE_SMOKE_PASSED` and one for
+`LIVE_SOURCE_UNAVAILABLE`. It never uses cached successes. Authorization retries
+honor `Retry-After` before the single permitted session renewal; cooldowns above
+60 seconds stop the operation for a later retry. Small randomized delays
+preserve the configured minimum interval between requests. Persistent HTTP 403
+responses remain failures.
+
+## Offline multifactor research
+
+Install `python -m pip install -r quant/requirements-research.txt` for constrained
+risk research. V1 retains its original dependencies and scoring behavior.
+Ledoit-Wolf covariance is implemented using NumPy moments; the optimizer uses
+SciPy. Optional Elastic Net training remains gated off until V2 evidence passes.
+
+Offline development and archived-data replay can proceed while a source or V1
+evidence gate is unresolved. Completion seals, real forward launch and promotion
+retain their evidence prerequisites. No model switch is enabled by these tools.
+
+`quant.pipeline.reparse_fundamentals` reads the source corpus without changing it
+and emits a unique replay directory, parsed filings, metadata/document hashes,
+implementation hashes and review results. For example:
+
+```powershell
+python -m quant.pipeline.reparse_fundamentals --source-data-dir D:/Market_Pulse_Quant_20261113/data --data-dir data/major-phase-execution --from 2024-01-01 --to 2026-11-17 --limit 250
+```
+
+Use `--offset` for subsequent archived-document batches. This is a parser replay,
+not proof of historical coverage. `quant.pipeline.acquire_fundamentals_stage1`
+downloads unattempted documents from existing discovery metadata in finite
+checkpointed batches. It stops on source failure or a batch parsing rate below
+80%. `--batch-size` defaults to 100 (maximum 250); `--max-batches` defaults to
+one (maximum 250). It never expands before 2024 automatically. Progress is
+written to `reports/fundamental-stage1-acquisition.json` in the configured data
+directory. Run only one supervisor for the same date range at a time.
+
+The taxonomy registry accepts reviewed namespace/concept combinations and
+explicit consolidation declarations. Conflicting quarter/YTD reporting dates,
+segment dimensions, conflicting values and incorrect units stay unusable.
+`BANKING_` and `NBFC_INDAS_` are explicit exchange-document family prefixes;
+NSE's `bank="B"` metadata code is recognized. A taxonomy family does not certify
+all company inputs. For example, currency-tagged bank ROA is rejected rather
+than converted into a ratio. Current industry classifications are never applied
+backward by this parser.
+
+`quant.pipeline.build_fundamental_features` builds research inputs from dated
+raw-price keys, verified archived filings, share anchors, capital events and
+share-coverage evidence. Its explicit paths are `--price-keys`, `--filings`,
+`--anchors`, `--capital-events`, `--share-coverage` and `--output`; `--data-dir`
+must identify the corpus containing the original filing archives. Outputs cannot
+replace earlier feature files. Share coverage requires instrument ID,
+`covered_from`, `covered_through`, timezone-aware `known_at`, `VERIFIED` status
+and a source SHA-256. An anchor must precede the signal and lie within that
+verified coverage interval.
+
+The initial candidate uses these equal-weighted within-block inputs:
+
+| Block | Industrial | Bank |
+| --- | --- | --- |
+| Quality | Annual PAT / average equity; CFO / positive PAT; negative debt / equity | Annual PAT / average assets; PAT / average equity; negative gross and net NPA / advances |
+| Growth | Comparable quarter revenue and positive-base PAT YoY | Deposit and advance YoY |
+| Value | Annual earnings, FCF and equity / dated market capitalization | Annual earnings and equity / dated market capitalization |
+
+Annual averages require comparable then-known annual statements. Growth uses
+quarter-only facts or comparable cumulative differencing; it never sums YTD
+statements. Negative or absent growth denominators remain missing. All declared
+inputs in a company's applicable blocks are required. Unsupported financial
+families remain outside the initial V2 scoring population. Value requires
+verified historical shares and raw contemporaneous prices. No current-share
+backfill or missing-block weight redistribution is performed.
+
+`quant.models.factor_v2.same_universe_scores` returns full V1, covered V1 and V2.
+Covered V1 normalization is recalculated on the exact dated V2 population. The
+initial V2 uses seven equal block weights, 1%/99% winsorization, median/MAD
+standardization clipped to +/-3, and at least 20 names per dated entity group.
+V1's existing price/risk/liquidity block formulas are retained.
+
+Copy `quant/research/v2-spec.template.json` to a new specification, declare
+nonoverlapping evaluation windows and review the candidate formulas, thresholds
+and capital assumptions before setting its review fields. The supplied template
+is a draft; its acceptance numbers are proposed research defaults. Freeze the
+reviewed specification with:
+
+```powershell
+python -m quant.pipeline.freeze_v2_specification --spec reviewed-v2.json --output frozen-v2.json
+```
+
+The freeze includes implementation hashes. A code change requires a newly
+reviewed freeze. `quant.pipeline.run_factor_v2_research` requires `--spec`,
+`--price-baseline`, `--total-return-baseline`, `--filings`, `--anchors`,
+`--capital-events`, `--share-coverage` and `--output-root`. It verifies both V1
+seals/decisions, source integrity, archived filings, and every dated 80% overall /
+90% liquidity coverage cutoff before simulations. Feature completeness is gated
+separately. The shared engine produces all three comparison arms, IC/deciles,
+factor IC by year/rolling observations, 1.5x/2x cost stress, accounting ledgers,
+an explicit decision and an immutable seal. A blocked attempt retains its
+outcome and has no seal. `PRICE` is the draft default; `TOTAL_RETURN` uses the
+dividend ledger and Nifty 500 TRI consistently. Portfolio capital and estimated
+historical charges are recorded; a research decision never certifies production.
+
+`quant.pipeline.run_portfolio_risk_research --v2-experiment <sealed-directory>
+--spec <frozen-risk-specification> --output-root <directory>` requires a passing
+V2 research decision and explicitly reviewed capital. It compares simple
+rank-selected inverse volatility with the declared 12% and 15% targets. Trailing
+covariance uses 252 sessions with at least 220 jointly observed returns and no
+filling. Position, cluster, gross, volatility and target-order capacity limits
+are checked; realized next-open capacity violations block completion. Cash is
+allowed and infeasible allocations fail closed. The simulator's optional risk
+callback receives prior-close marks/NAV; V1 callbacks keep their existing API.
+
+`quant.research.purged_cv` supplies expanding and nested date-based splits and
+date-balanced weights. Label exits must mature before the training cutoff and
+embargo. No Elastic Net is fitted, promoted or assigned nonzero weight merely
+because these utilities are implemented.

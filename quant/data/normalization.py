@@ -94,7 +94,7 @@ def write_observation(frame, root, digest, observed_at):
         if identity and 'first_seen_at' in previous:
             first = previous.groupby(identity).first_seen_at.min()
             frame['first_seen_at'] = pd.to_datetime(frame[identity].map(first).fillna(frame.first_seen_at), utc=True)
-    frame['parser_version'] = 'foundation-1'
+    frame['parser_version'] = frame['parser_version'].fillna('foundation-1') if 'parser_version' in frame else 'foundation-1'
     # Normalized data can be rebuilt when parsing improves; raw response versions
     # and distinct filing-version files remain immutable.
     write_parquet(frame, path)

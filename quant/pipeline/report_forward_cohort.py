@@ -9,7 +9,7 @@ from quant.storage.research_store import write_json
 
 def report_forward_cohort(config, as_of, cohort=None):
     root = cohort_root(config,cohort)
-    report = forward_metrics(root)
+    report = forward_metrics(root,as_of=as_of)
     batches, _ = read_signals(root)
     report.update(cohort=cohort,as_of=str(as_of),status='ACTIVE' if batches else 'NOT_STARTED',
         cohort_age_calendar_days=(pd.Timestamp(as_of)-pd.Timestamp(min(b['as_of'] for b in batches))).days if batches else 0)
@@ -47,6 +47,8 @@ def report_forward_cohort(config, as_of, cohort=None):
             cost_drag=sum(t.get('total',0) for r in shadows for t in r['trades'])/initial)
     # A benchmark must have the same entry convention and interval; do not substitute outcome averages.
     report['benchmark_excess'] = None
+    report['benchmark_return'] = None
+    report['information_ratio'] = None
     report['benchmark_status'] = 'UNASSESSED_MATCHED_SHADOW_BENCHMARK_REQUIRED'
     if len(curve):
         from quant.storage.duckdb_store import query_dataset
@@ -56,7 +58,12 @@ def report_forward_cohort(config, as_of, cohort=None):
             closes=benchmark.reindex(pd.to_datetime(curve.as_of)).close
             if closes.isna().any() or (closes<=0).any() or closes.index.duplicated().any():
                 raise ValueError('Incomplete matched TRI sessions')
-            report['benchmark_excess']=report['shadow_portfolio_return']-float(closes.iloc[-1]/closes.iloc[0]-1)
+            report['benchmark_return']=float(closes.iloc[-1]/closes.iloc[0]-1)
+            report['benchmark_excess']=report['shadow_portfolio_return']-report['benchmark_return']
+            # First shadow close is the signal freeze, before any paper fill.
+            active=pd.Series(curve.nav.to_numpy()).pct_change().iloc[1:].to_numpy()-closes.pct_change().iloc[1:].to_numpy()
+            if len(active)>1 and active.std(ddof=1)>0:
+                report['information_ratio']=float(active.mean()/active.std(ddof=1)*252**.5)
             report['benchmark_status']='GROSS_TRI_SIGNAL_CLOSE_TO_SHADOW_CLOSE'
         except (FileNotFoundError,ValueError,KeyError) as error:
             report['benchmark_error']=str(error)

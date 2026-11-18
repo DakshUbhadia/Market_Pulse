@@ -1,0 +1,3 @@
+# Offline V2, shrinkage covariance and constrained portfolio research.
+-r requirements.txt
+scipy>=1.15,<2

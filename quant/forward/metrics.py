@@ -7,12 +7,17 @@ import pandas as pd
 from quant.forward.signal_store import read_signals, content_hash
 
 
-def forward_metrics(root):
+def forward_metrics(root, *, as_of=None):
     batches, signals = read_signals(root)
     outcomes = [json.loads(path.read_text(encoding='utf-8')) for path in (Path(root)/'outcomes').glob('*/*.json')]
     for row in outcomes:
         if content_hash({k:v for k,v in row.items() if k != 'sha256'}) != row['sha256']:
             raise ValueError('Frozen forward outcome checksum changed')
+    if as_of is not None:
+        outcomes = [r for r in outcomes if pd.Timestamp(r['exit_date']) <= pd.Timestamp(as_of)]
+        batches = [b for b in batches if pd.Timestamp(b['as_of']) <= pd.Timestamp(as_of)]
+        if len(signals):
+            signals = signals[pd.to_datetime(signals.as_of) <= pd.Timestamp(as_of)]
     frame = pd.DataFrame(outcomes)
     summary = {}
     for horizon in (21,63):
@@ -24,6 +29,9 @@ def forward_metrics(root):
     shadow_days = {p.stem for p in (Path(root)/'shadow').glob('*.json')}
     rebalance_dates = monthly_signal_dates(days) if len(days) else set()
     shadow = [json.loads(p.read_text(encoding='utf-8')) for p in (Path(root)/'shadow').glob('*.json')]
+    if as_of is not None:
+        shadow = [r for r in shadow if pd.Timestamp(r['as_of']) <= pd.Timestamp(as_of)]
+        shadow_days = {str(r['as_of']) for r in shadow}
     buys = {trade['instrument_id'] for row in shadow for trade in row['trades'] if trade['side'] == 'BUY'}
     return dict(validation_level='FORWARD_PAPER_ONLY', production_validated=False,
         signal_sessions=len(batches), distinct_recommendations=len(buys),

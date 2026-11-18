@@ -20,8 +20,10 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: quant/requirements.txt
-      - run: python -m pip install -r quant/requirements.txt
+          cache-dependency-path: |
+            quant/requirements.txt
+            quant/requirements-research.txt
+      - run: python -m pip install -r quant/requirements-research.txt
       - run: python -m pip check
       - run: python -m compileall -q quant
       - run: python -m pytest --collect-only quant -q

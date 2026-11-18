@@ -33,6 +33,7 @@ def backfill_documents(config, start, end, *, limit=100, retry_review=False):
             candidates = candidates[~candidates.filing_id.isin(state['attempted'])]
         history = read_parquet_file(config.data_dir/'normalized/security_history/identities.parquet')
         versions = FinancialVersionStore(config)
+        attempted_this_batch, source_blocked = 0, False
         with NseClient(config) as client:
             for row in candidates.head(limit).to_dict('records'):
                 key = row['filing_id']
@@ -47,9 +48,14 @@ def backfill_documents(config, start, end, *, limit=100, retry_review=False):
                 state['attempted'][key] = dict(parser_status=parsed.iloc[0].get('parser_status'),
                     document_sha256=parsed.iloc[0].get('document_sha256'),review=review)
                 write_json(checkpoint,state)
-        report = dict(status='PARTIAL' if len(candidates)>limit else 'BATCH_EXHAUSTED',
+                attempted_this_batch += 1
+                if any(r.get('source_status')=='LIVE_SOURCE_UNAVAILABLE' for r in review):
+                    source_blocked = True
+                    break
+        report = dict(status='BLOCKED_SOURCE' if source_blocked else 'PARTIAL' if len(candidates)>attempted_this_batch else 'BATCH_EXHAUSTED',
             requested_range=dict(start=str(start),end=str(end)),checkpoint=str(checkpoint),
-            batch_limit=limit,attempted_total=len(state['attempted']),remaining_unattempted=max(0,len(candidates)-limit),
+            batch_limit=limit,attempted_this_batch=attempted_this_batch,
+            attempted_total=len(state['attempted']),remaining_unattempted=max(0,len(candidates)-attempted_this_batch),
             parsed=sum(r.get('parser_status')=='PARSED' for r in state['attempted'].values()),
             needs_review=sum(r.get('parser_status')!='PARSED' for r in state['attempted'].values()),
             source_documents_preserved=sum(isinstance(r.get('document_sha256'),str) for r in state['attempted'].values()),

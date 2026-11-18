@@ -1,0 +1,2 @@
+# Archived financial fixtures must retain their exact source bytes for SHA-256 checks.
+quant/tests/fixtures/financials/*.xml -text

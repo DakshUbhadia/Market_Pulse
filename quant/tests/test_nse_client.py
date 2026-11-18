@@ -9,6 +9,12 @@ from quant.data.http import sha256
 from quant.data.nse_client import NseClient, NseSourceError
 
 
+@pytest.fixture(autouse=True)
+def no_transport_waits(monkeypatch):
+    monkeypatch.setattr('quant.data.nse_client.time.sleep', lambda _: None)
+    monkeypatch.setattr('quant.data.nse_client.random.uniform', lambda *_: 0)
+
+
 def response(body=b'{}', status=200, headers=None):
     result = requests.Response()
     result.status_code = status
@@ -123,3 +129,91 @@ def test_official_origin_migration_is_followed_once_and_archived(tmp_path):
         assert client.get_json('/api/example') == {'ok':True}
     assert transport.get.call_args_list[1].args[0] == 'https://www.nseindia.in/'
     assert len(list((tmp_path/'raw/nse/session').rglob('*.html'))) == 2
+
+
+@pytest.mark.parametrize('warmup', [False, True])
+def test_auth_retry_honors_source_cooldown(tmp_path, monkeypatch, warmup):
+    sleeps = []
+    monkeypatch.setattr('quant.data.nse_client.time.sleep', sleeps.append)
+    blocked = response(status=403, headers={'Retry-After': '9'})
+    first = session(*([blocked] if warmup else [response(), blocked]))
+    second = session(response(), response(b'[]'))
+    factory = Mock(side_effect=[first, second])
+    with NseClient(config(tmp_path), session_factory=factory) as client:
+        assert client.get_json('/api/example') == []
+    assert 9 in sleeps
+    assert factory.call_count == 2
+
+
+def test_auth_long_cooldown_stops_before_session_renewal(tmp_path):
+    first = session(response(status=403, headers={'Retry-After': '120'}))
+    factory = Mock(return_value=first)
+    with NseClient(config(tmp_path), session_factory=factory) as client:
+        with pytest.raises(NseSourceError, match='cooldown') as caught:
+            client.get_json('/api/example')
+    assert caught.value.status == 'LIVE_SOURCE_UNAVAILABLE'
+    assert caught.value.http_status == 403
+    assert factory.call_count == 1
+
+
+def test_pacing_jitter_preserves_request_floor(tmp_path, monkeypatch):
+    sleeps = []
+    monkeypatch.setattr('quant.data.nse_client.time.sleep', sleeps.append)
+    monkeypatch.setattr('quant.data.nse_client.time.monotonic', lambda: 10)
+    monkeypatch.setattr('quant.data.nse_client.random.uniform', lambda *_: 0.2)
+    transport = session(response(), response(b'[]'))
+    settings = Config(data_dir=tmp_path, request_interval=1.5, retries=0)
+    with NseClient(settings, session_factory=lambda: transport) as client:
+        client.get_json('/api/example')
+    assert sleeps == [0.2, 1.7]
+
+
+def test_probe_keeps_failure_after_success_without_using_cache(tmp_path, monkeypatch):
+    from quant.pipeline import probe_nse_source as probe
+    settings = config(tmp_path)
+    transports = [session(response(), response()),
+                  session(response(status=403)), session(response(status=403))]
+    factory = Mock(side_effect=transports)
+    monkeypatch.setattr(probe, 'NseClient', lambda cfg: NseClient(cfg, session_factory=factory))
+    monkeypatch.setattr(probe, 'parse_holidays', lambda *_: list(range(5)))
+    passed = probe.probe_nse_source(settings)
+    failed = probe.probe_nse_source(settings)
+    assert passed['status'] == 'LIVE_SMOKE_PASSED'
+    assert failed['status'] == 'LIVE_SOURCE_UNAVAILABLE'
+    assert failed['http_status'] == 403
+    assert failed['observations'][0]['http_status'] == 403
+    reports = list((tmp_path/'reports/source-probes').glob('*.json'))
+    assert len(reports) == 2
+    assert {json.loads(p.read_text())['status'] for p in reports} == {
+        'LIVE_SMOKE_PASSED', 'LIVE_SOURCE_UNAVAILABLE'}
+    assert factory.call_count == 3
+    assert 'quant/data/nse_client.py' in failed['source_code_sha256']
+
+
+def test_probe_rejects_successful_http_with_invalid_calendar(tmp_path, monkeypatch):
+    from quant.pipeline import probe_nse_source as probe
+    transport = session(response(), response())
+    monkeypatch.setattr(probe, 'NseClient',
+                        lambda cfg: NseClient(cfg, session_factory=lambda: transport))
+    report = probe.probe_nse_source(config(tmp_path))
+    assert report['status'] == 'LIVE_SOURCE_UNAVAILABLE'
+    assert report['certifies_research_readiness'] is False
+    assert report['observations'][0]['http_status'] == 200
+
+
+def test_public_archive_does_not_depend_on_web_session_warmup(tmp_path):
+    transport=session(response(b'<xbrl/>'))
+    with NseClient(config(tmp_path),session_factory=lambda:transport) as client:
+        assert client.get_bytes('https://nsearchives.nseindia.com/corporate/test.xml')==b'<xbrl/>'
+        assert not client._warmed
+    assert transport.get.call_count==1
+    assert transport.get.call_args.args[0]=='https://nsearchives.nseindia.com/corporate/test.xml'
+
+
+def test_blocked_static_archive_does_not_trigger_homepage_requests(tmp_path):
+    transport=session(response(status=403))
+    factory=Mock(return_value=transport)
+    with NseClient(config(tmp_path),session_factory=factory) as client:
+        with pytest.raises(NseSourceError,match='403'):
+            client.get_bytes('https://nsearchives.nseindia.com/corporate/test.xml')
+    assert transport.get.call_count==factory.call_count==1

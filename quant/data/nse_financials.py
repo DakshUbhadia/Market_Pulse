@@ -40,7 +40,7 @@ def parse_financial_filings(payload, raw):
                    period_start=pd.to_datetime(record['fromDate'], format='mixed').normalize() if record.get('fromDate') else pd.NaT,
                    period_type=record.get('period', 'UNKNOWN'),
                    standalone_or_consolidated=record.get('consolidated', 'UNKNOWN'),
-                   bank=True if record.get('bank') == 'Y' else False if record.get('bank') == 'N' else None,
+                   bank=True if record.get('bank') in ('Y','B') else False if record.get('bank') == 'N' else None,
                    exchange_received_at=received, exchange_disseminated_at=disseminated,
                    first_seen_at=pd.Timestamp(raw.fetched_at), revision_at=revision, available_at=available,
                    source_document=document, source_sha256=raw.sha256, source_url=raw.source_url,

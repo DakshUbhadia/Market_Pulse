@@ -39,7 +39,7 @@ def monthly_signal_dates(sessions):
 def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=None,
                  cost_model=None, target_builder=None, corporate_actions=None, lifecycle_events=None,
                  lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,  signal_dates=None,
-                 security_transitions=None, transition_data_dir=None):
+                 security_transitions=None, transition_data_dir=None, target_builder_context=False):
     # Session order: prior-close dividend entitlement; open; mandatory security
     # transitions; lifecycle settlements; permitted risk exits; rebalance sells;
     # buys; post dividend cash; value holdings; freeze daily accounting state.
@@ -170,8 +170,14 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
             selected = scores.iloc[by_signal[signal_day]]
             selected = selected[selected.instrument_id.map(lambda identity: policy.status(identity,
                 opening - pd.Timedelta(nanoseconds=1))['entry_allowed'] and transitions.entry_allowed(identity,day,opening))]
-            weights = (target_builder(selected, positions, config) if target_builder
-                       else target_portfolio(selected, positions, config))
+            if target_builder and target_builder_context:
+                # Explicit opt-in for risk research: only prior-close marks and
+                # NAV are exposed, never today's opening or closing prices.
+                weights = target_builder(selected,positions,config,signal_date=signal_day,
+                                         nav=prior_nav,previous_bars=last_bars.copy())
+            else:
+                weights = (target_builder(selected, positions, config) if target_builder
+                           else target_portfolio(selected, positions, config))
             if (not np.isfinite(weights).all() or (weights < 0).any()
                     or weights.sum() > 1+1e-10 or (weights > config.max_weight+1e-10).any()):
                 raise ValueError('Invalid target portfolio weights')

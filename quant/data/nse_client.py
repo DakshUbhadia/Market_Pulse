@@ -1,5 +1,6 @@
 """NSE web transport with bounded recovery and immutable raw response archives."""
 import json
+import random
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -17,6 +18,12 @@ from quant.data.http import atomic_write, sha256
 
 class NseSourceError(RuntimeError):
     """An exchange response is blocked, unavailable, or no longer understood."""
+
+    status = 'LIVE_SOURCE_UNAVAILABLE'
+
+    def __init__(self, message, *, http_status=None):
+        super().__init__(message)
+        self.http_status = http_status
 
 
 class _SessionBlocked(NseSourceError):
@@ -44,10 +51,12 @@ class NseClient:
         self._warmed = False
         self._last_request = 0.0
         self.last_response: RawResponse | None = None
+        self._last_http_response = None
 
     def _new_session(self):
         session = self._session_factory()
-        session.headers.update({'User-Agent': self.config.nse_user_agent, 'Accept': '*/*'})
+        session.headers.update({'User-Agent': self.config.nse_user_agent, 'Accept': '*/*',
+                                'Accept-Language': 'en-IN,en;q=0.9'})
         return session
 
     def __enter__(self):
@@ -111,13 +120,15 @@ class NseClient:
                         pass
         # A long server-requested cooldown is a clear failure, not permission to retry early.
         if delay > 60:
-            raise NseSourceError('NSE requested a longer cooldown; try again later')
-        time.sleep(delay)
+            raise NseSourceError('NSE requested a longer cooldown; try again later',
+                                 http_status=response.status_code)
+        time.sleep(delay + random.uniform(0, 0.25))
 
     def _request(self, url, *, params=None, referer=None, dataset='web', suffix='bin', warmup=False,
                  migration_allowed=True):
         for attempt in range(self.config.retries + 1):
-            time.sleep(max(0, self.config.request_interval - (time.monotonic() - self._last_request)))
+            time.sleep(max(0, self.config.request_interval - (time.monotonic() - self._last_request))
+                       + random.uniform(0, 0.25))
             self._last_request = time.monotonic()
             response = None
             try:
@@ -131,6 +142,7 @@ class NseClient:
                     raise NseSourceError('NSE request timed out or connection failed') from None
             else:
                 self._archive(response, dataset, suffix)
+                self._last_http_response = response
                 # NSE migrated its public web origin. Follow only this exact
                 # HTTPS host migration with unchanged path/query, once.
                 if migration_allowed and response.status_code in (301,308):
@@ -145,34 +157,46 @@ class NseClient:
                 if response.status_code != 429 and response.status_code < 500:
                     return response
                 if attempt == self.config.retries:
-                    raise NseSourceError(f'NSE source failed with HTTP {response.status_code}')
+                    raise NseSourceError(f'NSE source failed with HTTP {response.status_code}',
+                                         http_status=response.status_code)
             self._retry_delay(response, attempt)
         raise NseSourceError('NSE attempts exhausted')
 
     def _warm(self):
         response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
         if response.status_code in (401, 403):
-            raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}')
+            raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
         if response.status_code != 200:
-            raise NseSourceError(f'NSE session warm-up failed with HTTP {response.status_code}')
+            raise NseSourceError(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                 http_status=response.status_code)
         self._warmed = True
 
     def get_bytes(self, url: str, *, referer=None, params=None, dataset='web', suffix='bin') -> bytes:
         url = self._url(url)
-        for auth_attempt in range(2):
+        # Public static archive files do not use the web API's cookie session.
+        # An unavailable homepage must not prevent a direct archive request.
+        web_session = urlsplit(url).hostname == urlsplit(self.config.nse_base_url).hostname
+        for auth_attempt in range(2 if web_session else 1):
             try:
-                if not self._warmed:
+                if web_session and not self._warmed:
                     self._warm()
                 response = self._request(url, params=params, referer=referer, dataset=dataset, suffix=suffix)
                 if response.status_code in (401, 403):
-                    raise _SessionBlocked(f'NSE source blocked with HTTP {response.status_code}')
+                    raise _SessionBlocked(f'NSE source blocked with HTTP {response.status_code}',
+                                          http_status=response.status_code)
                 break
             except _SessionBlocked:
-                if auth_attempt == 1:
+                if not web_session or auth_attempt == 1:
                     raise
+                # Honor source cooldowns before the single session renewal.
+                # The warmup can itself be blocked, so use the archived status
+                # and headers of that response, not an earlier endpoint call.
+                self._retry_delay(self._last_http_response, auth_attempt)
                 self.invalidate_session()
         if response.status_code != 200:
-            raise NseSourceError(f'NSE source failed with HTTP {response.status_code}')
+            raise NseSourceError(f'NSE source failed with HTTP {response.status_code}',
+                                 http_status=response.status_code)
         if not response.content:
             raise NseSourceError('NSE returned an empty response')
         return response.content
