@@ -11,7 +11,7 @@ import pandas as pd
 from quant.models.factor_v1 import WEIGHTS
 from quant.storage.research_store import clean_json
 from quant.version import (MODEL_VERSION, FEATURE_VERSION, PORTFOLIO_ACCOUNTING_VERSION,
-                           EVIDENCE_POLICY_VERSION, LIFECYCLE_POLICY_VERSION)
+                           EVIDENCE_POLICY_VERSION, LIFECYCLE_POLICY_VERSION, COST_MODEL_VERSION)
 
 
 def content_hash(value):
@@ -79,6 +79,20 @@ def freeze_signals(root, scores, *, as_of, generated_at, data_as_of, git_commit,
             source_manifest_hash=source_manifest_hash, validation_level=validation_level))
     batch = dict(as_of=str(day.date()), settings=clean_json(settings), signals=records,
                  next_session_open=opening.isoformat(),next_session_evidence=next_session_evidence)
+    versions = dict(model_version=MODEL_VERSION,feature_version=FEATURE_VERSION,
+        portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,cost_model_version=COST_MODEL_VERSION,
+        evidence_policy_version=EVIDENCE_POLICY_VERSION,lifecycle_policy_version=LIFECYCLE_POLICY_VERSION)
+    existing, _ = read_signals(root)
+    for previous in existing:
+        if previous['settings'] != batch['settings'] or any(
+                any(signal.get(key) != value for key,value in versions.items() if key != 'cost_model_version')
+                for signal in previous['signals']):
+            raise ValueError('Cohort policy changed; start a new named cohort before appending signals')
+    # Exclusive publication is also the admission lock for concurrent writers
+    # attempting different policies. It happens before any new signal is stored.
+    policy = dict(versions=versions,settings=batch['settings'])
+    policy['sha256'] = content_hash(policy)
+    append_record(Path(root)/'cohort.json',policy)
     batch['sha256'] = content_hash(batch)
     path = Path(root)/'signals'/f'{day.date()}.json'
     append_record(path, batch)
@@ -87,6 +101,10 @@ def freeze_signals(root, scores, *, as_of, generated_at, data_as_of, git_commit,
 
 def read_signals(root):
     batches, rows = [], []
+    policy_path = Path(root)/'cohort.json'
+    policy = json.loads(policy_path.read_text(encoding='utf-8')) if policy_path.exists() else None
+    if policy is not None and content_hash({k:v for k,v in policy.items() if k != 'sha256'}) != policy.get('sha256'):
+        raise ValueError('Immutable cohort policy checksum changed')
     for path in sorted((Path(root)/'signals').glob('*.json')):
         batch = json.loads(path.read_text(encoding='utf-8'))
         if content_hash({k:v for k,v in batch.items() if k != 'sha256'}) != batch['sha256']:
@@ -94,6 +112,10 @@ def read_signals(root):
         if any(content_hash({k:row[k] for k in ('as_of','instrument_id','model_version')}) != row['signal_id']
                for row in batch['signals']):
             raise ValueError('Forward signal identity changed')
+        if policy is not None and (batch['settings'] != policy['settings'] or any(
+                any(signal.get(key) != value for key,value in policy['versions'].items() if key != 'cost_model_version')
+                for signal in batch['signals'])):
+            raise ValueError('Frozen signals differ from the immutable cohort policy')
         batches.append(batch)
         rows.extend(batch['signals'])
     frame = pd.DataFrame(rows)

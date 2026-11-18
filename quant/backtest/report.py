@@ -8,6 +8,30 @@ BASELINE_METRICS = ('annualized_excess_return','information_ratio','Sharpe','max
 BASELINE_DIAGNOSTIC_RULE = 'DIAGNOSTIC_ONLY_LEGACY_GATE_UNCHANGED'
 
 
+def v1_research_decision(evidence, metrics, baselines):
+    """Predeclared next-research gate, separate from production certification.
+
+    The momentum baseline must be competitive on net benchmark-relative return.
+    Cluster membership must be understood; no hard cluster cap is imposed here.
+    """
+    names = ('positive_mean_IC','positive_median_IC','majority_positive_IC','monotonic_deciles',
+             'positive_OOS_excess','positive_net_performance','reasonable_drawdown','manageable_turnover',
+             'survives_1_5x_costs','diversified_across_years','mature_label_coverage','adequate_OOS_length')
+    checks = {name: bool(evidence.get('checks', {}).get(name, False)) for name in names}
+    strategy = metrics.get('annualized_excess_return')
+    momentum = (baselines or {}).get('momentum_12_1_top25', {}).get('annualized_excess_return')
+    checks['competitive_with_12_1_momentum'] = bool(strategy is not None and momentum is not None
+        and np.isfinite([strategy,momentum]).all() and strategy >= momentum)
+    checks['cluster_exposure_understood'] = evidence.get('cluster_check') == 'ASSESSED'
+    return dict(decision='GO_FURTHER_V1_RESEARCH' if all(checks.values()) else 'NO_GO_INVESTIGATE',
+        policy_version='v1_next_research_1.0.0', checks=checks,
+        model_weights_changed=False, parameters_selected_on_test=False,
+        production_validation_required_for_this_decision=False,
+        ML_authorized=False, public_recommendations_allowed=False,
+        next_step='Collect real forward paper evidence' if all(checks.values()) else
+            'Investigate data, universe, features, execution, costs, turnover and horizon before model expansion')
+
+
 def baseline_comparison(metrics, baselines):
     """Predeclared diagnostics; legacy promotion gates remain unchanged."""
     rows = []

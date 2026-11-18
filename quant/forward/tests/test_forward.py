@@ -232,15 +232,74 @@ def test_paper_gate_checks_completed_baseline_policy_and_cost_parity(tmp_path):
                      'IC-confidence-interval.json'):
             (root/name).write_text('synthetic-only')
         write_json(root/'metrics.json',dict(evidence=dict(status='NOT_VALIDATED')))
+        write_json(root/'v1-decision.json',dict(decision='GO_FURTHER_V1_RESEARCH'))
+        write_json(root/'lifecycle-audit.json',dict(status='EVIDENCE_ONLY',held_event_assessment='ASSESSED',held_events_unresolved=0))
         write_json(root/'robustness.json',dict(cost_1_5x={},cost_2x={}))
         write_json(root/'walk_forward/2024/run-test/metrics.json',{})
         seal_backtest(root)
     config = Config(data_dir=tmp_path)
     assert set(require_completed_baselines(config,tmp_path/'PRICE',tmp_path/'TOTAL_RETURN')) == {'PRICE','TOTAL_RETURN'}
-    path = tmp_path/'TOTAL_RETURN/config.json'
+    import shutil
+    changed_run = tmp_path/'CHANGED_TOTAL_RETURN'
+    shutil.copytree(tmp_path/'TOTAL_RETURN',changed_run,ignore=shutil.ignore_patterns('completion.json'))
+    path = changed_run/'config.json'
     changed = json.loads(path.read_text())
     changed['cost_settings']['slippage_bps'] += 1
     write_json(path,changed)
     seal_backtest(path.parent)
     with pytest.raises(ValueError,match='costs differ'):
-        require_completed_baselines(config,tmp_path/'PRICE',tmp_path/'TOTAL_RETURN')
+        require_completed_baselines(config,tmp_path/'PRICE',changed_run)
+    failed_run = tmp_path/'FAILED_PRICE'
+    shutil.copytree(tmp_path/'PRICE',failed_run,ignore=shutil.ignore_patterns('completion.json'))
+    write_json(failed_run/'v1-decision.json',dict(decision='NO_GO_INVESTIGATE'))
+    seal_backtest(failed_run)
+    with pytest.raises(ValueError,match='go/no-go'):
+        require_completed_baselines(config,failed_run,tmp_path/'TOTAL_RETURN')
+
+
+def test_completion_seal_cannot_be_replaced_after_artifact_changes(tmp_path):
+    (tmp_path/'metrics.json').write_text('original')
+    seal_backtest(tmp_path)
+    original = (tmp_path/'completion.json').read_bytes()
+    seal_backtest(tmp_path)
+    (tmp_path/'metrics.json').write_text('changed')
+    with pytest.raises(ValueError,match='Immutable'):
+        seal_backtest(tmp_path)
+    assert (tmp_path/'completion.json').read_bytes() == original
+
+
+def test_policy_change_is_rejected_before_new_signal_and_new_cohort_remains_separate(tmp_path):
+    from quant.forward.cohort import cohort_root
+    config = Config(data_dir=tmp_path)
+    first, second = cohort_root(config,'v1-original'),cohort_root(config,'v1-next')
+    *_, scores = fixture()
+    original = freeze(first,scores)
+    original_bytes = original.read_bytes()
+    scores['as_of'] = pd.Timestamp('2024-11-04')
+    settings = dict(portfolio=asdict(PortfolioConfig(holdings=1,max_weight=1,initial_cash=2e6)),
+        costs=asdict(zero_cost()),lifecycle_scenario='MANDATORY_ECONOMIC_EVENTS_ONLY')
+    later = dict(as_of='2024-11-04',generated_at='2024-11-04T19:00:00+05:30',
+        next_open='2024-11-05T09:15:00+05:30',data_as_of='2024-11-04',settings=settings)
+    with pytest.raises(ValueError,match='Cohort policy changed'):
+        freeze(first,scores,**later)
+    assert original.read_bytes() == original_bytes and not (first/'signals/2024-11-04.json').exists()
+    freeze(second,scores,**later)
+    assert len(read_signals(first)[1]) == len(read_signals(second)[1]) == 1
+    assert cohort_root(config) == config.data_dir/'forward/factor_v1'
+    with pytest.raises(ValueError,match='simple name'):
+        cohort_root(config,'../../escape')
+
+
+def test_competing_policy_writers_cannot_contaminate_one_cohort(tmp_path):
+    *_, scores = fixture()
+    def writer(cash):
+        settings = dict(portfolio=asdict(PortfolioConfig(holdings=1,max_weight=1,initial_cash=cash)),
+            costs=asdict(zero_cost()),lifecycle_scenario='MANDATORY_ECONOMIC_EVENTS_ONLY')
+        try:
+            return freeze(tmp_path,scores,settings=settings)
+        except ValueError:
+            return None
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(writer,[1e6,2e6]))
+    assert sum(value is not None for value in results) == 1
+    assert len(read_signals(tmp_path)[1]) == 1

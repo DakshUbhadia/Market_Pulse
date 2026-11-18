@@ -9,12 +9,15 @@ import pandas as pd
 
 from quant.universe.eligible import session_index
 
-CLUSTER_VERSION = 'returns_single_link_pairwise_252_1.1.0'
-MIN_CLUSTER_OBSERVATIONS = 220
+CLUSTER_VERSION = 'returns_single_link_pairwise_252_1.2.0'
+CLUSTER_LOOKBACK = 252
+MIN_PAIRWISE_OBSERVATIONS = 220
+MIN_CLUSTER_OBSERVATIONS = MIN_PAIRWISE_OBSERVATIONS  # compatibility
+DEFAULT_DISTANCE_THRESHOLD = 1.0
 
 
-def return_clusters(prices, sessions, as_of, *, instrument_ids=None, lookback=252,
-                    distance_threshold=1.0, min_observations=None, return_pairs=False):
+def return_clusters(prices, sessions, as_of, *, instrument_ids=None, lookback=CLUSTER_LOOKBACK,
+                    distance_threshold=DEFAULT_DISTANCE_THRESHOLD, min_observations=None, return_pairs=False):
     minimum = min_observations if min_observations is not None else min(MIN_CLUSTER_OBSERVATIONS, lookback)
     if (lookback < 2 or not 2 <= minimum <= lookback or not np.isfinite(distance_threshold)
             or not 0 <= distance_threshold <= 2):
@@ -56,8 +59,8 @@ def return_clusters(prices, sessions, as_of, *, instrument_ids=None, lookback=25
     identities = sorted(set(instrument_ids) if instrument_ids is not None else set(panel.columns))
     result = pd.DataFrame([dict(as_of=pd.Timestamp(as_of), instrument_id=name,
         cluster_id=labels.get(name), cluster_version=CLUSTER_VERSION,
-        status='ASSESSED' if name in labels else 'UNASSESSED',
-        reason='' if name in labels else ('INSUFFICIENT_OVERLAP' if name in candidates else 'INSUFFICIENT_HISTORY'),
+        status='ASSESSED' if name in labels else ('INSUFFICIENT_PAIRWISE_OVERLAP' if name in candidates else 'INSUFFICIENT_HISTORY'),
+        reason='' if name in labels else ('INSUFFICIENT_PAIRWISE_OVERLAP' if name in candidates else 'INSUFFICIENT_HISTORY'),
         observed_returns=int(counts.get(name,0)), min_observations=minimum,
         lookback_sessions=lookback, distance_threshold=distance_threshold) for name in identities],
         columns=['as_of','instrument_id','cluster_id','cluster_version','status','reason',
@@ -65,9 +68,10 @@ def return_clusters(prices, sessions, as_of, *, instrument_ids=None, lookback=25
     if not return_pairs:
         return result
     pairs = pd.DataFrame([dict(left=a,right=b,overlap=int(overlap.loc[a,b]),
-        correlation=correlation.loc[a,b],pair_status='ASSESSED' if sufficient.loc[a,b] else 'INSUFFICIENT_OVERLAP')
+        correlation=correlation.loc[a,b], distance=float(np.sqrt(2*(1-correlation.loc[a,b]))),
+        pair_status='ASSESSED' if sufficient.loc[a,b] else 'INSUFFICIENT_PAIRWISE_OVERLAP')
         for i,a in enumerate(candidates) for b in candidates[i+1:]],
-        columns=['left','right','overlap','correlation','pair_status'])
+        columns=['left','right','overlap','correlation','distance','pair_status'])
     return result,pairs
 
 

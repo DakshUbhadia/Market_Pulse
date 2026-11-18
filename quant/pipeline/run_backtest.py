@@ -14,7 +14,7 @@ from quant.backtest.metrics import performance_metrics, diagnostics
 from quant.backtest.bootstrap import block_bootstrap
 from quant.backtest.walk_forward import walk_forward, rolling_windows
 from quant.backtest.robustness import robustness_runs
-from quant.backtest.report import evaluate_evidence, BASELINE_DIAGNOSTIC_RULE
+from quant.backtest.report import evaluate_evidence, BASELINE_DIAGNOSTIC_RULE, v1_research_decision
 from quant.backtest.artifacts import save_backtest, seal_backtest
 from quant.features.matrix import build_feature_matrix
 from quant.features.labels import forward_labels
@@ -40,7 +40,8 @@ def run_research(config, start, end, *, estimate_historical_costs=False, full_ro
         total_return=total_return, lifecycle_scenario=lifecycle_scenario))
     try:
         path, evidence = _run_research(config, start, end,
-            estimate_historical_costs=estimate_historical_costs, full_robustness=full_robustness, total_return=total_return, lifecycle_scenario=lifecycle_scenario)
+            estimate_historical_costs=estimate_historical_costs, full_robustness=full_robustness, total_return=total_return,
+            lifecycle_scenario=lifecycle_scenario,prepared_root=experiment_path)
     except Exception as error:
         record.update(result_summary=f'{type(error).__name__}: {error}', decision='BLOCKED')
         if isinstance(error,UnvaluedHolding):
@@ -56,7 +57,8 @@ def run_research(config, start, end, *, estimate_historical_costs=False, full_ro
     return path, evidence
 
 
-def _run_research(config, start, end, *, estimate_historical_costs=False, full_robustness=True, total_return=False, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO):
+def _run_research(config, start, end, *, estimate_historical_costs=False, full_robustness=True, total_return=False,
+                  lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,prepared_root=None):
     readiness = require_research_ready(config, end, start)
     manifest = input_manifest(config, end)
     prices, benchmark_frame, sessions, delivery, indices = load_research_data(config, end)
@@ -70,8 +72,23 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
     features = build_feature_matrix(prices, benchmark_frame, sessions, universe_config=universe, delivery=delivery, eligible_only=True, lifecycle_events=lifecycle_events)
     scores = score_factor_v1(features)
     labels = forward_labels(prices, benchmark_frame, sessions, signal_keys=scores[['as_of','instrument_id']])
+    if prepared_root is not None:
+        # A held-event stop must not discard the historical review population.
+        # These are input diagnostics, never completed or forward evidence.
+        verify_manifest(config,manifest)
+        write_parquet(scores[['as_of','instrument_id','symbol','rank','percentile_score','raw_score',
+            'model_version','feature_version']],prepared_root/'prepared-scores.parquet')
+        write_parquet(features[['as_of','instrument_id','symbol','eligible','adv60','history_sessions',
+            'lifecycle_status']],prepared_root/'prepared-universe.parquet')
+        write_json(prepared_root/'prepared-inputs.json',dict(status='PREPARED_INPUTS_ONLY',manifest=manifest,
+            model_version=MODEL_VERSION,feature_version=FEATURE_VERSION,completed_baseline=False,forward_evidence=False))
     result = run_backtest(prices, scores, sessions, start=start, end=end, portfolio=portfolio, cost_model=costs,
                           corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario)
+    from quant.pipeline.audit_lifecycle import audit_lifecycle
+    lifecycle_report = audit_lifecycle(config,as_of=end,holdings=result.holdings,
+        lifecycle_records=result.lifecycle,scores=scores,portfolio_sessions=result.equity_curve.trade_date,write=False)
+    if lifecycle_report['status'] == 'BLOCKED' or lifecycle_report['held_events_unresolved']:
+        raise ValueError('Held lifecycle events remain unresolved; baseline cannot be sealed')
     market = (total_return_index_returns(tri[tri.index_name.eq('NIFTY 500 TRI')], result.equity_curve.trade_date, sessions)
               if total_return else index_returns(benchmark_frame, result.equity_curve.trade_date))
     metrics, rolling = performance_metrics(result.equity_curve, market, result.trades)
@@ -119,14 +136,14 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
                           rolling=rolling, evidence=evidence, extra=stress)
     write_json(path / 'benchmarks.json', baselines)
     write_json(path / 'baseline-comparison.json',evidence['baseline_comparison'])
+    write_json(path / 'v1-decision.json', v1_research_decision(evidence, metrics, baselines))
     write_parquet(pd.DataFrame(evidence['baseline_comparison']),path/'baseline-comparison.parquet')
     write_json(path / 'cost-schedule.json', costs.schedule_table())
     write_parquet(clusters, path / 'clusters.parquet')
     write_json(path / 'cluster-exposure.json', exposure.to_dict('records'))
     sensitivity = cluster_sensitivity(prices,scores,sessions,result.holdings,result.equity_curve)
     write_parquet(sensitivity,path/'cluster-sensitivity.parquet')
-    from quant.pipeline.audit_lifecycle import audit_lifecycle
-    write_json(path/'lifecycle-audit.json',audit_lifecycle(config,as_of=end,holdings=result.holdings,write=False))
+    write_json(path/'lifecycle-audit.json',lifecycle_report)
     if total_return:
         write_json(path / 'secondary-price-benchmarks.json', {name:float((1+index_returns(
             indices[indices.index_name.eq(name)],result.equity_curve.trade_date)).prod()-1) for name in ('NIFTY 50','NIFTY 500')})
@@ -147,6 +164,7 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
                         embargo_sessions=window['embargo_sessions']), metrics=measured, result=window['result'],
             ic=ic_window, deciles=deciles_window, rolling=rolling_window,
             evidence={'status':'WINDOW_ONLY_NOT_INDEPENDENT_VALIDATION','checks':{}})
+    verify_manifest(config, manifest)
     seal_backtest(path)
     return path, evidence
 

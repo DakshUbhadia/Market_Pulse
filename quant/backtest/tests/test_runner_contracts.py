@@ -44,6 +44,9 @@ def test_research_runner_accounting_contract(tmp_path,monkeypatch,total_return):
         assert all(row['corporate_actions'] is None for row in calls)
     assert all(row['lifecycle_scenario'] == 'MANDATORY_ECONOMIC_EVENTS_ONLY' for row in calls)
     assert (path/'baseline-comparison.json').exists() and (path/'cluster-sensitivity.parquet').exists()
+    experiment = next((tmp_path/'research/experiments').iterdir())
+    assert (experiment/'prepared-scores.parquet').exists() and (experiment/'prepared-universe.parquet').exists()
+    assert not (experiment/'completion.json').exists()
 
 
 def test_total_return_robustness_forwards_actions_to_every_variant(monkeypatch):

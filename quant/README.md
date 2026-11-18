@@ -318,7 +318,7 @@ Missing holding valuations stop the run and require verified settlement or
 delisting evidence; the simulator does not silently discard a losing security.
 
 The preserved baseline uses **price returns**, excluding cash dividends. Add
-`--total-return` to credit gross cash dividends on the ex-date, before open orders,
+`--total-return` to credit gross cash dividends on the ex-date, after open orders,
 to positions held at the previous close. Ex-date buyers receive no dividend;
 ex-date sellers retain the entitlement. Cash per raw share is converted to the
 simulator's split-adjusted units. Cash is not automatically reinvested. Actual
@@ -577,3 +577,14 @@ and commands are documented in [PHASE_V1_STATUS.md](PHASE_V1_STATUS.md). The new
 paper pipeline accepts completed, checksummed price and total-return baselines,
 freezes signals before the next exchange open, reuses historical accounting,
 and appends matured outcomes separately. It never backfills forward signals.
+
+The subsequent evidence/fundamental-foundation phase is described in
+[NEXT_PHASE_STATUS.md](NEXT_PHASE_STATUS.md). Clusters use 252 trailing sessions
+with at least 220 overlapping observed returns per pair, never filled prices;
+insufficient history/overlap is explicit. Ranking exports reproducible top,
+bottom and middle review samples. A sealed `v1-decision.json` separates the next
+research decision from production certification; forward launch requires both
+positive baseline decisions and resolved held-event accounting. Completion seals
+cannot be overwritten to bless changed artifacts. Fundamental backfill,
+universe-level coverage, PIT snapshots and historical-share reconstruction are
+evidence infrastructure; Factor V2 remains disabled.

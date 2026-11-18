@@ -5,6 +5,7 @@ import json
 from quant.backtest.costs import CostModel
 from quant.forward.outcome_tracker import track_outcomes
 from quant.forward.signal_store import read_signals, content_hash
+from quant.forward.cohort import cohort_root, cohort_report
 from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from quant.pipeline.backfill_lifecycle import load_lifecycle
 from quant.pipeline.check_research_ready import require_research_ready
@@ -14,12 +15,12 @@ from quant.version import (COST_MODEL_VERSION, MODEL_VERSION, FEATURE_VERSION,
                            PORTFOLIO_ACCOUNTING_VERSION, LIFECYCLE_POLICY_VERSION, EVIDENCE_POLICY_VERSION)
 
 
-def update_forward_outcomes(config,as_of):
+def update_forward_outcomes(config,as_of,*,cohort=None):
+    root = cohort_root(config,cohort)
     from quant.pipeline.cli import completed_day
     if as_of > completed_day(config):
         raise ValueError('Forward outcomes cannot use a future or incomplete EOD date')
     require_research_ready(config,as_of)
-    root = config.data_dir/'forward/factor_v1'
     batches,signals = read_signals(root)
     if signals.empty:
         raise ValueError('No frozen forward signals; historical backfills are not forward tests')
@@ -45,7 +46,7 @@ def update_forward_outcomes(config,as_of):
     actions = query_dataset(config.data_dir,'corporate_actions',end=as_of).drop_duplicates('event_id')
     report = track_outcomes(root,prices,benchmark,tri,sessions,as_of=as_of,cost_model=costs,
         corporate_actions=actions,lifecycle=load_lifecycle(config),lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO)
-    write_json(config.data_dir/'reports/forward-outcomes.json',report)
+    write_json(cohort_report(config,cohort,'forward-outcomes.json'),report)
     return report
 
 
@@ -53,9 +54,10 @@ def main():
     from quant.pipeline.cli import parser_config
     parser,config = parser_config(__doc__)
     parser.add_argument('--as-of',type=date.fromisoformat,required=True)
+    parser.add_argument('--cohort',help='Update this named paper cohort')
     args = parser.parse_args()
     try:
-        result = update_forward_outcomes(args.config(config),args.as_of)
+        result = update_forward_outcomes(args.config(config),args.as_of,cohort=args.cohort)
     except (OSError,ValueError,KeyError) as error:
         result = dict(status='BLOCKED',reason=str(error))
         write_json(args.config(config).data_dir/'reports/forward-outcomes.json',result)

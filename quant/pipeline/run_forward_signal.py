@@ -14,6 +14,7 @@ from quant.forward.signal_store import append_record, content_hash, freeze_signa
 from quant.forward.shadow_portfolio import update_shadow
 from quant.forward.metrics import forward_metrics
 from quant.forward.calendar import next_session_open
+from quant.forward.cohort import cohort_root, cohort_report
 from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from quant.lifecycle.state import simulation_time
 from quant.pipeline.backfill_lifecycle import load_lifecycle
@@ -25,7 +26,8 @@ from quant.version import COST_MODEL_VERSION, EVIDENCE_POLICY_VERSION
 from quant.boundaries import RAW_PRICE_START
 
 
-def run_forward_signal(config, as_of, *, price_baseline, total_return_baseline, refresh=True, now=None):
+def run_forward_signal(config, as_of, *, price_baseline, total_return_baseline, refresh=True, now=None, cohort=None):
+    root = cohort_root(config,cohort)
     supplied_time = now is not None
     now = pd.Timestamp(now or datetime.now(timezone.utc))
     baselines = require_completed_baselines(config,price_baseline,total_return_baseline)
@@ -44,7 +46,6 @@ def run_forward_signal(config, as_of, *, price_baseline, total_return_baseline, 
     if now.tzinfo is None or not simulation_time(as_of,'15:30') <= now < next_open:
         raise ValueError('Historical or premature signals cannot be labelled forward evidence')
     require_research_ready(config,as_of)
-    root = config.data_dir/'forward/factor_v1'
     portfolio, costs = PortfolioConfig(), CostModel()
     settings = dict(portfolio=asdict(portfolio), costs=asdict(costs), cost_model_version=COST_MODEL_VERSION,
         evidence_policy_version=EVIDENCE_POLICY_VERSION, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
@@ -76,10 +77,10 @@ def run_forward_signal(config, as_of, *, price_baseline, total_return_baseline, 
     shadow = update_shadow(root,prices,sessions,as_of=as_of,portfolio=portfolio,cost_model=costs,
         corporate_actions=actions,lifecycle=events,lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO)
     from quant.pipeline.update_forward_outcomes import update_forward_outcomes
-    outcomes = update_forward_outcomes(config,as_of)
+    outcomes = update_forward_outcomes(config,as_of,**({'cohort':cohort} if cohort is not None else {}))
     result = dict(status='BLOCKED' if outcomes['blocked'] else 'PAPER_ONLY',signals=str(signal_path),
         shadow=str(shadow),outcomes=outcomes,metrics=forward_metrics(root),public_recommendations_allowed=False)
-    write_json(config.data_dir/'reports/forward-paper.json',result)
+    write_json(cohort_report(config,cohort,'forward-paper.json'),result)
     return result
 
 
@@ -90,11 +91,12 @@ def main():
     parser.add_argument('--price-baseline',required=True,type=Path)
     parser.add_argument('--total-return-baseline',required=True,type=Path)
     parser.add_argument('--skip-data-update',action='store_true',help='Use data already acquired by the daily pipeline')
+    parser.add_argument('--cohort',help='New name when policy or portfolio settings change; existing cohorts stay immutable')
     args = parser.parse_args()
     config = args.config(config)
     try:
         result = run_forward_signal(config,args.as_of,price_baseline=args.price_baseline,
-            total_return_baseline=args.total_return_baseline,refresh=not args.skip_data_update)
+            total_return_baseline=args.total_return_baseline,refresh=not args.skip_data_update,cohort=args.cohort)
     except (OSError,ValueError,KeyError) as error:
         result = dict(status='BLOCKED',reason=str(error),production_validated=False)
         write_json(config.data_dir/'reports/forward-paper.json',result)

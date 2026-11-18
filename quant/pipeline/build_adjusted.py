@@ -42,8 +42,20 @@ def _incremental_partitions(config, start, end, actions, prior, fingerprints):
     if ids:
         identities = read_parquet_file(config.data_dir / 'normalized/security_history/identities.parquet')
         matched = identities[identities.instrument_id.isin(ids)]
-        if not ids.issubset(set(matched.instrument_id)):
-            raise ValueError('Changed action identity lacks historical ISIN evidence; full rebase required')
+        missing = ids-set(matched.instrument_id)
+        if missing:
+            from quant.data.security_history import instrument_id
+            # A stale reported ISIN can predate the observed identity boundary.
+            # Reconstruct the complete set of observed IDs with the same canonical
+            # mapping as adjust_prices; this also covers old provenance schemas.
+            # An actually observed unmapped identity still blocks the rebase.
+            files = [str(path) for path in config.prices_dir.rglob('*.parquet')
+                     if prior['from'] <= path.stem <= str(end)]
+            with duckdb.connect(':memory:') as connection:
+                observed_isins = connection.execute('SELECT DISTINCT isin FROM read_parquet(?,hive_partitioning=false,union_by_name=true)',
+                    [files]).fetchdf()['isin']
+            if missing & set(observed_isins.map(instrument_id).dropna()):
+                raise ValueError('Changed action identity lacks historical ISIN evidence; full rebase required')
         isins.update(matched['isin'].dropna())
     def affected(frame):
         return frame['isin'].isin(isins) | frame.symbol.isin(symbols)

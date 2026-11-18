@@ -26,7 +26,9 @@ def archive_filings(client, frame, dataset, history):
     review = []
     for i, row in frame.iterrows():
         if not row.get('instrument_id'):
-            day = row.get('period_end') if dataset == 'financials' else row.get('as_on_date')
+            known_at = row.get('exchange_disseminated_at') if dataset == 'financials' else None
+            day = (pd.Timestamp(known_at).tz_convert('Asia/Kolkata').tz_localize(None).normalize()
+                   if pd.notna(known_at) else row.get('as_on_date') if dataset != 'financials' else None)
             frame.loc[i, 'instrument_id'] = resolve_identity(history, row.symbol, day)
         document = row.get('source_document')
         if not document:
@@ -68,6 +70,8 @@ def _update_sources(config, start, end, *, actions=True, filings=True):
     path = config.data_dir / 'normalized' / 'security_history' / 'identities.parquet'
     history = read_parquet_file(path) if path.exists() else pd.DataFrame()
     report = {}
+    from quant.data.financial_versions import FinancialVersionStore
+    financial_versions = FinancialVersionStore(config) if filings and config.fetch_fundamentals else None
     sources = [('corporate_actions', True, nse_corporate_actions, nse_corporate_actions.parse_corporate_actions),
                ('financials', config.fetch_fundamentals, nse_financials, nse_financials.parse_financial_filings),
                ('shareholding', config.fetch_shareholding, nse_shareholding, nse_shareholding.parse_shareholding),
@@ -118,7 +122,10 @@ def _update_sources(config, start, end, *, actions=True, filings=True):
                             reviews.extend(needs_review)
                             usable_filings += int(((frame.parser_status == 'PARSED')
                                 & (frame.timing_status == 'VERIFIED') & frame.instrument_id.notna()).sum())
-                        write_observation(frame, config.data_dir / 'normalized' / name, raw.sha256, raw.fetched_at)
+                        if name == 'financials':
+                            financial_versions.publish(frame, raw)
+                        else:
+                            write_observation(frame, config.data_dir / 'normalized' / name, raw.sha256, raw.fetched_at)
                         count += len(frame)
                     completed.append(str(stop))
                     state.record(key, status='READY', checked_through=str(stop), checked_from=coverage_start)

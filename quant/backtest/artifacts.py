@@ -11,7 +11,8 @@ def seal_backtest(path):
     from quant.storage.research_store import digest_file
     files = {item.relative_to(path).as_posix(): digest_file(item)
              for item in sorted(path.rglob('*')) if item.is_file() and item != path/'completion.json'}
-    write_json(path/'completion.json', dict(status='COMPLETE', files=files))
+    from quant.forward.signal_store import append_record
+    append_record(path/'completion.json', dict(status='COMPLETE', files=files))
 
 
 def verify_backtest_seal(path):

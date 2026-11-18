@@ -20,7 +20,8 @@ def require_completed_baselines(config, price_baseline, total_return_baseline):
         manifest = json.loads((path/'config.json').read_text(encoding='utf-8'))
         required = ('metrics.json','ic.parquet','deciles.parquet','robustness.json','benchmarks.json',
                     'equity_curve.parquet','holdings.parquet','trades.parquet','lifecycle.parquet',
-                    'baseline-comparison.json','cluster-exposure.json','IC-confidence-interval.json')
+                    'baseline-comparison.json','cluster-exposure.json','IC-confidence-interval.json',
+                    'v1-decision.json','lifecycle-audit.json')
         if any(not (path/name).is_file() for name in required) or not list((path/'walk_forward').glob('*/run-*/metrics.json')):
             raise ValueError('Forward paper testing requires complete frozen baseline artifacts')
         if (manifest.get('return_basis') != basis or manifest.get('date_range',{}).get('from','9999') > '2016-01-01'
@@ -39,7 +40,16 @@ def require_completed_baselines(config, price_baseline, total_return_baseline):
         stress = json.loads((path/'robustness.json').read_text(encoding='utf-8'))
         if not {'cost_1_5x','cost_2x'} <= set(stress):
             raise ValueError('Frozen baseline requires cost stress evidence')
+        decision = json.loads((path/'v1-decision.json').read_text(encoding='utf-8'))
+        if decision.get('decision') != 'GO_FURTHER_V1_RESEARCH':
+            raise ValueError('V1 go/no-go decision blocks forward launch; investigate before proceeding')
+        lifecycle = json.loads((path/'lifecycle-audit.json').read_text(encoding='utf-8'))
+        if (lifecycle.get('status') == 'BLOCKED' or lifecycle.get('held_event_assessment') != 'ASSESSED'
+                or lifecycle.get('held_events_unresolved') != 0):
+            raise ValueError('Unresolved or unassessed held lifecycle events block forward launch')
         evidence = json.loads((path/'metrics.json').read_text(encoding='utf-8'))['evidence']
         output[basis] = dict(path=str(path.resolve()),date_range=manifest['date_range'],
             evidence_status=evidence['status'], highest_validation_level=evidence.get('highest_validation_level','NOT_VALIDATED'))
+    if output['PRICE']['date_range'] != output['TOTAL_RETURN']['date_range']:
+        raise ValueError('Frozen price and total-return baselines must cover the same date range')
     return output

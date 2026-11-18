@@ -76,3 +76,30 @@ def test_research_manifest_freezes_lifecycle_raw_evidence(tmp_path):
     raw.write_bytes(b'changed source')
     with pytest.raises(ValueError,match='inputs changed'):
         verify_manifest(config,manifest)
+
+
+def test_held_event_coverage_uses_complete_portfolio_dates_and_blocks_unresolved_economics(tmp_path):
+    import json
+    from pathlib import Path
+    from quant.data.http import sha256
+    from quant.storage.parquet_store import write_parquet
+    config = Config(data_dir=tmp_path)
+    record = json.loads((Path(__file__).parents[2]/'backtest/tests/fixtures/essaroil_suspension.json').read_text())
+    raw = tmp_path/'raw/notice.json'
+    raw.parent.mkdir()
+    raw.write_bytes(b'notice evidence fixture')
+    record.update(raw_path='raw/notice.json',source_sha256=sha256(raw.read_bytes()))
+    events = normalize_events([record])
+    write_parquet(events,tmp_path/'normalized/lifecycle/events.parquet')
+    day = pd.Timestamp(record['effective_date'])
+    dates = pd.bdate_range(end=day,periods=3)
+    held = pd.DataFrame(dict(trade_date=[dates[0]],instrument_id=[record['instrument_id']],value=[100.]))
+    # The position is gone at the prior session; its stale last row is no proof of ownership.
+    report = audit_lifecycle(config,as_of=day.date(),holdings=held,lifecycle_records=pd.DataFrame(),
+        portfolio_sessions=dates,write=False)
+    assert report['held_events_encountered'] == 0
+    held.loc[0,'trade_date'] = dates[-2]
+    report = audit_lifecycle(config,as_of=day.date(),holdings=held,lifecycle_records=pd.DataFrame(),
+        portfolio_sessions=dates,write=False)
+    assert report['held_events_encountered'] == 1 and report['held_events_unresolved'] == 1
+    assert report['status'] == 'BLOCKED' and not report['lifecycle_data_ready']

@@ -42,9 +42,9 @@ def test_pairwise_overlap_is_observed_and_sparse_pairs_remain_unassessed():
     prices = prices[~((prices.instrument_id.eq('a') & prices.trade_date.isin(dates[30:50]))
         | (prices.instrument_id.eq('b') & prices.trade_date.isin(dates[90:110])))]
     clusters,pairs = return_clusters(prices,dates,dates[260],return_pairs=True)
-    assert pairs.query("left == 'a' and right == 'b'").pair_status.iloc[0] == 'INSUFFICIENT_OVERLAP'
-    assert clusters.set_index('instrument_id').loc['a','status'] == 'UNASSESSED'
-    assert clusters.set_index('instrument_id').loc['b','reason'] == 'INSUFFICIENT_OVERLAP'
+    assert pairs.query("left == 'a' and right == 'b'").pair_status.iloc[0] == 'INSUFFICIENT_PAIRWISE_OVERLAP'
+    assert clusters.set_index('instrument_id').loc['a','status'] == 'INSUFFICIENT_PAIRWISE_OVERLAP'
+    assert clusters.set_index('instrument_id').loc['b','reason'] == 'INSUFFICIENT_PAIRWISE_OVERLAP'
 
 
 def test_single_link_chaining_is_visible_under_predeclared_distance_cuts():
@@ -58,3 +58,43 @@ def test_single_link_chaining_is_visible_under_predeclared_distance_cuts():
     loose = return_clusters(prices,dates,dates[-1],distance_threshold=1.2)
     assert tight.cluster_id.nunique() > loose.cluster_id.nunique()
     assert loose.cluster_id.nunique() == 1
+
+
+def test_cluster_allows_small_missing_return_gaps():
+    prices, dates = fixture()
+    prices = prices[~(prices.instrument_id.eq('b') & prices.trade_date.isin(dates[[80, 100, 120]]))]
+    cluster = return_clusters(prices, dates, dates[260]).set_index('instrument_id')
+    assert cluster.loc['b', 'status'] == 'ASSESSED'
+    assert cluster.loc['a', 'cluster_id'] == cluster.loc['b', 'cluster_id']
+    assert cluster.loc['b', 'observed_returns'] == 246
+
+
+def test_cluster_rejects_insufficient_overlap():
+    prices, dates = fixture()
+    prices = prices[~((prices.instrument_id.eq('a') & prices.trade_date.isin(dates[30:50]))
+                    | (prices.instrument_id.eq('b') & prices.trade_date.isin(dates[90:110])))]
+    cluster, pairs = return_clusters(prices, dates, dates[260], return_pairs=True)
+    assert pairs.iloc[0].overlap < 220
+    assert cluster.set_index('instrument_id').loc['a', 'status'] == 'INSUFFICIENT_PAIRWISE_OVERLAP'
+
+
+def test_cluster_does_not_fill_prices():
+    prices, dates = fixture()
+    prices = prices[~(prices.instrument_id.eq('b') & prices.trade_date.eq(dates[100]))]
+    cluster, pairs = return_clusters(prices, dates, dates[260], return_pairs=True)
+    # The absent price removes both adjacent returns, rather than inserting 0%.
+    assert cluster.set_index('instrument_id').loc['b', 'observed_returns'] == 250
+    assert pairs.query("left == 'a' and right == 'b'").overlap.iloc[0] == 250
+
+
+def test_cluster_distance_uses_only_overlapping_returns():
+    prices, dates = fixture()
+    prices = prices[~(prices.instrument_id.eq('b') & prices.trade_date.isin(dates[[80, 100]]))]
+    prices.loc[prices.instrument_id.eq('b') & prices.trade_date.eq(dates[180]), 'adjusted_close'] *= 1.1
+    _, pairs = return_clusters(prices, dates, dates[260], return_pairs=True)
+    panel = prices.pivot(index='trade_date', columns='instrument_id', values='adjusted_close').reindex(dates[8:261])
+    observed = panel.pct_change(fill_method=None).iloc[1:][['a','b']].dropna()
+    expected = observed.a.corr(observed.b)
+    pair = pairs.query("left == 'a' and right == 'b'").iloc[0]
+    assert pair.correlation == pytest.approx(expected)
+    assert pair.distance == pytest.approx(np.sqrt(2*(1-expected)))

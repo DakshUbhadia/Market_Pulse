@@ -10,7 +10,73 @@ from quant.data.security_history import instrument_id, resolve_identity
 PATH = '/api/corporates-corporateActions'
 COLUMNS = ['event_id', 'instrument_id', 'symbol', 'action_type', 'subject', 'announcement_date',
            'ex_date', 'record_date', 'payment_date', 'ratio_numerator', 'ratio_denominator',
-           'cash_amount', 'parse_status', 'source_url', 'source_sha256', 'fetched_at', 'source_payload']
+           'cash_amount', 'parse_status', 'source_url', 'source_sha256', 'fetched_at', 'source_payload',
+           'source_instrument_id', 'source_isin', 'identity_resolution', 'identity_evidence_date']
+
+
+def action_identity_lookup(history):
+    groups = {} if history is None or history.empty else dict(tuple(history.groupby(['symbol','series'],observed=True)))
+    def lookup(symbol, day):
+        group = groups.get((symbol,'EQ'))
+        if group is None:
+            return set()
+        day = pd.Timestamp(day)
+        return set(group.loc[group.identity_status.eq('RESOLVED') & group.valid_from.le(day)
+                             & group.valid_to.ge(day),'instrument_id'].dropna())
+    lookup.isins = {} if history is None or history.empty or 'isin' not in history else {
+        key:set(group['isin'].dropna()) for key,group in history.groupby('instrument_id',observed=True)}
+    return lookup
+
+
+def reconcile_action_identities(frame, history=None, *, lookup=None):
+    """The API sometimes supplies a pre-split ISIN years after its retirement.
+
+    Only a unique identity observed both before and on the action date can
+    correct that stale field. A transition on the event date is not bridged.
+    Raw payload/source identity are retained, never replaced with today's master.
+    """
+    result = frame.copy()
+    if 'source_instrument_id' not in result:
+        result['source_instrument_id'] = result.instrument_id
+    for column in ('instrument_id','source_instrument_id','identity_resolution'):
+        result[column] = result.get(column,pd.Series(None,index=result.index,dtype=object)).astype(object)
+    result['identity_evidence_date'] = pd.to_datetime(result.get('identity_evidence_date',
+        pd.Series(pd.NaT,index=result.index)))
+    lookup = lookup or action_identity_lookup(history)
+    result['source_isin'] = result.get('source_isin',pd.Series(None,index=result.index,dtype=object)).astype(object)
+    for i,row in result.iterrows():
+        source = row.get('source_instrument_id')
+        source = source if isinstance(source,str) else None
+        source_isin = row.get('source_isin')
+        if not isinstance(source_isin,str):
+            payload = row.get('source_payload')
+            source_isin = json.loads(payload).get('isin') if isinstance(payload,str) else None
+        if not isinstance(source_isin,str):
+            candidates = getattr(lookup,'isins',{}).get(source,set())
+            source_isin = next(iter(candidates)) if len(candidates) == 1 else None
+        day = pd.Timestamp(row.ex_date)
+        current, prior = lookup(row.symbol,day), lookup(row.symbol,day-pd.Timedelta(days=1))
+        identity, status, evidence = source, 'SOURCE_ISIN_ONLY', pd.NaT
+        if len(current) > 1:
+            identity, status = None, 'AMBIGUOUS_DATED_IDENTITY'
+        elif len(current) == 1:
+            observed = next(iter(current))
+            if source is None:
+                identity, status, evidence = observed, 'DATED_IDENTITY', day
+            elif source == observed:
+                status, evidence = 'SOURCE_MATCHES_DATED_IDENTITY', day
+            elif (prior == current and isinstance(source_isin,str)
+                  and len(getattr(lookup,'isins',{}).get(observed,set())) == 1
+                  and source_isin[:9] == next(iter(lookup.isins[observed]))[:9]):
+                identity, status, evidence = observed, 'STALE_SOURCE_ISIN_RECONCILED', day
+            else:
+                status = 'IDENTITY_TRANSITION_UNASSESSED' if prior != current else 'SOURCE_IDENTITY_CONFLICT_UNASSESSED'
+        result.loc[i,'instrument_id'] = identity
+        result.loc[i,'source_instrument_id'] = source
+        result.loc[i,'source_isin'] = source_isin
+        result.loc[i,'identity_resolution'] = status
+        result.loc[i,'identity_evidence_date'] = evidence
+    return result
 
 
 def parse_subject(subject):
@@ -59,6 +125,7 @@ def parse_corporate_actions(payload, raw, history=None):
         if not identity and history is not None:
             identity = resolve_identity(history, symbol, ex_date)
         row = dict(event_id=record_id(record), instrument_id=identity, symbol=symbol,
+                   source_instrument_id=instrument_id(record.get('isin')), source_isin=record.get('isin'),
                    subject=subject, ex_date=ex_date, **parse_subject(subject))
         for name, field in [('announcement_date', 'caBroadcastDate'), ('record_date', 'recDate'),
                             ('payment_date', 'paymentDate')]:
@@ -67,4 +134,5 @@ def parse_corporate_actions(payload, raw, history=None):
         row.update(source_url=raw.source_url, source_sha256=raw.sha256, fetched_at=raw.fetched_at,
                    source_payload=json.dumps(record, sort_keys=True))
         rows.append(row)
-    return pd.DataFrame(rows, columns=COLUMNS).drop_duplicates('event_id')
+    frame = pd.DataFrame(rows, columns=COLUMNS).drop_duplicates('event_id')
+    return reconcile_action_identities(frame,history) if not frame.empty else frame

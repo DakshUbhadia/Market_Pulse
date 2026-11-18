@@ -26,11 +26,17 @@ def validate_data(config, start, end, *, run_errors=None, incremental=False):
     if lifecycle['status'] == 'BLOCKED':
         errors['lifecycle'] = '; '.join(lifecycle['errors']) or 'Unresolved held lifecycle evidence'
     sessions = set()
+    freshness_as_of = None
     try:
         calendar = read_calendar(config, start, end)
         sessions = set(calendar.loc[calendar.is_trading_session, 'trade_date'].dt.date)
         if not calendar.loc[calendar.is_trading_session, 'verified'].all():
             raise ValueError('Calendar has sessions without validated price evidence')
+        if sessions:
+            # An after-close job may finish after midnight or on a nontrading
+            # day. Freshness belongs to its latest completed exchange session.
+            freshness_as_of = max(sessions)
+            sources = source_status(config,state.data,as_of=freshness_as_of)
         sources['nse_calendar']['status'] = 'READY'
     except (OSError, ValueError, KeyError) as error:
         errors['calendar'] = str(error)
@@ -81,7 +87,15 @@ def validate_data(config, start, end, *, run_errors=None, incremental=False):
         sources[source].update(missing_sessions=missing, invalid_partitions=invalid)
         if missing or invalid or not sessions:
             sources[source]['status'] = 'FAILED'
-    master = config.data_dir / 'normalized' / 'instruments' / 'nse' / f'{now:%Y-%m-%d}.parquet'
+    master_day = now.date()
+    try:
+        master_day = date.fromisoformat(state.data.get('nse_security_master',{}).get('last_success',str(master_day)))
+        if master_day > now.date():
+            raise ValueError('Security-master acquisition date is in the future')
+    except (ValueError,TypeError) as error:
+        sources['nse_security_master'].update(status='FAILED',error=str(error))
+        master_day = now.date()
+    master = config.data_dir / 'normalized' / 'instruments' / 'nse' / f'{master_day}.parquet'
     identities = config.data_dir / 'normalized' / 'security_history' / 'identities.parquet'
     for source, path, required in [('nse_security_master', master, ['symbol', 'series', 'isin']),
                                    ('security_history', identities, ['symbol', 'series', 'identity_status'])]:
@@ -124,6 +138,7 @@ def validate_data(config, start, end, *, run_errors=None, incremental=False):
              and all(sources[name]['status'] == 'READY' for name in essential))
     report = {
         'as_of': str(end), 'generated_at': now.isoformat(), 'status': 'READY' if ready else 'NOT_READY',
+        'freshness_as_of': str(freshness_as_of) if freshness_as_of else None,
         'recommendation_allowed': False, 'publication_gate': 'DISABLED_RESEARCH_PHASE',
         'sources': sources, 'price_audit': audit,
         'lifecycle_health': lifecycle,

@@ -43,6 +43,8 @@ def parse_financial_filings(payload, raw):
                    exchange_received_at=received, exchange_disseminated_at=disseminated,
                    first_seen_at=pd.Timestamp(raw.fetched_at), revision_at=revision, available_at=available,
                    source_document=document, source_sha256=raw.sha256, source_url=raw.source_url,
+                   metadata_raw_path=str(raw.path),
+                   attachment_url=record.get('attchmntFile') or record.get('attachment') or record.get('attachmentUrl'),
                    timing_status='VERIFIED' if pd.notna(disseminated) and not revision_uncertain else 'UNCERTAIN',
                    source_payload=json.dumps(record, sort_keys=True))
         rows.append(row)
@@ -50,6 +52,9 @@ def parse_financial_filings(payload, raw):
     if not frame.empty:
         for name in ('exchange_received_at', 'exchange_disseminated_at', 'first_seen_at', 'revision_at', 'available_at'):
             frame[name] = pd.to_datetime(frame[name], utc=True)
+    if not frame.empty:
+        from quant.features.fundamental_snapshot import normalize_periods
+        frame = normalize_periods(frame)
     return frame
 
 

@@ -1,5 +1,8 @@
 # Factor V1 completion and forward paper testing
 
+Current follow-on implementation and operational status:
+[NEXT_PHASE_STATUS.md](NEXT_PHASE_STATUS.md). The text below preserves the preceding handoff.
+
 Implementation review of `Market_Pulse_Next_Phase_Factor_V1_Completion_and_Forward_Testing.md`,
 November 17, 2026 (Asia/Kolkata).
 

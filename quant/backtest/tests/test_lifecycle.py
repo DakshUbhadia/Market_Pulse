@@ -43,6 +43,31 @@ def test_known_suspension_exits_at_next_executable_open():
     assert result.equity_curve.nav.iloc[-1] == pytest.approx(1_000_000)
 
 
+def test_original_2015_delisting_notice_blocks_2016_entry_without_inventing_settlement():
+    import json
+    from pathlib import Path
+    from dataclasses import replace
+    from quant.backtest.costs import CostModel
+    from quant.lifecycle.state import Lifecycle
+    record=json.loads((Path(__file__).parent/'fixtures/essaroil_delisting_announcement_2015.json').read_text())
+    events=normalize_events([record])
+    policy=Lifecycle(events,'MANDATORY_ECONOMIC_EVENTS_ONLY')
+    before=policy.status(record['instrument_id'],pd.Timestamp('2015-12-07T17:41:59+05:30'))
+    after=policy.status(record['instrument_id'],pd.Timestamp(record['announced_at']))
+    assert before['entry_allowed'] and not after['entry_allowed']
+    assert after['trading_allowed'] and after['lifecycle_status']=='DELISTING_PENDING'
+    prices,_,sessions=market_fixture(stocks=1,days=65,start='2015-12-01')
+    scores=execution_scores(prices)
+    scores['instrument_id']=prices['instrument_id']=record['instrument_id']
+    prices=prices[prices.trade_date<'2016-02-10']
+    costs=CostModel(slippage_bps=0,schedules=(replace(zero_cost().schedules[0],effective_from=date(2015,1,1)),))
+    result=run_backtest(prices,scores,sessions,start=date(2016,1,1),cost_model=costs,lifecycle_events=events,
+        lifecycle_scenario='MANDATORY_ECONOMIC_EVENTS_ONLY',
+        portfolio=PortfolioConfig(holdings=1,max_weight=1,entry_percentile=0,exit_percentile=0))
+    assert result.trades.empty and result.holdings.empty and result.lifecycle.empty
+    assert result.equity_curve.nav.eq(1_000_000).all()
+
+
 def test_unexpected_suspension_does_not_invent_fill():
     with pytest.raises(ValueError,match='Unvalued holding'):
         simulate([event(announced='2024-11-08T08:00:00+05:30')],absent='2024-11-08')

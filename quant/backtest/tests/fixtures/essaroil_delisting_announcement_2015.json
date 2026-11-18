@@ -1,0 +1,20 @@
+{
+  "lifecycle_event_id": "nse-essaroil-delisting-announcement-100282582",
+  "instrument_id": "6c788a58-de33-575a-9f7a-188d887aa97a",
+  "symbol": "ESSAROIL",
+  "isin": "INE011A01019",
+  "event_type": "DELISTING_ANNOUNCED",
+  "announced_at": "2015-12-07T17:42:00+05:30",
+  "effective_date": "2015-12-05",
+  "mandatory": false,
+  "optional": false,
+  "source_exchange": "NSE",
+  "source_url": "https://www.nseindia.in/api/corporate-announcements?index=equities&symbol=ESSAROIL&from_date=01-01-2015&to_date=31-12-2015",
+  "source_sha256": "a34083c15e71e62e014f21d3c042987fd393ea57550f7dd722f074e9bde4c26e",
+  "raw_path": "raw/nse/lifecycle_earlier_review/2026-11-18/015039640020-a34083c15e71e62e-9204044b.json",
+  "verification_status": "VERIFIED",
+  "first_seen_at": "2026-11-18T01:50:39.640020+05:30",
+  "publication_field": "an_dt",
+  "exchange_sequence": "100282582",
+  "effective_date_basis": "Public-announcement date stated in the exchange filing; this is not an economic delisting or settlement date"
+}

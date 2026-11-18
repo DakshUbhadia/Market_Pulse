@@ -31,7 +31,8 @@ def run_factor_v1(config, as_of):
     path = root / f'{as_of}.parquet'
     if path.exists():
         revision = root / 'revisions' / f'{as_of}-{digest_file(path)}'
-        for source in (path, path.with_suffix('.csv'), path.with_suffix('.json'), root/f'{as_of}-top30-review.txt'):
+        for source in (path, path.with_suffix('.csv'), path.with_suffix('.json'), root/f'{as_of}-top30-review.txt',
+                       root/f'{as_of}-review-sample.parquet',root/f'{as_of}-review-sample.csv'):
             if source.exists() and not (revision/source.name).exists():
                 atomic_write(revision/source.name, source.read_bytes())
     write_parquet(result, path)
@@ -41,6 +42,10 @@ def run_factor_v1(config, as_of):
     top = result.head(30)[['rank', 'symbol', 'percentile_score', 'raw_score', 'vol_63', 'adv_60']]
     atomic_write(root / f'{as_of}-top30-review.txt', ('RESEARCH ONLY: percentile rankings, not profit probabilities.\n'
                                                     + top.to_string(index=False)).encode())
+    from quant.pipeline.review_factor_v1 import ranking_review_sample
+    review = ranking_review_sample(result)
+    write_parquet(review, root/f'{as_of}-review-sample.parquet')
+    atomic_write(root/f'{as_of}-review-sample.csv', review.to_csv(index=False).encode())
     return result, path
 
 

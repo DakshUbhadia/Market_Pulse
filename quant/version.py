@@ -1,6 +1,6 @@
-FEATURE_VERSION = 'factor_v1_features_1.0.4'
+FEATURE_VERSION = 'factor_v1_features_1.0.5'
 MODEL_VERSION = 'factor_v1_1.0.0'
 COST_MODEL_VERSION = 'india_delivery_1.1.0'
 PORTFOLIO_ACCOUNTING_VERSION = 'ex_date_cash_1.1.0'
-EVIDENCE_POLICY_VERSION = 'factor_v1_evidence_1.2.0'
+EVIDENCE_POLICY_VERSION = 'factor_v1_evidence_1.3.0'
 LIFECYCLE_POLICY_VERSION = 'pit_lifecycle_1.2.0'
