@@ -77,7 +77,7 @@ def input_manifest(config, as_of):
         files.append(dict(path=str(path.relative_to(config.data_dir)), bytes=path.stat().st_size, sha256=digest_file(path)))
     encoded = json.dumps(files, sort_keys=True).encode()
     code_files = list((REPO_ROOT / 'quant').glob('*.py'))
-    for name in ('data', 'features', 'models', 'pipeline', 'storage', 'universe', 'backtest', 'risk', 'lifecycle', 'forward', 'identity'):
+    for name in ('data', 'features', 'models', 'pipeline', 'storage', 'universe', 'backtest', 'risk', 'lifecycle', 'forward', 'identity', 'research', 'portfolio', 'monitoring'):
         code_files.extend(path for path in (REPO_ROOT / 'quant' / name).rglob('*.py') if 'tests' not in path.parts)
     code = {str(path.relative_to(REPO_ROOT)): digest_file(path) for path in sorted(set(code_files))}
     dependencies = {name: importlib.metadata.version(name) for name in ('pandas', 'numpy', 'duckdb', 'pyarrow')}

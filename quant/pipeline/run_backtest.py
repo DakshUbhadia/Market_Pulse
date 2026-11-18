@@ -33,15 +33,23 @@ from quant.storage.parquet_store import write_parquet
 
 
 def run_research(config, start, end, *, estimate_historical_costs=False, full_robustness=True,
-                 hypothesis='Frozen untuned Factor V1 baseline', total_return=False, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO):
+                 hypothesis='Frozen untuned Factor V1 baseline', total_return=False, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
+                 evaluation_window=None):
+    window = None
+    if evaluation_window is not None:
+        from quant.research.evaluation_window import load_evaluation_window
+        window = load_evaluation_window(evaluation_window)
+        if window['requested_start'] != str(start):
+            raise ValueError('Evaluation window must match the originally requested baseline start')
+        start = date.fromisoformat(window['effective_start'])
     from quant.backtest.experiments import begin_experiment, append_experiment
     record, experiment_path = begin_experiment(config, hypothesis, dict(start=str(start), end=str(end),
         estimate_historical_costs=estimate_historical_costs, full_robustness=full_robustness,
-        total_return=total_return, lifecycle_scenario=lifecycle_scenario))
+        total_return=total_return, lifecycle_scenario=lifecycle_scenario, evaluation_window=window))
     try:
         path, evidence = _run_research(config, start, end,
             estimate_historical_costs=estimate_historical_costs, full_robustness=full_robustness, total_return=total_return,
-            lifecycle_scenario=lifecycle_scenario,prepared_root=experiment_path)
+            lifecycle_scenario=lifecycle_scenario,prepared_root=experiment_path, evaluation_window=window)
     except Exception as error:
         record.update(result_summary=f'{type(error).__name__}: {error}', decision='BLOCKED')
         if isinstance(error,UnvaluedHolding):
@@ -58,7 +66,7 @@ def run_research(config, start, end, *, estimate_historical_costs=False, full_ro
 
 
 def _run_research(config, start, end, *, estimate_historical_costs=False, full_robustness=True, total_return=False,
-                  lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,prepared_root=None):
+                  lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,prepared_root=None, evaluation_window=None):
     readiness = require_research_ready(config, end, start)
     manifest = input_manifest(config, end)
     prices, benchmark_frame, sessions, delivery, indices = load_research_data(config, end)
@@ -133,9 +141,18 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         risk_free_rate_annual=0.0, sortino_minimum_acceptable_return=0.0,
         turnover_definition='ANNUALIZED_TWO_WAY_TRADED_NOTIONAL_OVER_NAV',
         random_seed=7, readiness=readiness, parameters_selected_on_test=False)
+    if evaluation_window is not None:
+        selection = pd.DatetimeIndex(pd.to_datetime(evaluation_window['selection_calendar']))
+        actual = pd.DatetimeIndex(pd.to_datetime(sessions))
+        if not selection.equals(actual[(actual >= selection.min()) & (actual <= selection.max())]):
+            raise ValueError('Evaluation window calendar differs from the actual research calendar')
+        run_config['evaluation_window'] = evaluation_window
     root = config.data_dir / 'artifacts/backtests/factor_v1'
     path = save_backtest(root, config=run_config, metrics=metrics, result=result, ic=ic, deciles=deciles,
                           rolling=rolling, evidence=evidence, extra=stress)
+    write_json(path/'input-manifest.json', manifest)
+    if evaluation_window is not None:
+        write_json(path/'evaluation-window.json', evaluation_window)
     write_json(path / 'benchmarks.json', baselines)
     write_json(path / 'baseline-comparison.json',evidence['baseline_comparison'])
     write_json(path / 'v1-decision.json', v1_research_decision(evidence, metrics, baselines))
@@ -151,8 +168,13 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
             indices[indices.index_name.eq(name)],result.equity_curve.trade_date)).prod()-1) for name in ('NIFTY 50','NIFTY 500')})
     write_json(path / 'IC-confidence-interval.json', uncertainty)
     write_json(path / 'ranking-top30.json', scores[scores.as_of == scores.as_of.max()].head(30).to_dict('records'))
+    windows = rolling_windows(first_test_year=max(2016, start.year), last_test_year=end.year)
+    if evaluation_window is not None:
+        for window in windows:
+            window['test_start'] = max(start, window['test_start'])
+            window['test_end'] = min(end, window['test_end'])
     for window in walk_forward(prices, scores, labels, sessions, portfolio=portfolio, cost_model=costs,
-            windows=rolling_windows(first_test_year=max(2016, start.year), last_test_year=end.year), corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=transitions, transition_data_dir=config.data_dir):
+            windows=windows, corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=transitions, transition_data_dir=config.data_dir):
         curve = window['result'].equity_curve
         if curve.empty:
             continue
@@ -178,6 +200,8 @@ def main():
     parser.set_defaults(start=DEFAULT_BACKTEST_START)
     parser.add_argument('--estimate-historical-costs', action='store_true')
     parser.add_argument('--total-return', action='store_true', help='Gross ex-date cash dividends, evaluated against official TRI')
+    from pathlib import Path
+    parser.add_argument('--evaluation-window', type=Path, help='Immutable evidence-only fallback declaration; preserves original experiments')
     parser.add_argument('--lifecycle-scenario', choices=SCENARIOS, default=DEFAULT_LIFECYCLE_SCENARIO)
     parser.add_argument('--hypothesis', default='Frozen untuned Factor V1 baseline')
     parser.add_argument('--skip-robustness', action='store_true', help='Exploratory run only; cannot pass the cost-stress hurdle')
@@ -185,7 +209,8 @@ def main():
     try:
         path, evidence = run_research(args.config(config), args.start, args.end,
             estimate_historical_costs=args.estimate_historical_costs, full_robustness=not args.skip_robustness,
-            total_return=args.total_return, hypothesis=args.hypothesis, lifecycle_scenario=args.lifecycle_scenario)
+            total_return=args.total_return, hypothesis=args.hypothesis, lifecycle_scenario=args.lifecycle_scenario,
+            evaluation_window=args.evaluation_window)
     except (ValueError, OSError) as error:
         write_json(args.config(config).data_dir / 'reports' / f'backtest-blocked-{args.end}.json',
             dict(status='BLOCKED', date_range={'from':str(args.start),'to':str(args.end)}, reason=str(error),

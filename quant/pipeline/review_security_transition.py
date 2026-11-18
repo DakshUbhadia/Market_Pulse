@@ -38,6 +38,7 @@ def review_security_transition(config):
     prior_path = config.data_dir/'reports/tidewater-2016-held-blocker-review.json'
     prior = json.loads(prior_path.read_text()) if prior_path.exists() else {}
     report = dict(status='UNRESOLVED',verification_status='PARTIALLY_VERIFIED',evidence=evidence,
+        evidence_search_status='EVIDENCE_SEARCH_ACTIVE', event_id='TIDEWATER-2016-03-17',
         acquisition_failures=failures,predecessor_isin='INE484C01014',
         observed_successor_isin='INE484C01022', observations=prior.get('observed_prices',[]),
         answers=dict(announcement_availability=None,predecessor_validity_end=None,

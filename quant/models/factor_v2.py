@@ -28,6 +28,7 @@ def same_universe_scores(price_features, fundamental_features, *, min_group_size
         mask = joined.entity_type.eq(entity)
         if mask.any() and set(fields).issubset(joined.columns):
             joined.loc[mask,'fundamental_valid'] = np.isfinite(joined.loc[mask,list(fields)]).all(axis=1)
+    joined['fundamental_valid'] &= joined.get('value_feature_valid', pd.Series(False, index=joined.index)).eq(True)
     joined = joined[joined.fundamental_valid & joined.eligible & joined.feature_valid].copy()
     for entity in ('IND_AS_INDUSTRIAL','IND_AS_BANK'):
         group_sizes = joined.loc[joined.entity_type.eq(entity)].groupby('as_of').instrument_id.transform('size')

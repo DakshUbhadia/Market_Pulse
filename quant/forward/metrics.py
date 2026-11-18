@@ -24,11 +24,20 @@ def forward_metrics(root, *, as_of=None):
         rows = frame[frame.horizon_sessions.eq(horizon)] if not frame.empty else frame
         summary[str(horizon)] = dict(matured_outcomes=len(rows), distinct_signals=rows.signal_id.nunique() if len(rows) else 0,
             mean_cost_adjusted_excess=float(rows.cost_adjusted_excess_return.mean()) if len(rows) else None)
+        summary[str(horizon)]['rank_IC'] = None
+        if len(rows) and len(signals):
+            matched = signals[['signal_id', 'as_of', 'score']].merge(rows, on='signal_id', validate='one_to_one')
+            ics = [g.score.rank().corr(g.excess_return.rank()) for _, g in matched.groupby('as_of')
+                   if len(g) >= 10 and g.score.nunique() > 1 and g.excess_return.nunique() > 1]
+            summary[str(horizon)]['rank_IC'] = float(pd.Series(ics).mean()) if ics else None
     from quant.backtest.engine import monthly_signal_dates
     days = pd.DatetimeIndex(pd.to_datetime([b['as_of'] for b in batches]))
     shadow_days = {p.stem for p in (Path(root)/'shadow').glob('*.json')}
     rebalance_dates = monthly_signal_dates(days) if len(days) else set()
     shadow = [json.loads(p.read_text(encoding='utf-8')) for p in (Path(root)/'shadow').glob('*.json')]
+    for row in shadow:
+        if row.get('sha256') != content_hash({k: v for k, v in row.items() if k != 'sha256'}):
+            raise ValueError('Frozen shadow checksum changed')
     if as_of is not None:
         shadow = [r for r in shadow if pd.Timestamp(r['as_of']) <= pd.Timestamp(as_of)]
         shadow_days = {str(r['as_of']) for r in shadow}

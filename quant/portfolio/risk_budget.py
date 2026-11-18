@@ -35,20 +35,30 @@ def allocate_risk(covariance, previous, adv, clusters, *, nav, selected=None, po
     if (lower > upper+1e-10).any():
         raise ValueError('Infeasible mandatory exit or position cap under ADV constraints')
     masks = [groups.eq(g).to_numpy(dtype=float) for g in sorted(set(groups))]
-    constraints = [dict(type='ineq',fun=lambda w: policy.gross_exposure-w.sum()),
-                   dict(type='ineq',fun=lambda w: policy.target_volatility**2-w@sigma@w)]
-    constraints.extend(dict(type='ineq',fun=lambda w,m=m: policy.max_cluster_weight-m@w) for m in masks)
+    constraints = [dict(type='ineq',fun=lambda w: policy.gross_exposure-w.sum(), jac=lambda w: -np.ones(len(w))),
+                   dict(type='ineq',fun=lambda w: (policy.target_volatility**2-w@sigma@w)/policy.target_volatility**2,
+                        jac=lambda w: -2*sigma@w/policy.target_volatility**2)]
+    constraints.extend(dict(type='ineq',fun=lambda w,m=m: policy.max_cluster_weight-m@w,
+                            jac=lambda w,m=m: -m) for m in masks)
     bounds = list(zip(lower,upper))
     # Cash absorbs constraints. First determine feasible gross exposure, then
     # minimize risk plus turnover at that exposure; variance alone chooses cash.
-    exposure = minimize(lambda w:-w.sum(),lower,bounds=bounds,constraints=constraints,
+    exposure = minimize(lambda w:-w.sum(),lower,jac=lambda w: -np.ones(len(w)),bounds=bounds,constraints=constraints,
                         method='SLSQP',options=dict(ftol=1e-11,maxiter=1000))
     if not exposure.success:
         raise ValueError('Infeasible risk budget: '+exposure.message)
-    gross = float(exposure.x.sum())
-    equality = dict(type='eq',fun=lambda w:w.sum()-gross)
-    result = minimize(lambda w: w@sigma@w+policy.turnover_penalty*np.abs(w-old.to_numpy()).sum(),
-                      exposure.x,bounds=bounds,constraints=constraints+[equality],
+    # A tiny feasibility margin avoids an equality just outside a binding cap
+    # due to floating point rounding. It is at most one part in 100 million.
+    gross = max(float(lower.sum()), min(float(exposure.x.sum()), float(upper.sum()))-1e-8)
+    equality = dict(type='eq',fun=lambda w:w.sum()-gross, jac=lambda w: np.ones(len(w)))
+    # Smooth only the numerical kink of L1 turnover; retain the declared penalty.
+    def objective(w):
+        delta = w-old.to_numpy()
+        return w@sigma@w+policy.turnover_penalty*np.sqrt(delta*delta+1e-16).sum()
+    def gradient(w):
+        delta = w-old.to_numpy()
+        return 2*sigma@w+policy.turnover_penalty*delta/np.sqrt(delta*delta+1e-16)
+    result = minimize(objective, exposure.x, jac=gradient,bounds=bounds,constraints=constraints+[equality],
                       method='SLSQP',options=dict(ftol=1e-11,maxiter=1000))
     if not result.success:
         raise ValueError('Risk optimizer failed: '+result.message)
@@ -61,5 +71,6 @@ def allocate_risk(covariance, previous, adv, clusters, *, nav, selected=None, po
     if not capacity.capacity_passed.all():
         raise ValueError('Risk allocation exceeds capacity')
     return weights, dict(version=PORTFOLIO_RISK_VERSION, cash_weight=max(0.,1-float(w.sum())),
+        max_cluster_weight=float(weights.groupby(groups).sum().max()),
         annualized_volatility=float(np.sqrt(w@sigma@w)), gross_exposure=float(w.sum()),
         turnover=float(np.abs(w-old.to_numpy()).sum()), capacity=capacity.to_dict('index'))

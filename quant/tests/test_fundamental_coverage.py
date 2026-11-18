@@ -20,7 +20,7 @@ def test_coverage_counts_universe_and_liquidity_with_pit_revisions():
     assert result['first_reliable_fundamental_signal_date'] is None
     all_filings = pd.DataFrame([filing(filing_id=name,instrument_id=name) for name in 'abc'])
     result = audit_fundamental_coverage(universe,all_filings,dates,start=date(2024,7,1),end=date(2024,9,30))
-    assert result['first_reliable_fundamental_signal_date'] == '2024-08-30'
+    assert result['first_reliable_fundamental_signal_date'] is None  # two passing months cannot certify an interval
 
 
 def test_missing_period_universe_and_missing_archive_cannot_certify_coverage(tmp_path):

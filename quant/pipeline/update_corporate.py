@@ -69,8 +69,11 @@ def archive_filings(client, frame, dataset, history):
             if pd.isna(frame.loc[i, 'instrument_id']):
                 review.append({'filing_id': row.filing_id, 'reason': 'UNRESOLVED_IDENTITY'})
         except (ValueError, OSError, NseSourceError) as error:
+            from quant.data.source_health import classify_failure
             review.append({'filing_id': row.filing_id, 'reason': str(error),
-                           'source_status':getattr(error,'status',None)})
+                           'source_status':getattr(error,'status',None),
+                           'http_status':getattr(error,'http_status',None),
+                           'failure_class':classify_failure(error)})
             frame.loc[i, 'parser_status'] = 'NEEDS_REVIEW'
     return frame, review
 

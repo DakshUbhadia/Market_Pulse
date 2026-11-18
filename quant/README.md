@@ -658,3 +658,102 @@ callback receives prior-close marks/NAV; V1 callbacks keep their existing API.
 date-balanced weights. Label exits must mature before the training cutoff and
 embargo. No Elastic Net is fitted, promoted or assigned nonzero weight merely
 because these utilities are implemented.
+# Evidence and champion/challenger operations
+
+Current phase assessment and remaining evidence gates are in
+[EVIDENCE_PHASE_STATUS.md](EVIDENCE_PHASE_STATUS.md). Existing V1 weights and
+blocked experiments are preserved. Historical archive readiness and live API
+health are separate; a calendar HTTP 403 does not certify or revoke archive
+checksums. Forward refresh still requires the latest required exchange session.
+
+These commands use the configured corpus unless `--data-dir` is supplied.
+Use a real certified session for `--to`; November 17 below is the retained
+certified cutoff, not an assumption that later data is ready.
+
+```powershell
+python -m quant.pipeline.certify_implementation
+python -m quant.pipeline.validate_source_health --to 2026-11-17 --backtest-start 2016-01-01
+python -m quant.pipeline.report_fundamental_acquisition --from 2024-01-01 --to 2026-11-17
+python -m quant.pipeline.audit_share_history_coverage --from 2024-01-01 --to 2026-11-17 --universe <dated-universe.parquet> --anchors <anchors.parquet> --capital-events <events.parquet> --share-coverage <coverage.parquet>
+```
+
+Share anchors, capital events and completeness evidence need `raw_path` and
+`source_sha256` referencing checksum-verified archives under the data directory.
+Verified flags and current share counts alone are insufficient. Both filing
+and share certification require 12 consecutive passing monthly cutoffs and
+80% overall / 90% top-100 ADV coverage. Every subsequent cutoff must pass too.
+
+A data-window fallback is conditional on documented exhaustion for every
+mandatory held blocker. Its input is a JSON list of audits containing
+`event_id`, `mandatory_held_event=true`, `boundary_date`,
+`status=EVIDENCE_EXHAUSTED_UNRESOLVED`, `sources_checked`, `dates_checked`,
+`documents_checked`, `search_completed_at`,
+`reason_transition_cannot_be_certified` and `reviewed_by`. The current TIDEWATER
+search is ACTIVE and cannot supply this input. Once permitted:
+
+```powershell
+python -m quant.research.evaluation_window --from 2016-01-01 --to <certified-date> --search-audit <reviewed-audits.json> --warmup-sessions 252 --output <new-window.json>
+python -m quant.pipeline.run_backtest --from 2016-01-01 --to <certified-date> --evaluation-window <new-window.json> --estimate-historical-costs
+python -m quant.pipeline.run_backtest --from 2016-01-01 --to <certified-date> --evaluation-window <same-window.json> --estimate-historical-costs --total-return
+```
+
+`quant/specs/factor_v2_1.0.0.json` is a DRAFT policy proposal, not a reviewed OOS
+result. After certifying data continuity, declare `evaluation_windows`, record
+the actual review, and use `freeze_v2_specification`. The frozen envelope hashes
+policy and implementation. A specification store reserves one policy per
+`spec_version`; post-result policy edits require a new version. The V2 runner
+uses the specified portfolio/cost/risk settings for all four arms and runs all
+declared capital scenarios. It emits block missingness, factor evidence and
+correlations, per-cutoff filing/share/feature coverage, risk budgets,
+target/fill ledgers, cost stress and the V2 decision before sealing.
+
+Model lifecycle commands accept explicit files; no model is validated merely
+by registration:
+
+```powershell
+python -m quant.pipeline.register_model_candidate --registry <registry-dir> --card <model-card.json>
+python -m quant.pipeline.promote_model --registry <registry-dir> --model-id <id> --state RESEARCH_CANDIDATE --reason <recorded-reason>
+python -m quant.pipeline.promote_model --registry <registry-dir> --model-id <id> --state HISTORICALLY_VALIDATED --reason <recorded-reason>
+python -m quant.pipeline.promote_model --registry <registry-dir> --model-id <id> --state FORWARD_CHALLENGER --reason <recorded-reason>
+python -m quant.pipeline.run_registered_forward --registry <registry-dir> --model-id <id> --cohort <new-name> --as-of <actual-signal-session> --price-baseline <sealed-price> --total-return-baseline <sealed-total-return>
+```
+
+Cards contain all provenance fields in `quant/models/model_card.py`, plus
+`historical_experiment` and `historical_completion_sha256` for validation.
+For V2, `spec_hash` is the canonical `content_hash` of the inner specification;
+`data_manifest_hash` hashes the experiment's `manifest`. For V1 it hashes the
+`files` object from config. Model versions, feature versions, policies and
+sealed decisions must agree. Forward V2 also requires `--spec`, `--filings`,
+`--anchors`, `--capital-events`, and `--share-coverage`. Registered stores are
+under `forward/registered/<model-id>/<cohort>/`; existing V1 stores are retained.
+Run the registered command each real signal session after the data refresh;
+it freezes that session, replays the shadow and appends matured 21/63 outcomes.
+
+Use `report_forward_comparison --v1-root ... --v2-root ... --to ... --output ...`
+for matched-date cohorts. `report_research_monitoring --help` lists the dated
+feature, IC, NAV and observation inputs. Observation JSON contains
+`source_health`, fractional `coverage` (`overall`, `top100`, `parser_attempts`,
+`parser_failures`), fractional `cluster_weights`, and assessed `incidents`
+(`data`, `lifecycle`, `transition`, `accounting`). IC inputs include `block`,
+`IC` and `exit_date`; features include `as_of`, and NAV includes `trade_date`.
+The reference feature window must precede the current window. Unassessed
+dimensions cannot pass monitoring; alerts never retrain.
+
+Champion promotion additionally needs a frozen card `forward_policy` with at
+least 126 signal sessions, 6 rebalance cycles and 30 distinct matured
+63-session signals. Supply `--forward-root`, `--monitoring-report`, `--reviewer`
+and `--manual-record`. The manual record identifies `model_id`,
+`model_card_sha256`, `monitoring_sha256`, `reviewed_by`, `reviewed_at`,
+`decision=PROMOTE` and a reason. Retire an existing champion before promoting
+another. No production publishing is enabled by these commands.
+
+Elastic Net remains gated and has zero weight until real V2 historical PASS
+and stable multi-year PIT features permit the optional workstream.
+
+Earlier historical acquisition examples additionally require
+`--expansion-decision <reviewed-decision.json>` when starting before 2024. The
+record identifies `decision=EXPAND`, `prior_stage`, `next_stage`, `reviewed_by`
+and timezone-aware `reviewed_at`, plus `acquisition_report`, `coverage_report`
+and `share_report`, each containing `path` and `sha256` for verified reports
+inside the data directory. The previous stage must have no unattempted or
+retryable candidates and certified monthly filing/share continuity.

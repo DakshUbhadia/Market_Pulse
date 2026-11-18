@@ -27,7 +27,14 @@ def require_completed_baselines(config, price_baseline, total_return_baseline):
                     'cluster-sensitivity.parquet','skipped_orders.parquet','rolling_excess.parquet','dividends.parquet')
         if any(not (path/name).is_file() for name in required) or not list((path/'walk_forward').glob('*/run-*/metrics.json')):
             raise ValueError('Forward paper testing requires complete frozen baseline artifacts')
-        if (manifest.get('return_basis') != basis or manifest.get('date_range',{}).get('from','9999') > '2016-01-01'
+        if manifest.get('date_range',{}).get('from','9999') > '2016-01-01':
+            from quant.research.evaluation_window import load_evaluation_window
+            window = load_evaluation_window(path/'evaluation-window.json')
+            if (not window['blocking_event_ids'] or window['requested_start'] != '2016-01-01'
+                    or window['effective_start'] != manifest['date_range']['from']
+                    or window != manifest.get('evaluation_window')):
+                raise ValueError('Later baseline requires the same predeclared evidence-exhaustion window')
+        if (manifest.get('return_basis') != basis
                 or manifest.get('model_version') != MODEL_VERSION or manifest.get('feature_version') != FEATURE_VERSION
                 or manifest.get('security_transition_version') != TRANSITION_VERSION
                 or manifest.get('evidence_policy_version') != EVIDENCE_POLICY_VERSION
@@ -60,7 +67,10 @@ def require_completed_baselines(config, price_baseline, total_return_baseline):
             raise ValueError('Unresolved or unassessed held lifecycle events block forward launch')
         evidence = json.loads((path/'metrics.json').read_text(encoding='utf-8'))['evidence']
         output[basis] = dict(path=str(path.resolve()),completion_sha256=digest_file(path/'completion.json'),date_range=manifest['date_range'],
-            evidence_status=evidence['status'], highest_validation_level=evidence.get('highest_validation_level','NOT_VALIDATED'))
+            evidence_status=evidence['status'], highest_validation_level=evidence.get('highest_validation_level','NOT_VALIDATED'),
+            evaluation_window=manifest.get('evaluation_window'))
     if output['PRICE']['date_range'] != output['TOTAL_RETURN']['date_range']:
         raise ValueError('Frozen price and total-return baselines must cover the same date range')
+    if output['PRICE'].get('evaluation_window') != output['TOTAL_RETURN'].get('evaluation_window'):
+        raise ValueError('Both return bases must share the same predeclared evaluation window')
     return output

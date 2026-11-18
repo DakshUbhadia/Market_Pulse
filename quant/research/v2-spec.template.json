@@ -1,6 +1,11 @@
 {
+  "spec_version": "factor_v2_1.0.0",
   "review_status": "DRAFT",
   "reviewed_by": null,
+  "model_version": "factor_v2_candidate_1.0.0",
+  "feature_version": "fundamental_features_1.0.0",
+  "cost_model_version": "india_delivery_1.1.0",
+  "risk_policy_version": "portfolio_risk_1.1.0",
   "return_basis": "PRICE",
   "min_group_size": 20,
   "block_weights": {
@@ -12,24 +17,125 @@
     "low_risk": 0.14285714285714285,
     "liquidity": 0.14285714285714285
   },
+  "feature_definitions": {
+    "momentum": ".20*z(mom_63)+.35*z(mom_126_ex_21)+.35*z(mom_252_ex_21)+.10*z(distance_52w_high)",
+    "relative_strength": ".5*z(rs_nifty500_63)+.5*z(rs_nifty500_126)",
+    "quality": {
+      "industrial": {
+        "roe": "annual PAT / average annual equity",
+        "cfo_pat": "annual operating cash flow / annual PAT",
+        "debt_equity": "- annual borrowings / annual equity"
+      },
+      "bank": {
+        "bank_roa": "annual PAT / average annual assets",
+        "bank_roe": "annual PAT / average annual equity",
+        "bank_gnpa": "- quarter GNPA / quarter advances",
+        "bank_nnpa": "- quarter NNPA / quarter advances"
+      }
+    },
+    "growth": {
+      "industrial": {
+        "revenue_yoy": "comparable quarter revenue / prior-year same quarter revenue - 1",
+        "pat_yoy": "comparable quarter PAT / prior-year same quarter PAT - 1"
+      },
+      "bank": {
+        "deposit_yoy": "quarter deposits / prior-year quarter deposits - 1",
+        "advance_yoy": "quarter advances / prior-year quarter advances - 1"
+      }
+    },
+    "value": {
+      "industrial": [
+        "annual PAT / contemporaneous raw price * verified shares (denominator product)",
+        "annual equity / market cap",
+        "(annual CFO - annual capex) / market cap"
+      ],
+      "bank": [
+        "annual PAT / market cap",
+        "annual equity / market cap"
+      ]
+    },
+    "low_risk": "-(.35*z(vol_63)+.20*z(beta_252)+.25*z(abs_drawdown_252)+.20*z(cvar_95_252))",
+    "liquidity": ".50*z(log_adv60)-.35*z(log_amihud60)+.15*z(trading_presence_252)",
+    "source_modules": [
+      "quant/features/momentum.py",
+      "quant/features/relative_strength.py",
+      "quant/features/risk.py",
+      "quant/features/liquidity.py",
+      "quant/features/fundamentals.py",
+      "quant/features/quality.py",
+      "quant/features/growth.py",
+      "quant/features/value.py",
+      "quant/features/bank_fundamentals.py"
+    ],
+    "price_features": "Use unchanged factor_v1_features_1.0.5; all lookbacks are exchange sessions"
+  },
+  "normalization": {
+    "price": "Recompute V1 cross-section normalization on the covered universe",
+    "fundamentals": "Within dated entity groups, winsorize 1%/99%; median/MAD z using 1.4826; clip +/-3; average directed fields within blocks",
+    "zero_mad": "Observed constant inputs map to zero; missing inputs never map to zero"
+  },
+  "missing_data_rules": {
+    "fundamentals": "Exclude incomplete block rows; no neutral imputation",
+    "shares": "Value missing unless PIT value_feature_valid is true",
+    "unsupported_entities": "Exclude from V2; retain in full V1 denominator",
+    "annual_max_age_days": 550,
+    "quarter_max_age_days": 180
+  },
+  "coverage_policy": {
+    "overall": 0.8,
+    "top100": 0.9,
+    "minimum_consecutive_months": 12,
+    "denominator": "Dated PIT eligible universe; top 100 by contemporaneous ADV60",
+    "shares": "Same per-cutoff thresholds and continuity as filings",
+    "feature_completeness": "Every signal cutoff including prior month-close at first OOS open"
+  },
+  "training_policy": {
+    "method": "Fixed predeclared deterministic block weights; no fitted training or weight optimization",
+    "training_window": "NONE_DETERMINISTIC",
+    "validation": "Every declared outer window; no best-window selection",
+    "label": "63-session Nifty-500-relative forward price return; no future labels before maturity",
+    "embargo_sessions": 63
+  },
   "evaluation_windows": [],
+  "portfolio": {
+    "holdings": 25,
+    "entry_percentile": 90,
+    "exit_percentile": 35,
+    "max_weight": 0.05,
+    "initial_cash": 1000000
+  },
+  "costs": {
+    "broker_profile": "GENERIC_ZERO_DELIVERY",
+    "slippage_bps": 5,
+    "cost_multiplier": 1,
+    "slippage_multiplier": 1,
+    "allow_estimated_history": true,
+    "market_impact_bps": 0
+  },
+  "risk": {
+    "constraints": {
+      "max_weight": 0.05,
+      "max_cluster_weight": 0.25,
+      "adv_fraction": 0.01,
+      "target_volatility": 0.15,
+      "gross_exposure": 1,
+      "turnover_penalty": 0.001
+    }
+  },
+  "capacity_scenarios": [
+    1000000,
+    2500000,
+    5000000,
+    10000000
+  ],
   "acceptance": {
     "min_oos_sessions": 504,
     "min_mean_ic_improvement": 0.005,
     "min_ir_improvement": 0.1,
     "max_drawdown_deterioration": 0.02,
     "max_turnover": 12,
-    "min_label_coverage": 0.995
-  },
-  "risk": {
-    "capital": null,
-    "volatility_targets": [0.12, 0.15],
-    "constraints": {
-      "max_weight": 0.05,
-      "max_cluster_weight": 0.25,
-      "adv_fraction": 0.01,
-      "turnover_penalty": 0.001,
-      "gross_exposure": 1.0
-    }
+    "min_label_coverage": 0.995,
+    "max_turnover_increase": 2,
+    "min_robustness_survival": 1
   }
 }

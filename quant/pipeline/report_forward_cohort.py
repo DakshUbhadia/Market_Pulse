@@ -7,8 +7,9 @@ from quant.forward.signal_store import content_hash, read_signals
 from quant.storage.research_store import write_json
 
 
-def report_forward_cohort(config, as_of, cohort=None):
-    root = cohort_root(config,cohort)
+def report_forward_cohort(config, as_of, cohort=None, *, root=None):
+    custom_root = root is not None
+    root = root if custom_root else cohort_root(config,cohort)
     report = forward_metrics(root,as_of=as_of)
     batches, _ = read_signals(root)
     report.update(cohort=cohort,as_of=str(as_of),status='ACTIVE' if batches else 'NOT_STARTED',
@@ -45,6 +46,9 @@ def report_forward_cohort(config, as_of, cohort=None):
         report.update(shadow_portfolio_return=float(nav.iloc[-1]/initial-1),
             drawdown=float((nav/nav.cummax()-1).min()),turnover=float(curve.turnover.sum()),
             cost_drag=sum(t.get('total',0) for r in shadows for t in r['trades'])/initial)
+        report['cash_weight'] = float((curve.cash/curve.nav).iloc[-1])
+        report['Sharpe'] = (float(curve.daily_return.mean()/curve.daily_return.std(ddof=1)*252**.5)
+                            if len(curve) > 1 and curve.daily_return.std(ddof=1) > 0 else None)
     # A benchmark must have the same entry convention and interval; do not substitute outcome averages.
     report['benchmark_excess'] = None
     report['benchmark_return'] = None
@@ -67,10 +71,10 @@ def report_forward_cohort(config, as_of, cohort=None):
             report['benchmark_status']='GROSS_TRI_SIGNAL_CLOSE_TO_SHADOW_CLOSE'
         except (FileNotFoundError,ValueError,KeyError) as error:
             report['benchmark_error']=str(error)
-    outcome_report = cohort_report(config,cohort,'forward-outcomes.json')
+    outcome_report = root/'reports/forward-outcomes.json' if custom_root else cohort_report(config,cohort,'forward-outcomes.json')
     report['blocked_outcomes'] = json.loads(outcome_report.read_text()).get('blocked',[]) if outcome_report.exists() else []
     report['automatic_production_promotion'] = False
-    write_json(cohort_report(config,cohort,'forward-cohort.json'),report)
+    write_json(root/'reports/forward-cohort.json' if custom_root else cohort_report(config,cohort,'forward-cohort.json'),report)
     return report
 
 
