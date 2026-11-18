@@ -95,7 +95,7 @@ def test_shadow_matches_historical_engine_and_rejects_corrected_nav(tmp_path):
     freeze(tmp_path,scores)
     config = PortfolioConfig(holdings=1,max_weight=1)
     kwargs = dict(as_of='2024-11-04',portfolio=config,cost_model=zero_cost(),
-        corporate_actions=pd.DataFrame(),lifecycle=None,lifecycle_scenario='MANDATORY_ECONOMIC_EVENTS_ONLY')
+        corporate_actions=pd.DataFrame(),lifecycle_events=None,lifecycle_scenario='MANDATORY_ECONOMIC_EVENTS_ONLY')
     path = update_shadow(tmp_path,prices,sessions,**kwargs)
     _,frozen = read_signals(tmp_path)
     expected = run_backtest(prices,frozen,sessions,start='2024-10-31',end='2024-11-04',
@@ -112,7 +112,7 @@ def test_outcomes_append_only_after_maturity_and_never_change_signal(tmp_path):
     prices,benchmark,sessions,scores = fixture()
     signal = freeze(tmp_path,scores)
     original = signal.read_bytes()
-    kwargs = dict(cost_model=zero_cost(),corporate_actions=pd.DataFrame(),lifecycle=None,
+    kwargs = dict(cost_model=zero_cost(),corporate_actions=pd.DataFrame(),lifecycle_events=None,
                   lifecycle_scenario='MANDATORY_ECONOMIC_EVENTS_ONLY')
     pending = track_outcomes(tmp_path,prices,benchmark,benchmark,sessions,as_of='2024-11-01',**kwargs)
     assert pending == dict(written=0,pending=2,blocked=[])
@@ -135,7 +135,7 @@ def test_unexpected_delisting_blocks_outcome_without_fabricating_fill(tmp_path):
     freeze(tmp_path,scores)
     prices = prices[prices.trade_date < '2024-11-08']
     report = track_outcomes(tmp_path,prices,benchmark,benchmark,sessions,as_of=sessions[-1],
-        cost_model=zero_cost(),corporate_actions=pd.DataFrame(),lifecycle=None,
+        cost_model=zero_cost(),corporate_actions=pd.DataFrame(),lifecycle_events=None,
         lifecycle_scenario='MANDATORY_ECONOMIC_EVENTS_ONLY')
     assert report['written'] == 0 and len(report['blocked']) == 2
     assert not list((tmp_path/'outcomes').glob('*/*.json'))
@@ -229,7 +229,8 @@ def test_paper_gate_checks_completed_baseline_policy_and_cost_parity(tmp_path):
             cost_settings=clean_json(vars(CostModel())))
         write_json(root/'config.json',manifest)
         for name in ('ic.parquet','deciles.parquet','benchmarks.json','equity_curve.parquet','holdings.parquet',
-                     'security_transitions.parquet','trades.parquet','lifecycle.parquet','baseline-comparison.json','cluster-exposure.json',
+                     'cluster-sensitivity.parquet','skipped_orders.parquet','rolling_excess.parquet','dividends.parquet',
+                     'security-transitions.parquet','trades.parquet','lifecycle.parquet','baseline-comparison.json','cluster-exposure.json',
                      'IC-confidence-interval.json'):
             (root/name).write_text('synthetic-only')
         write_json(root/'metrics.json',dict(evidence=dict(status='NOT_VALIDATED')))
@@ -304,3 +305,16 @@ def test_competing_policy_writers_cannot_contaminate_one_cohort(tmp_path):
         results = list(pool.map(writer,[1e6,2e6]))
     assert sum(value is not None for value in results) == 1
     assert len(read_signals(tmp_path)[1]) == 1
+
+
+def test_cohort_freezes_transition_policy_version(tmp_path,monkeypatch):
+    from quant.forward import signal_store
+    from quant.identity.transitions import TRANSITION_VERSION
+    _,_,_,scores=fixture()
+    path=freeze(tmp_path,scores)
+    assert json.loads(path.read_text())['signals'][0]['security_transition_version']==TRANSITION_VERSION
+    before=path.read_bytes()
+    monkeypatch.setattr(signal_store,'TRANSITION_VERSION','incompatible-next-version')
+    with pytest.raises(ValueError,match='policy changed'):
+        freeze(tmp_path,scores)
+    assert path.read_bytes()==before

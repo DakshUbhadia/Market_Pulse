@@ -1,4 +1,5 @@
-"""Matured next-open outcomes reuse lifecycle, dividend and cost accounting."""
+"""Matured next-open outcomes reuse lifecycle_events, dividend and cost accounting."""
+from quant.identity.transitions import TRANSITION_VERSION
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +13,7 @@ from quant.universe.eligible import session_index
 
 
 def track_outcomes(root, prices, benchmark, tri, sessions, *, as_of, cost_model,
-                   corporate_actions, lifecycle, lifecycle_scenario, horizons=(21,63), security_transitions=None, transition_data_dir=None):
+                   corporate_actions, lifecycle_events, lifecycle_scenario, horizons=(21,63), security_transitions=None, transition_data_dir=None):
     _, signals = read_signals(root)
     dates = session_index(sessions)
     reports = dict(written=0, pending=0, blocked=[])
@@ -25,8 +26,8 @@ def track_outcomes(root, prices, benchmark, tri, sessions, *, as_of, cost_model,
     observed = prices[pd.to_datetime(prices.trade_date).between(signals.as_of.min(),pd.Timestamp(as_of))]
     by_identity = observed.groupby('instrument_id',observed=True).indices
     successors = {}
-    if lifecycle is not None and not lifecycle.empty:
-        for identity, group in lifecycle.groupby('instrument_id'):
+    if lifecycle_events is not None and not lifecycle_events.empty:
+        for identity, group in lifecycle_events.groupby('instrument_id'):
             successors[identity] = set(group.successor_instrument_id.dropna())
     if security_transitions is not None and not security_transitions.empty:
         for event in security_transitions.to_dict('records'):
@@ -63,11 +64,11 @@ def track_outcomes(root, prices, benchmark, tri, sessions, *, as_of, cost_model,
                 asset_prices = observed.iloc[locations]
                 window_dates = dates[location:location+horizon+1]
                 asset_prices = asset_prices[asset_prices.trade_date.between(window_dates[0],exit_)]
-                asset_events = lifecycle[lifecycle.instrument_id.isin(identities)] if lifecycle is not None and not lifecycle.empty else lifecycle
+                asset_events = lifecycle_events[lifecycle_events.instrument_id.isin(identities)] if lifecycle_events is not None and not lifecycle_events.empty else lifecycle_events
                 result = run_backtest(asset_prices,score,window_dates,start=signal['as_of'],end=exit_,
                     signal_dates=[signal['as_of']], portfolio=PortfolioConfig(holdings=1,max_weight=1,
                         entry_percentile=0,exit_percentile=0), cost_model=cost_model,
-                    corporate_actions=corporate_actions,lifecycle=asset_events,lifecycle_scenario=lifecycle_scenario, security_transitions=security_transitions, transition_data_dir=transition_data_dir)
+                    corporate_actions=corporate_actions,lifecycle_events=asset_events,lifecycle_scenario=lifecycle_scenario, security_transitions=security_transitions, transition_data_dir=transition_data_dir)
                 if result.trades.empty or not result.trades.side.eq('BUY').any():
                     raise ValueError('No executable next-open entry; no hypothetical fill assumed')
                 buy = result.trades[result.trades.side.eq('BUY')].iloc[0]
@@ -107,7 +108,7 @@ def track_outcomes(root, prices, benchmark, tri, sessions, *, as_of, cost_model,
                     source_manifest_hash=signal['source_manifest_hash'],
                     model_version=signal['model_version'], feature_version=signal['feature_version'],
                     lifecycle_policy_version=signal['lifecycle_policy_version'],
-                    portfolio_accounting_version=signal['portfolio_accounting_version'],
+                    security_transition_version=signal['security_transition_version'],portfolio_accounting_version=signal['portfolio_accounting_version'],
                     evidence_policy_version=signal['evidence_policy_version'],
                     validation_level='FORWARD_PAPER_ONLY')
                 record['sha256'] = content_hash(record)

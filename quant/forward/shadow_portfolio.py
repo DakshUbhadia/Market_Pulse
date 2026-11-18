@@ -1,4 +1,5 @@
 """Replay frozen monthly decisions with the historical engine, then seal each day."""
+from quant.identity.transitions import TRANSITION_VERSION
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -14,13 +15,13 @@ from quant.version import (MODEL_VERSION, FEATURE_VERSION, PORTFOLIO_ACCOUNTING_
 
 
 def update_shadow(root, prices, sessions, *, as_of, portfolio, cost_model, corporate_actions,
-                  lifecycle, lifecycle_scenario, security_transitions=None, transition_data_dir=None):
+                  lifecycle_events, lifecycle_scenario, security_transitions=None, transition_data_dir=None):
     batches, scores = read_signals(root)
     if scores.empty:
         raise ValueError('No frozen forward signals')
     selected = scores[scores.as_of <= pd.Timestamp(as_of)]
     expected = dict(model_version=MODEL_VERSION, feature_version=FEATURE_VERSION,
-        portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION, lifecycle_policy_version=LIFECYCLE_POLICY_VERSION)
+        security_transition_version=TRANSITION_VERSION,portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION, lifecycle_policy_version=LIFECYCLE_POLICY_VERSION)
     if selected.empty or any(not selected[key].eq(value).all() for key,value in expected.items()):
         raise ValueError('Forward policy changed; create a separate paper cohort')
     settings = [batch['settings'] for batch in batches if batch['as_of'] <= str(as_of)[:10]]
@@ -32,7 +33,7 @@ def update_shadow(root, prices, sessions, *, as_of, portfolio, cost_model, corpo
         raise ValueError('Shadow runtime differs from the frozen portfolio policy')
     result = run_backtest(prices, selected, sessions, start=selected.as_of.min(), end=as_of,
         portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions,
-        lifecycle=lifecycle, lifecycle_scenario=lifecycle_scenario, security_transitions=security_transitions, transition_data_dir=transition_data_dir,
+        lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=security_transitions, transition_data_dir=transition_data_dir,
         signal_dates=[day for day in monthly_signal_dates(sessions) if day >= selected.as_of.min()])
     # Corrections must be investigated; never silently replace a previous NAV.
     curve = result.equity_curve.set_index('trade_date')

@@ -27,6 +27,7 @@ def write_current_status(config, *, public_state=None):
         blocker=read_report(root/'reports/security-transitions/tidewater-2016.json'),
         baseline_experiments=experiments,
         forward_cohorts=[p.name for p in (root/'forward/factor_v1/cohorts').glob('*') if p.is_dir() and any((p/'signals').glob('*.json'))],
+        parser_stability=read_report(root/'reports/fundamental-parser-stability.json'),
         fundamentals=read_report(root/'reports/fundamental-universe-coverage.json'),
         fundamental_backfill=read_report(root/'reports/fundamental-backfill-status.json'),
         fundamental_documents=read_report(root/'reports/fundamental-document-backfill-status.json'),

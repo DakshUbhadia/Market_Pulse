@@ -4,7 +4,7 @@ Fractional split-adjusted research units are supported. Supplying corporate
 actions enables gross ex-date cash dividends on prior-close holdings.
 Unquoted holdings stop the run rather than silently deleting delisting losses.
 """
-from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO, resolve_lifecycle_events
+from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -38,11 +38,11 @@ def monthly_signal_dates(sessions):
 
 def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=None,
                  cost_model=None, target_builder=None, corporate_actions=None, lifecycle_events=None,
-                 lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO, lifecycle=None, signal_dates=None,
+                 lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,  signal_dates=None,
                  security_transitions=None, transition_data_dir=None):
-    # Session order: state/economics, executable holdings, orders, dividends,
-    # valuation. Dividend entitlement is captured from the preceding close.
-    lifecycle_events = resolve_lifecycle_events(lifecycle, lifecycle_events)
+    # Session order: prior-close dividend entitlement; open; mandatory security
+    # transitions; lifecycle settlements; permitted risk exits; rebalance sells;
+    # buys; post dividend cash; value holdings; freeze daily accounting state.
     config, costs = portfolio or PortfolioConfig(), cost_model or CostModel()
     dates = session_index(sessions)
     first = pd.Timestamp(start) if start is not None else dates[0]

@@ -1,4 +1,5 @@
 """Append matured forward outcomes and update local paper diagnostics."""
+from quant.identity.transitions import TRANSITION_VERSION
 from datetime import date
 import json
 
@@ -34,7 +35,7 @@ def update_forward_outcomes(config,as_of,*,cohort=None):
             raise ValueError('Outcome policies differ from the frozen paper cohort')
         for signal in batch['signals']:
             versions = dict(model_version=MODEL_VERSION,feature_version=FEATURE_VERSION,
-                portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,
+                security_transition_version=TRANSITION_VERSION,portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,
                 lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,evidence_policy_version=EVIDENCE_POLICY_VERSION)
             if any(signal.get(key) != value for key,value in versions.items()):
                 raise ValueError('Outcome versions differ from the immutable signal cohort')
@@ -46,7 +47,7 @@ def update_forward_outcomes(config,as_of,*,cohort=None):
     tri = tri[tri.index_name.eq('NIFTY 500 TRI')]
     actions = query_dataset(config.data_dir,'corporate_actions',end=as_of).drop_duplicates('event_id')
     report = track_outcomes(root,prices,benchmark,tri,sessions,as_of=as_of,cost_model=costs,
-        corporate_actions=actions,lifecycle=load_lifecycle(config),lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
+        corporate_actions=actions,lifecycle_events=load_lifecycle(config),lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
         security_transitions=load_transitions(config),transition_data_dir=config.data_dir)
     write_json(cohort_report(config,cohort,'forward-outcomes.json'),report)
     return report

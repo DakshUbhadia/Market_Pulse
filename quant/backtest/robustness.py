@@ -1,4 +1,4 @@
-from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO, resolve_lifecycle_events
+from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from dataclasses import replace
 
 from quant.backtest.costs import CostModel
@@ -9,9 +9,8 @@ from quant.models.factor_v1 import score_factor_v1
 
 
 def robustness_runs(prices, scores, benchmark, sessions, *, start, end, portfolio, cost_model,
-                    universe_config, benchmark_frame, delivery=None, corporate_actions=None, lifecycle=None,
+                    universe_config, benchmark_frame, delivery=None, corporate_actions=None,
                     lifecycle_events=None, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO, security_transitions=None, transition_data_dir=None):
-    lifecycle_events = resolve_lifecycle_events(lifecycle, lifecycle_events)
     results = {}
     for name, multiplier, slippage, holdings in [
         ('cost_1_5x', 1.5, 1, portfolio.holdings), ('cost_2x', 2, 1, portfolio.holdings),

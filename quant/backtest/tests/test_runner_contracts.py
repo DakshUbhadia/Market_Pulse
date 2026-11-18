@@ -105,7 +105,7 @@ def test_documented_lifecycle_keyword_reaches_each_simulation(monkeypatch,module
         monkeypatch.setattr(module,'score_factor_v1',lambda f:f)
         module.robustness_runs(pd.DataFrame(),pd.DataFrame(),pd.Series(0.,index=dates),dates,
             start=dates[0],end=dates[-1],portfolio=PortfolioConfig(),cost_model=CostModel(),
-            universe_config=UniverseConfig(),benchmark_frame=pd.DataFrame(),lifecycle=events,corporate_actions=actions)
+            universe_config=UniverseConfig(),benchmark_frame=pd.DataFrame(),lifecycle_events=events,corporate_actions=actions)
         assert len(calls) == 13
     else:
         monkeypatch.setattr('quant.backtest.engine.run_backtest',simulation)
@@ -113,6 +113,6 @@ def test_documented_lifecycle_keyword_reaches_each_simulation(monkeypatch,module
             pd.DataFrame(columns=['as_of','exit_date','label_available']),dates,
             windows=[dict(train_start=date(2018,1,1),train_end=date(2023,12,31),
                           test_start=date(2024,1,1),test_end=date(2024,12,31))],
-            lifecycle=events,corporate_actions=actions)
+            lifecycle_events=events,corporate_actions=actions)
         assert len(calls) == 1
     assert all(row['lifecycle_events'] is events and row['corporate_actions'] is actions for row in calls)

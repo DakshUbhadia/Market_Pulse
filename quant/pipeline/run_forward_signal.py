@@ -1,4 +1,5 @@
 """Refresh, validate, rank and freeze unseen local paper signals; never publish."""
+from quant.identity.transitions import TRANSITION_VERSION
 from dataclasses import asdict
 from datetime import datetime, timezone
 from datetime import date
@@ -48,7 +49,7 @@ def run_forward_signal(config, as_of, *, price_baseline, total_return_baseline, 
         raise ValueError('Historical or premature signals cannot be labelled forward evidence')
     require_research_ready(config,as_of)
     portfolio, costs = PortfolioConfig(), CostModel()
-    settings = dict(portfolio=asdict(portfolio), costs=asdict(costs), cost_model_version=COST_MODEL_VERSION,
+    settings = dict(security_transition_version=TRANSITION_VERSION,portfolio=asdict(portfolio), costs=asdict(costs), cost_model_version=COST_MODEL_VERSION,
         evidence_policy_version=EVIDENCE_POLICY_VERSION, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
         return_basis='TOTAL_RETURN', baselines=baselines)
     signal_path = root/'signals'/f'{as_of}.json'
@@ -76,7 +77,7 @@ def run_forward_signal(config, as_of, *, price_baseline, total_return_baseline, 
     actions = query_dataset(config.data_dir,'corporate_actions',end=as_of).drop_duplicates('event_id')
     events = load_lifecycle(config)
     shadow = update_shadow(root,prices,sessions,as_of=as_of,portfolio=portfolio,cost_model=costs,
-        corporate_actions=actions,lifecycle=events,lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
+        corporate_actions=actions,lifecycle_events=events,lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
         security_transitions=load_transitions(config),transition_data_dir=config.data_dir)
     from quant.pipeline.update_forward_outcomes import update_forward_outcomes
     outcomes = update_forward_outcomes(config,as_of,**({'cohort':cohort} if cohort is not None else {}))

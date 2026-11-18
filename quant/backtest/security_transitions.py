@@ -45,7 +45,8 @@ class SecurityTransitions:
             self.records.append(dict(trade_date=day,transition_id=key,predecessor_instrument_id=old,
                 successor_instrument_id=new,security_lineage_id=event['security_lineage_id'],
                 recommendation_instrument_id=self.origins[new],raw_share_entitlement=raw_units,
-                economic_units=quantity,transferred_cost_basis=total_basis,tradable_from=event['first_tradable_date']))
+                economic_units=quantity,tradable_units=quantity if day >= event['first_tradable_date'] else 0.,
+                pending_units=quantity if day < event['first_tradable_date'] else 0.,transferred_cost_basis=total_basis,tradable_from=event['first_tradable_date']))
 
     def entry_allowed(self, identity, day, opening):
         rows=self.events

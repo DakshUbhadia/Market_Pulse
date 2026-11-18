@@ -55,6 +55,8 @@ def backfill_documents(config, start, end, *, limit=100, retry_review=False):
             source_documents_preserved=sum(isinstance(r.get('document_sha256'),str) for r in state['attempted'].values()),
             coverage_status='UNASSESSED_RUN_UNIVERSE_COVERAGE',factor_v2_enabled=False)
         write_json(config.data_dir/'reports/fundamental-document-backfill-status.json',report)
+        from quant.pipeline.report_fundamental_parser_stability import report_parser_stability
+        report_parser_stability(config,start,end)
         return report
 
 

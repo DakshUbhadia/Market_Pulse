@@ -23,7 +23,8 @@ def require_completed_baselines(config, price_baseline, total_return_baseline):
         required = ('metrics.json','ic.parquet','deciles.parquet','robustness.json','benchmarks.json',
                     'equity_curve.parquet','holdings.parquet','trades.parquet','lifecycle.parquet',
                     'baseline-comparison.json','cluster-exposure.json','IC-confidence-interval.json',
-                    'v1-decision.json','lifecycle-audit.json','security_transitions.parquet')
+                    'v1-decision.json','lifecycle-audit.json','security-transitions.parquet',
+                    'cluster-sensitivity.parquet','skipped_orders.parquet','rolling_excess.parquet','dividends.parquet')
         if any(not (path/name).is_file() for name in required) or not list((path/'walk_forward').glob('*/run-*/metrics.json')):
             raise ValueError('Forward paper testing requires complete frozen baseline artifacts')
         if (manifest.get('return_basis') != basis or manifest.get('date_range',{}).get('from','9999') > '2016-01-01'
@@ -35,6 +36,13 @@ def require_completed_baselines(config, price_baseline, total_return_baseline):
                 or manifest.get('lifecycle_scenario') != 'MANDATORY_ECONOMIC_EVENTS_ONLY'
                 or (basis == 'TOTAL_RETURN' and manifest.get('portfolio_accounting_version') != PORTFOLIO_ACCOUNTING_VERSION)):
             raise ValueError('Frozen baseline does not match the unchanged current V1 baseline policy')
+        from quant.storage.duckdb_store import dataset_files
+        current_transitions={str(Path(p).relative_to(config.data_dir)):digest_file(p)
+            for p in dataset_files(config.data_dir,'security_transitions')}
+        frozen_transitions={r['path']:r['sha256'] for r in manifest.get('files',[])
+            if r['path'].replace('\\','/').startswith('normalized/security_transitions/')}
+        if current_transitions != frozen_transitions:
+            raise ValueError('Transition evidence differs from the sealed baseline')
         baseline_costs = dict(manifest.get('cost_settings', {}))
         baseline_costs.pop('allow_estimated_history', None)
         if (manifest.get('portfolio_settings') != clean_json(PortfolioConfig())

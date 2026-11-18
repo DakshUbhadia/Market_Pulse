@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from quant.storage.research_store import digest_file
 
-TRANSITION_VERSION = 'security_transitions_1.0.0'
+TRANSITION_VERSION = 'security_transitions_1.1.0'
 TYPES = set('FACE_VALUE_SPLIT BONUS SPLIT_AND_BONUS SECURITY_ISIN_REPLACEMENT MERGER_CONVERSION DEMERGER_CONVERSION CAPITAL_REORGANIZATION SYMBOL_CHANGE_SAME_SECURITY OTHER'.split())
 LEVELS = set('VERIFIED_COMPLETE VERIFIED_TERMS_ONLY PARTIALLY_VERIFIED NEEDS_REVIEW REJECTED'.split())
 COLUMNS = ('transition_id predecessor_instrument_id successor_instrument_id predecessor_isin successor_isin '

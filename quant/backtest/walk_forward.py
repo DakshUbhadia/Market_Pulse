@@ -1,4 +1,4 @@
-from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO, resolve_lifecycle_events
+from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from datetime import date
 
 import pandas as pd
@@ -22,10 +22,9 @@ def purged_training_labels(labels, window, sessions, *, embargo_sessions=63):
 
 
 def walk_forward(prices, scores, labels, sessions, *, windows=None, portfolio=None, cost_model=None,
-                 corporate_actions=None, lifecycle=None, lifecycle_events=None,
+                 corporate_actions=None,  lifecycle_events=None,
                  lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO, security_transitions=None, transition_data_dir=None):
     from quant.backtest.engine import run_backtest
-    lifecycle_events = resolve_lifecycle_events(lifecycle, lifecycle_events)
     output = []
     for window in windows or rolling_windows():
         if pd.Timestamp(window['test_start']) > pd.Timestamp(max(sessions)):

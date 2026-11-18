@@ -1,4 +1,5 @@
 """Exclusive immutable JSON records; repeat identical writes are idempotent."""
+from quant.identity.transitions import TRANSITION_VERSION
 import hashlib
 import json
 import os
@@ -71,7 +72,7 @@ def freeze_signals(root, scores, *, as_of, generated_at, data_as_of, git_commit,
         key = dict(as_of=str(day.date()), instrument_id=row['instrument_id'], model_version=MODEL_VERSION)
         records.append(dict(**key, signal_id=content_hash(key), symbol=row['symbol'],
             model_name='Factor V1', feature_version=FEATURE_VERSION,
-            portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,
+            security_transition_version=TRANSITION_VERSION,portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,
             evidence_policy_version=EVIDENCE_POLICY_VERSION, lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,
             score=row['raw_score'], rank=int(row['rank']), universe_size=len(scores),
             factor_contributions=contributions, percentile_score=row['percentile_score'], vol_63=row['vol_63'],
@@ -80,7 +81,7 @@ def freeze_signals(root, scores, *, as_of, generated_at, data_as_of, git_commit,
     batch = dict(as_of=str(day.date()), settings=clean_json(settings), signals=records,
                  next_session_open=opening.isoformat(),next_session_evidence=next_session_evidence)
     versions = dict(model_version=MODEL_VERSION,feature_version=FEATURE_VERSION,
-        portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,cost_model_version=COST_MODEL_VERSION,
+        security_transition_version=TRANSITION_VERSION,portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,cost_model_version=COST_MODEL_VERSION,
         evidence_policy_version=EVIDENCE_POLICY_VERSION,lifecycle_policy_version=LIFECYCLE_POLICY_VERSION)
     existing, _ = read_signals(root)
     for previous in existing:
