@@ -1,3 +1,5 @@
+> Historical snapshot. See [CURRENT_STATUS.md](CURRENT_STATUS.md) for current evidence and blockers.
+
 # V1 evidence, forward paper and PIT fundamental foundation
 
 Implementation of `Market_Pulse_Next_Phase_V1_Evidence_Forward_and_Fundamental_Foundation.md`,

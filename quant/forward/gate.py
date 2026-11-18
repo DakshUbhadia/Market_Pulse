@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 
+from quant.identity.transitions import TRANSITION_VERSION
+from quant.storage.research_store import digest_file
 from quant.backtest.artifacts import verify_backtest_seal
 from quant.backtest.costs import CostModel
 from quant.backtest.portfolio import PortfolioConfig
@@ -21,11 +23,12 @@ def require_completed_baselines(config, price_baseline, total_return_baseline):
         required = ('metrics.json','ic.parquet','deciles.parquet','robustness.json','benchmarks.json',
                     'equity_curve.parquet','holdings.parquet','trades.parquet','lifecycle.parquet',
                     'baseline-comparison.json','cluster-exposure.json','IC-confidence-interval.json',
-                    'v1-decision.json','lifecycle-audit.json')
+                    'v1-decision.json','lifecycle-audit.json','security_transitions.parquet')
         if any(not (path/name).is_file() for name in required) or not list((path/'walk_forward').glob('*/run-*/metrics.json')):
             raise ValueError('Forward paper testing requires complete frozen baseline artifacts')
         if (manifest.get('return_basis') != basis or manifest.get('date_range',{}).get('from','9999') > '2016-01-01'
                 or manifest.get('model_version') != MODEL_VERSION or manifest.get('feature_version') != FEATURE_VERSION
+                or manifest.get('security_transition_version') != TRANSITION_VERSION
                 or manifest.get('evidence_policy_version') != EVIDENCE_POLICY_VERSION
                 or manifest.get('cost_model_version') != COST_MODEL_VERSION
                 or manifest.get('lifecycle_policy_version') != LIFECYCLE_POLICY_VERSION
@@ -48,7 +51,7 @@ def require_completed_baselines(config, price_baseline, total_return_baseline):
                 or lifecycle.get('held_events_unresolved') != 0):
             raise ValueError('Unresolved or unassessed held lifecycle events block forward launch')
         evidence = json.loads((path/'metrics.json').read_text(encoding='utf-8'))['evidence']
-        output[basis] = dict(path=str(path.resolve()),date_range=manifest['date_range'],
+        output[basis] = dict(path=str(path.resolve()),completion_sha256=digest_file(path/'completion.json'),date_range=manifest['date_range'],
             evidence_status=evidence['status'], highest_validation_level=evidence.get('highest_validation_level','NOT_VALIDATED'))
     if output['PRICE']['date_range'] != output['TOTAL_RETURN']['date_range']:
         raise ValueError('Frozen price and total-return baselines must cover the same date range')

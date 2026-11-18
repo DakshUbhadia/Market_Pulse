@@ -94,3 +94,23 @@ def test_macro_filters_dimensions_and_never_invents_publication_dates():
     with pytest.raises(ValueError, match='Duplicate'):
         parse_macro(content + b'2024-06-30,USD,84,0\n', 'usd_inr', spec,
                      url='https://example.test', fetched_at=RAW.fetched_at)
+
+
+@pytest.mark.parametrize('document',[None,True,float('nan'),'-'])
+def test_nontext_or_missing_document_does_not_crash_archive(tmp_path,document):
+    from quant.pipeline.update_corporate import archive_filings
+    record=dict(symbol='TEST',isin='INE000000001',toDate='30-Jun-2024',xbrl=document)
+    frame=parse_financial_filings([record],RAW)
+    frame,review=archive_filings(None,frame,'financials',pd.DataFrame())
+    assert frame.parser_status.iloc[0]=='NEEDS_REVIEW'
+    assert review[0]['reason']=='NO_XBRL_DOCUMENT'
+
+
+def test_archive_migration_accepts_exact_official_host_only():
+    from quant.data.nse_client import NseClient
+    from quant.config import Config
+    with NseClient(Config()) as client:
+        assert client._url('https://nsearchives.nseindia.in/corporate/test.xml').startswith('https://nsearchives.nseindia.in/')
+        for url in ['https://nsearchives.nseindia.in.evil.test/file','http://nsearchives.nseindia.in/file',True]:
+            with pytest.raises(ValueError):
+                client._url(url)

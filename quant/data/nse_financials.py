@@ -30,7 +30,8 @@ def parse_financial_filings(payload, raw):
         revision = exchange_timestamp(record.get('revisionDate'))
         revision_uncertain = bool(record.get('revisionDate')) and pd.isna(revision)
         available = max(disseminated, revision) if pd.notna(disseminated) and pd.notna(revision) else disseminated
-        document = record.get('xbrl') or record.get('xbrlFile') or record.get('xbrl_url')
+        document = next((record.get(key) for key in ('xbrl','xbrlFile','xbrl_url')
+            if isinstance(record.get(key),str) and record[key].strip() and record[key].strip() != '-'),None)
         if document and document.rstrip('/').endswith('/-'):
             document = None
         row = dict(filing_id=record_id(record), version=record_id(record),

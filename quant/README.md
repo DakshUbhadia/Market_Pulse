@@ -6,64 +6,10 @@ V1 model, and runs local research simulations. It does not publish recommendatio
 or place orders. A working research engine does not establish investment value.
 
 
-## Current critique implementation and gates
+## Current status
 
-Verification for this critique: **207 unit tests passed**, **11 live integration
-tests passed**, dependency validation and syntax compilation passed. Test-name
-audit found no shadowed module-level definitions. Factor V1 source is unchanged.
-GitHub's non-interactive push check still fails for missing credentials; remote CI
-and branch protection have not been verified. Work is on
-`fix/quant-runtime-and-ci` and remains local until authentication is restored.
-
-Current versions: `factor_v1_features_1.0.3`, `factor_v1_1.0.0`,
-`factor_v1_evidence_1.1.0`, `pit_lifecycle_1.1.0`. Factor V1 weights/formulas and
-portfolio defaults are frozen. Earlier versions and frozen artifacts remain
-historical evidence; stale feature snapshots must be rebuilt before ranking.
-
-The latest critique was compared with the local branch rather than assumed to
-match the older public main snapshot. Its accounting constant, corporate-action
-interfaces, duplicate tests, comprehensive discovery, safe publishing default,
-compounded annual concentration and basic lifecycle accounting were already
-fixed. The additional requirements are handled as follows:
-
-| Document sections | Implementation / gate |
-| --- | --- |
-| 3?12 Runtime and CI | Existing fixes retained; price/total-return runner, every robustness variant and walk-forward propagation now have explicit contract tests. CI adds collect-only alongside pip check, compileall and the full unit suite. Remote green CI and branch protection still require authenticated GitHub access. |
-| 13?16 Config and determinism | `QUANT_FETCH_*` overrides deprecated `QUANT_ENABLE_*` aliases. Acquisition remains separate from `QUANT_MODEL_USE_*`, which is false and rejects unsupported activation. Feature rows exclude creation timestamps; manifests retain them. Identical inputs produce identical Parquet bytes with the same dependency versions. |
-| 17?19 Evidence policy | Compounded annual concentration retained; manifests and frozen experiment parameters now record evidence-policy version and the declared baseline-comparison rule. All five baselines report excess return, IR, Sharpe, drawdown and turnover. The existing beats-all-total-returns gate remains unchanged and is labeled legacy; the new risk-adjusted table is diagnostic. |
-| 20?22 Clusters | Correlations use overlapping observed returns, at least 220 of 252. No price filling. A candidate must have sufficient pairwise overlap with every other candidate to be assessed. Sparse history and insufficient overlap stay explicit. Sensitivity reports use predeclared cuts 0.8/1.0/1.2; single-link chaining remains a limitation and no cluster cap is enforced by the allocator. |
-| 23?41 Lifecycle | Authoritative schema/state/policy now live under `quant/lifecycle`, with compatibility imports, an official BSE adapter, daily lifecycle stage, and a provenance/PIT audit. Universe rows expose entry_block_reason and offer_available. Primary policy is MANDATORY_ECONOMIC_EVENTS_ONLY; proactive exits require the explicit KNOWN_EVENT_NEXT_OPEN_EXIT scenario. Optional tender payments and undocumented recovery assumptions remain unsupported. Readiness reports source integrity, coverage and held-valuation assessment separately. |
-| 42?44 Costs | Explicit generic broker assumptions have a separate module. Historical statutory proxies remain proxies. Other broker schedules and capacity-aware impact require additional sourced assumptions. |
-| 45?48 Full V1 evidence | Still gated on remote CI plus historical audit/readiness and actual lifecycle resolution. A successful engine unit test does not certify a full historical OOS result. |
-| 49?89 Forward, fundamentals, V2, ML, risk and publishing | Deferred by the document's V1 evidence gates. No model or publishing feature is activated by fetching data. |
-
-The current lifecycle audit of local data through November 12 finds two verified
-ESSAROIL source records with intact hashes, but reports EVIDENCE_ONLY, no
-established universe coverage start, and unassessed held-event resolution until a
-portfolio run is evaluated. It does not manufacture a zero unresolved count or
-infer full coverage from the earliest event. Consequently production data
-validation remains false. Actual missing held valuations retain dated identity
-and scenario details in blocked experiment records.
-
-Useful checks:
-
-```powershell
-python -m pytest --collect-only quant -q
-python -m pytest quant -m "not integration" -q
-python -m pytest quant -m integration -q
-python -m quant.pipeline.audit_lifecycle --as-of 2026-11-12
-```
-
-`QUANT_FETCH_LIFECYCLE=false` avoids unexpected network downloads during daily
-refresh; the existing event dataset is still audited. Set it true to archive
-current inventories as discovery evidence requiring historical review. A daily
-inventory watermark is not a verified historical-coverage watermark. Lifecycle
-raw evidence is included in research manifests and cached-readiness fingerprints.
-
-The primary mandatory-only policy may intentionally block ESSAROIL in the
-original portfolio. The separately declared next-open-exit scenario remains
-available and its real-event fixture proves a January 28 exit after the January
-27 notice. Scenarios are never selected by the best realized performance.
+See [CURRENT_STATUS.md](CURRENT_STATUS.md) for current versions, CI and operational blockers.
+Earlier phase documents are historical snapshots.
 
 ## Setup
 

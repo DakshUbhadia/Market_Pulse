@@ -63,6 +63,8 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
     manifest = input_manifest(config, end)
     prices, benchmark_frame, sessions, delivery, indices = load_research_data(config, end)
     lifecycle_events = load_lifecycle(config)
+    from quant.identity.transitions import load_transitions, TRANSITION_VERSION
+    transitions = load_transitions(config)
     universe, portfolio = UniverseConfig(), PortfolioConfig()
     costs = CostModel(allow_estimated_history=estimate_historical_costs)
     actions, tri = None, None
@@ -76,14 +78,14 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         # A held-event stop must not discard the historical review population.
         # These are input diagnostics, never completed or forward evidence.
         verify_manifest(config,manifest)
-        write_parquet(scores[['as_of','instrument_id','symbol','rank','percentile_score','raw_score',
+        write_parquet(scores[['as_of','instrument_id','symbol','vol_63','rank','percentile_score','raw_score',
             'model_version','feature_version']],prepared_root/'prepared-scores.parquet')
         write_parquet(features[['as_of','instrument_id','symbol','eligible','adv60','history_sessions',
             'lifecycle_status']],prepared_root/'prepared-universe.parquet')
         write_json(prepared_root/'prepared-inputs.json',dict(status='PREPARED_INPUTS_ONLY',manifest=manifest,
             model_version=MODEL_VERSION,feature_version=FEATURE_VERSION,completed_baseline=False,forward_evidence=False))
     result = run_backtest(prices, scores, sessions, start=start, end=end, portfolio=portfolio, cost_model=costs,
-                          corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario)
+                          corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=transitions, transition_data_dir=config.data_dir)
     from quant.pipeline.audit_lifecycle import audit_lifecycle
     lifecycle_report = audit_lifecycle(config,as_of=end,holdings=result.holdings,
         lifecycle_records=result.lifecycle,scores=scores,portfolio_sessions=result.equity_curve.trade_date,write=False)
@@ -106,11 +108,11 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         baselines[name]['basis'] = 'GROSS_TOTAL_RETURN_INDEX' if total_return else 'GROSS_PRICE_INDEX'
     for name in ('liquid_equal_weight', 'momentum_12_1_top25', 'inverse_volatility'):
         alternative = run_backtest(prices, features, sessions, start=start, end=end, portfolio=portfolio,
-                                   cost_model=costs, target_builder=baseline_target(name), corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario)
+                                   cost_model=costs, target_builder=baseline_target(name), corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=transitions, transition_data_dir=config.data_dir)
         baselines[name], _ = performance_metrics(alternative.equity_curve, market, alternative.trades)
     stress = robustness_runs(prices, scores, market, sessions, start=start, end=end, portfolio=portfolio,
         cost_model=costs, universe_config=universe, benchmark_frame=benchmark_frame, delivery=delivery,
-        corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario) if full_robustness else {}
+        corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=transitions, transition_data_dir=config.data_dir) if full_robustness else {}
     clusters, exposure = rebalance_cluster_diagnostics(prices, scores, sessions, result.holdings, result.equity_curve)
     assessed = not exposure.empty and exposure.assessed.all()
     evidence = evaluate_evidence(metrics, ic_summary, deciles, stress.get('cost_1_5x', {}).get('metrics', {}),
@@ -124,7 +126,7 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         cost_sources=SOURCES,
         return_basis='TOTAL_RETURN' if total_return else 'PRICE', label_return_basis='PRICE',
         portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION if total_return else 'price_1.0.0',
-        cluster_version=CLUSTER_VERSION, lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,
+        cluster_version=CLUSTER_VERSION, security_transition_version=TRANSITION_VERSION, lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,
         evidence_policy_version=EVIDENCE_POLICY_VERSION,
         baseline_comparison_policy=BASELINE_DIAGNOSTIC_RULE,
         lifecycle_scenario=lifecycle_scenario, lifecycle_event_count=len(lifecycle_events),
@@ -150,7 +152,7 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
     write_json(path / 'IC-confidence-interval.json', uncertainty)
     write_json(path / 'ranking-top30.json', scores[scores.as_of == scores.as_of.max()].head(30).to_dict('records'))
     for window in walk_forward(prices, scores, labels, sessions, portfolio=portfolio, cost_model=costs,
-            windows=rolling_windows(first_test_year=max(2016, start.year), last_test_year=end.year), corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario):
+            windows=rolling_windows(first_test_year=max(2016, start.year), last_test_year=end.year), corporate_actions=actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=transitions, transition_data_dir=config.data_dir):
         curve = window['result'].equity_curve
         if curve.empty:
             continue

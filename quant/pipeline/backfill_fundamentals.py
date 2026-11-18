@@ -71,6 +71,17 @@ def backfill_fundamentals(config, start, end, *, window_days=30, revision_overla
                       and len(checkpoint['windows']) == len(list(windows(start, end, days=window_days))) else 'BLOCKED',
                       checkpoint=str(checkpoint_path), windows=checkpoint['windows'],
                       coverage_status='UNASSESSED_UNIVERSE_COVERAGE_REQUIRED', fundamental_scoring_enabled=False)
+        frame = pd.concat([read_parquet_file(p) for p in (config.data_dir/'normalized/financials').rglob('*.parquet')], ignore_index=True) if any((config.data_dir/'normalized/financials').rglob('*.parquet')) else pd.DataFrame()
+        report.update(requested_range=dict(start=str(start),end=str(end)),discovery_windows=len(checkpoint['windows']),
+            filings_discovered=sum(r.get('records_seen',0) for r in checkpoint['windows'].values()),
+            versions_preserved=frame.filing_id.nunique() if not frame.empty else 0,
+            documents_downloaded=frame.document_sha256.nunique() if 'document_sha256' in frame else 0,
+            parsed=int(frame.parser_status.eq('PARSED').sum()) if 'parser_status' in frame else 0,
+            needs_review=int(frame.parser_status.ne('PARSED').sum()) if 'parser_status' in frame else len(frame),
+            timing_verified=int(frame.timing_status.eq('VERIFIED').sum()) if 'timing_status' in frame else 0,
+            identity_resolved=int(frame.instrument_id.notna().sum()) if 'instrument_id' in frame else 0,
+            count_scope='Discovery counts include repeated metadata; normalized counts cover preserved corpus')
+        write_json(config.data_dir/'reports/fundamental-backfill-status.json', report)
         write_json(config.data_dir/'reports/fundamental-backfill.json', report)
         return report
 

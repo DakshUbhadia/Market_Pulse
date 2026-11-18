@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
+from quant.backtest.security_transitions import SecurityTransitions
 from quant.backtest.portfolio import PortfolioConfig, target_portfolio
 from quant.backtest.costs import CostModel
 from quant.backtest.execution import executable, affordable_quantity
@@ -27,6 +28,7 @@ class BacktestResult:
     skipped_orders: pd.DataFrame
     dividends: pd.DataFrame = field(default_factory=pd.DataFrame)
     lifecycle: pd.DataFrame = field(default_factory=pd.DataFrame)
+    security_transitions: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def monthly_signal_dates(sessions):
@@ -36,7 +38,8 @@ def monthly_signal_dates(sessions):
 
 def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=None,
                  cost_model=None, target_builder=None, corporate_actions=None, lifecycle_events=None,
-                 lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO, lifecycle=None, signal_dates=None):
+                 lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO, lifecycle=None, signal_dates=None,
+                 security_transitions=None, transition_data_dir=None):
     # Session order: state/economics, executable holdings, orders, dividends,
     # valuation. Dividend entitlement is captured from the preceding close.
     lifecycle_events = resolve_lifecycle_events(lifecycle, lifecycle_events)
@@ -47,7 +50,9 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
     fields = ['trade_date','instrument_id','series','adjusted_open','adjusted_close','adjustment_status','volume']
     fields += [name for name in ('split_factor','raw_close') if name in prices]
     policy = Lifecycle(lifecycle_events, lifecycle_scenario)
+    transitions = SecurityTransitions(security_transitions, transition_data_dir)
     identities = set(scores.instrument_id.unique())
+    identities.update(transitions.events.successor_instrument_id.dropna())
     if lifecycle_events is not None and not lifecycle_events.empty:
         identities.update(lifecycle_events.successor_instrument_id.dropna())
     frame = prices.loc[prices.series.eq('EQ') & prices.instrument_id.isin(identities), fields].copy()
@@ -79,6 +84,7 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
         cash_income = 0.0
         credits = dividend_credits(events[day], positions.copy(), {**last_bars, **today}, day) if day in events else []
         opening = simulation_time(day, '09:15')
+        transitions.apply(day, opening, positions, basis, today, last_bars)
         if lifecycle_scenario == 'FORMAL_EXIT_OFFER_PARTICIPATION':
             # Only shares already held by the offer deadline may participate.
             # Later purchases cannot acquire a retroactive tender entitlement.
@@ -92,6 +98,8 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
                         offer_entitlements[key] = quantity*share_factor(last_bars.get(identity,{})) if quantity else 0.
         for identity in list(positions):
             for event in policy.resolutions(identity, opening, processed):
+                if transitions.pending(identity,day):
+                    raise ValueError('Lifecycle settlement of pending entitlement requires review')
                 quantity = positions[identity]
                 factor = share_factor(today.get(identity, last_bars.get(identity, {})))
                 raw_quantity = quantity * factor
@@ -140,7 +148,7 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
                 if status['entry_allowed']:
                     continue
                 bar = today.get(identity)
-                if not executable(bar) or not status['trading_allowed']:
+                if not executable(bar) or not status['trading_allowed'] or transitions.pending(identity,day):
                     skipped.append(dict(trade_date=day, signal_date=signal_day, instrument_id=identity,
                         side='SELL',reason='LIFECYCLE_NO_EXECUTABLE_OPEN'))
                     continue
@@ -161,7 +169,7 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
         if signal_day in signals and signal_day in by_signal:
             selected = scores.iloc[by_signal[signal_day]]
             selected = selected[selected.instrument_id.map(lambda identity: policy.status(identity,
-                opening - pd.Timedelta(nanoseconds=1))['entry_allowed'])]
+                opening - pd.Timedelta(nanoseconds=1))['entry_allowed'] and transitions.entry_allowed(identity,day,opening))]
             weights = (target_builder(selected, positions, config) if target_builder
                        else target_portfolio(selected, positions, config))
             if (not np.isfinite(weights).all() or (weights < 0).any()
@@ -176,7 +184,8 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
                         side='REBALANCE', reason='NO_EXECUTABLE_NEXT_OPEN'))
                     continue
                 price = bar['adjusted_open']
-                quantity = max(0.0, positions.get(identity, 0) - target.get(identity, 0)/price)
+                quantity = min(max(0., positions.get(identity,0)-transitions.pending(identity,day)),
+                    max(0.0, positions.get(identity, 0) - target.get(identity, 0)/price))
                 if quantity <= 1e-10:
                     continue
                 turnover = quantity*price
@@ -217,7 +226,8 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
         nav = cash
         for identity, quantity in list(positions.items()):
             bar = today.get(identity)
-            if (not executable(bar) or not policy.status(identity, simulation_time(day,'15:30'))['trading_allowed']
+            if (bar is None or (not executable(bar) and not transitions.pending(identity,day))
+                    or bar.get('adjustment_status') != 'OK' or not policy.status(identity, simulation_time(day,'15:30'))['trading_allowed']
                     or not np.isfinite(bar.get('adjusted_close', np.nan)) or bar['adjusted_close'] <= 0):
                 if lifecycle_scenario == 'ZERO_RECOVERY_STRESS':
                     lifecycle_records.append(dict(trade_date=day, instrument_id=identity,
@@ -229,7 +239,12 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
                 raise UnvaluedHolding(identity,day)
             value = quantity*bar['adjusted_close']
             nav += value
-            holdings.append(dict(trade_date=day, instrument_id=identity, quantity=quantity, value=value))
+            holdings.append(dict(trade_date=day, instrument_id=identity, quantity=quantity, value=value,
+                security_lineage_id=transitions.lineages.get(identity,identity),
+                recommendation_instrument_id=transitions.origins.get(identity,identity),
+                economic_units=quantity,tradable_units=max(0.,quantity-transitions.pending(identity,day)),
+                pending_units=transitions.pending(identity,day),cost_basis=quantity*basis[identity],
+                tradable_from=max((x['until'] for x in transitions.locks.get(identity,[])),default=day)))
         last_bars.update(today)
         if cash < -1e-7 or nav < 0 or (nav == 0 and lifecycle_scenario != 'ZERO_RECOVERY_STRESS'):
             raise ValueError('Invalid cash/NAV in simulation')
@@ -246,4 +261,4 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
     return BacktestResult(pd.DataFrame(equity), pd.DataFrame(trades), pd.DataFrame(holdings), limitations,
         pd.DataFrame(skipped, columns=['trade_date','signal_date','instrument_id','side','reason']),
         pd.DataFrame(dividend_records, columns=['trade_date','event_id','instrument_id','quantity',
-            'dividend_per_share','split_factor','cash_credit','convention']), pd.DataFrame(lifecycle_records))
+            'dividend_per_share','split_factor','cash_credit','convention']), pd.DataFrame(lifecycle_records), pd.DataFrame(transitions.records))

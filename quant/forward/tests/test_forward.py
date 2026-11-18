@@ -220,7 +220,8 @@ def test_paper_gate_checks_completed_baseline_policy_and_cost_parity(tmp_path):
     for basis in ('PRICE','TOTAL_RETURN'):
         root = tmp_path/basis
         root.mkdir()
-        manifest = dict(return_basis=basis,date_range={'from':'2016-01-01','to':'2024-10-30'},
+        from quant.identity.transitions import TRANSITION_VERSION
+        manifest = dict(security_transition_version=TRANSITION_VERSION,return_basis=basis,date_range={'from':'2016-01-01','to':'2024-10-30'},
             model_version=MODEL_VERSION,feature_version=FEATURE_VERSION,cost_model_version=COST_MODEL_VERSION,
             evidence_policy_version=EVIDENCE_POLICY_VERSION,lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,
             portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,
@@ -228,7 +229,7 @@ def test_paper_gate_checks_completed_baseline_policy_and_cost_parity(tmp_path):
             cost_settings=clean_json(vars(CostModel())))
         write_json(root/'config.json',manifest)
         for name in ('ic.parquet','deciles.parquet','benchmarks.json','equity_curve.parquet','holdings.parquet',
-                     'trades.parquet','lifecycle.parquet','baseline-comparison.json','cluster-exposure.json',
+                     'security_transitions.parquet','trades.parquet','lifecycle.parquet','baseline-comparison.json','cluster-exposure.json',
                      'IC-confidence-interval.json'):
             (root/name).write_text('synthetic-only')
         write_json(root/'metrics.json',dict(evidence=dict(status='NOT_VALIDATED')))

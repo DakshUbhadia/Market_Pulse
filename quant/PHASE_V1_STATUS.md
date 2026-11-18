@@ -1,3 +1,5 @@
+> Historical snapshot. See [CURRENT_STATUS.md](CURRENT_STATUS.md) for current evidence and blockers.
+
 # Factor V1 completion and forward paper testing
 
 Current follow-on implementation and operational status:

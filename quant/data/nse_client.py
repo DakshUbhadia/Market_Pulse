@@ -65,10 +65,16 @@ class NseClient:
         self._warmed = False
 
     def _url(self, path):
+        if not isinstance(path,str) or not path.strip():
+            raise ValueError('NSE URL must be nonempty text')
         url = urljoin(self.config.nse_base_url.rstrip('/') + '/', path)
         parsed = urlsplit(url)
         allowed = {urlsplit(self.config.nse_base_url).netloc,
                    urlsplit(self.config.nse_archives_url).netloc}
+        # Official metadata now emits the exact migrated archive origin.
+        # Keep custom configured origins isolated from these public aliases.
+        if urlsplit(self.config.nse_archives_url).hostname in ('nsearchives.nseindia.com','nsearchives.nseindia.in'):
+            allowed.update({'nsearchives.nseindia.com','nsearchives.nseindia.in'})
         if parsed.scheme != 'https' or parsed.netloc not in allowed or parsed.username or parsed.password:
             raise ValueError('NseClient only accepts configured NSE HTTPS hosts')
         return url

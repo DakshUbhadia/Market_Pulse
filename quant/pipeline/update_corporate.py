@@ -31,7 +31,7 @@ def archive_filings(client, frame, dataset, history):
                    if pd.notna(known_at) else row.get('as_on_date') if dataset != 'financials' else None)
             frame.loc[i, 'instrument_id'] = resolve_identity(history, row.symbol, day)
         document = row.get('source_document')
-        if not document:
+        if not isinstance(document,str) or not document.strip():
             review.append({'filing_id': row.filing_id, 'reason': 'NO_XBRL_DOCUMENT'})
             frame.loc[i, 'parser_status'] = 'NEEDS_REVIEW'
             continue

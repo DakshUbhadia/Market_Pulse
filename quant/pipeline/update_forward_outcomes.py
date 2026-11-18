@@ -5,6 +5,7 @@ import json
 from quant.backtest.costs import CostModel
 from quant.forward.outcome_tracker import track_outcomes
 from quant.forward.signal_store import read_signals, content_hash
+from quant.identity.transitions import load_transitions
 from quant.forward.cohort import cohort_root, cohort_report
 from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from quant.pipeline.backfill_lifecycle import load_lifecycle
@@ -45,7 +46,8 @@ def update_forward_outcomes(config,as_of,*,cohort=None):
     tri = tri[tri.index_name.eq('NIFTY 500 TRI')]
     actions = query_dataset(config.data_dir,'corporate_actions',end=as_of).drop_duplicates('event_id')
     report = track_outcomes(root,prices,benchmark,tri,sessions,as_of=as_of,cost_model=costs,
-        corporate_actions=actions,lifecycle=load_lifecycle(config),lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO)
+        corporate_actions=actions,lifecycle=load_lifecycle(config),lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
+        security_transitions=load_transitions(config),transition_data_dir=config.data_dir)
     write_json(cohort_report(config,cohort,'forward-outcomes.json'),report)
     return report
 

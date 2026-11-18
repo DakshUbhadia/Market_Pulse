@@ -14,7 +14,7 @@ from quant.version import (MODEL_VERSION, FEATURE_VERSION, PORTFOLIO_ACCOUNTING_
 
 
 def update_shadow(root, prices, sessions, *, as_of, portfolio, cost_model, corporate_actions,
-                  lifecycle, lifecycle_scenario):
+                  lifecycle, lifecycle_scenario, security_transitions=None, transition_data_dir=None):
     batches, scores = read_signals(root)
     if scores.empty:
         raise ValueError('No frozen forward signals')
@@ -32,7 +32,7 @@ def update_shadow(root, prices, sessions, *, as_of, portfolio, cost_model, corpo
         raise ValueError('Shadow runtime differs from the frozen portfolio policy')
     result = run_backtest(prices, selected, sessions, start=selected.as_of.min(), end=as_of,
         portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions,
-        lifecycle=lifecycle, lifecycle_scenario=lifecycle_scenario,
+        lifecycle=lifecycle, lifecycle_scenario=lifecycle_scenario, security_transitions=security_transitions, transition_data_dir=transition_data_dir,
         signal_dates=[day for day in monthly_signal_dates(sessions) if day >= selected.as_of.min()])
     # Corrections must be investigated; never silently replace a previous NAV.
     curve = result.equity_curve.set_index('trade_date')

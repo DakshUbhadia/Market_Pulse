@@ -23,7 +23,7 @@ def purged_training_labels(labels, window, sessions, *, embargo_sessions=63):
 
 def walk_forward(prices, scores, labels, sessions, *, windows=None, portfolio=None, cost_model=None,
                  corporate_actions=None, lifecycle=None, lifecycle_events=None,
-                 lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO):
+                 lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO, security_transitions=None, transition_data_dir=None):
     from quant.backtest.engine import run_backtest
     lifecycle_events = resolve_lifecycle_events(lifecycle, lifecycle_events)
     output = []
@@ -33,7 +33,7 @@ def walk_forward(prices, scores, labels, sessions, *, windows=None, portfolio=No
         train = purged_training_labels(labels, window, sessions)
         # V1 weights are fixed before observing any test outcome; no fitted model or random folds.
         result = run_backtest(prices, scores, sessions, start=window['test_start'], end=window['test_end'],
-                               portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario)
+                               portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=security_transitions, transition_data_dir=transition_data_dir)
         test_scores = scores[scores.as_of.between(pd.Timestamp(window['test_start']), pd.Timestamp(window['test_end']))]
         output.append(dict(window=window, train_labels=len(train), result=result, scores=test_scores,
                            method='FIXED_PREDECLARED_WEIGHTS_NO_TEST_OPTIMIZATION', embargo_sessions=63))

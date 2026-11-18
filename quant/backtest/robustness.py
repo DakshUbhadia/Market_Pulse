@@ -10,7 +10,7 @@ from quant.models.factor_v1 import score_factor_v1
 
 def robustness_runs(prices, scores, benchmark, sessions, *, start, end, portfolio, cost_model,
                     universe_config, benchmark_frame, delivery=None, corporate_actions=None, lifecycle=None,
-                    lifecycle_events=None, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO):
+                    lifecycle_events=None, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO, security_transitions=None, transition_data_dir=None):
     lifecycle_events = resolve_lifecycle_events(lifecycle, lifecycle_events)
     results = {}
     for name, multiplier, slippage, holdings in [
@@ -19,21 +19,21 @@ def robustness_runs(prices, scores, benchmark, sessions, *, start, end, portfoli
         ('holdings_20', 1, 1, 20), ('holdings_25', 1, 1, 25), ('holdings_30', 1, 1, 30)]:
         costs = replace(cost_model, cost_multiplier=multiplier, slippage_multiplier=slippage)
         result = run_backtest(prices, scores, sessions, start=start, end=end,
-                               portfolio=replace(portfolio, holdings=holdings), cost_model=costs, corporate_actions=corporate_actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario)
+                               portfolio=replace(portfolio, holdings=holdings), cost_model=costs, corporate_actions=corporate_actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=security_transitions, transition_data_dir=transition_data_dir)
         metrics, _ = performance_metrics(result.equity_curve, benchmark, result.trades)
         results[name] = dict(metrics=metrics, cost_multiplier=multiplier, slippage_multiplier=slippage, holdings=holdings)
     for adv in (25_000_000, 50_000_000, 100_000_000):
         cfg = replace(universe_config, min_adv60=adv)
         features = build_feature_matrix(prices, benchmark_frame, sessions, universe_config=cfg, delivery=delivery, eligible_only=True, lifecycle_events=lifecycle_events)
         ranked = score_factor_v1(features)
-        result = run_backtest(prices, ranked, sessions, start=start, end=end, portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario)
+        result = run_backtest(prices, ranked, sessions, start=start, end=end, portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=security_transitions, transition_data_dir=transition_data_dir)
         metrics, _ = performance_metrics(result.equity_curve, benchmark, result.trades)
         results[f'ADV_{adv}'] = dict(metrics=metrics, min_adv60=adv)
     for medium, long in ((120, 240), (126, 252), (132, 264)):
         features = build_feature_matrix(prices, benchmark_frame, sessions, universe_config=universe_config,
             delivery=delivery, medium_lookback=medium, long_lookback=long, eligible_only=True, lifecycle_events=lifecycle_events)
         result = run_backtest(prices, score_factor_v1(features), sessions, start=start, end=end,
-                               portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario)
+                               portfolio=portfolio, cost_model=cost_model, corporate_actions=corporate_actions, lifecycle_events=lifecycle_events, lifecycle_scenario=lifecycle_scenario, security_transitions=security_transitions, transition_data_dir=transition_data_dir)
         metrics, _ = performance_metrics(result.equity_curve, benchmark, result.trades)
         results[f'lookbacks_{medium}_{long}'] = dict(metrics=metrics, medium_lookback=medium, long_lookback=long)
     return results

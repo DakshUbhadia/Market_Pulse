@@ -14,6 +14,7 @@ from quant.forward.signal_store import append_record, content_hash, freeze_signa
 from quant.forward.shadow_portfolio import update_shadow
 from quant.forward.metrics import forward_metrics
 from quant.forward.calendar import next_session_open
+from quant.identity.transitions import load_transitions
 from quant.forward.cohort import cohort_root, cohort_report
 from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from quant.lifecycle.state import simulation_time
@@ -75,7 +76,8 @@ def run_forward_signal(config, as_of, *, price_baseline, total_return_baseline, 
     actions = query_dataset(config.data_dir,'corporate_actions',end=as_of).drop_duplicates('event_id')
     events = load_lifecycle(config)
     shadow = update_shadow(root,prices,sessions,as_of=as_of,portfolio=portfolio,cost_model=costs,
-        corporate_actions=actions,lifecycle=events,lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO)
+        corporate_actions=actions,lifecycle=events,lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
+        security_transitions=load_transitions(config),transition_data_dir=config.data_dir)
     from quant.pipeline.update_forward_outcomes import update_forward_outcomes
     outcomes = update_forward_outcomes(config,as_of,**({'cohort':cohort} if cohort is not None else {}))
     result = dict(status='BLOCKED' if outcomes['blocked'] else 'PAPER_ONLY',signals=str(signal_path),
