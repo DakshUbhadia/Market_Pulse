@@ -83,3 +83,20 @@ python -m quant.pipeline.write_current_status
 All operational reports go to `Config().data_dir`. Source reports retain hashes
 and missing evidence explicitly. Full baselines, real forward launch and
 additional document/date-range stages remain pending their stated gates.
+
+
+## Published implementation verification
+
+Implementation `37c4dc8d37e02b0175ed448eddb20f5e04150a64` was pushed to main.
+[Unit CI passed on that exact SHA](https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44295830358).
+The manually dispatched [live workflow failed](https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44295984886):
+6 passed, 5 failed because NSE session warm-up returned HTTP 403. The failures
+remain failures; no source check is skipped or replaced with cached evidence.
+Further research and acquisition remain gated by this external source-access
+failure and the unresolved TIDEWATER economic bridge.
+
+The existing 25-document parser report measured 4% parsing success, 100%
+timing verification and 100% identity resolution. Failure reasons were 22
+unsupported context/taxonomy cases and 2 unknown financial entity/consolidation
+cases. All 100 dated liquidity names lacked a parsed document in the attempted
+batch; this is a batch diagnostic, not full-universe coverage certification.
