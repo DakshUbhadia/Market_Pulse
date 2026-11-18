@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-SNAPSHOT_VERSION = 'pit_fundamentals_1.0.0'
+from quant.version import FUNDAMENTAL_SNAPSHOT_VERSION as SNAPSHOT_VERSION
 
 
 def aware_times(values):
@@ -86,6 +86,14 @@ def fundamental_snapshot(filings, signal_timestamp, *, instrument_ids=None, basi
         valid &= frame.instrument_id.isin(instrument_ids)
     frame = frame[valid].copy()
     keys = ['instrument_id', 'period_start', 'period_end', 'basis', 'period_semantics']
+    # Discovery metadata and its subsequently parsed document represent one
+    # disclosure, not two competing revisions. Only discard the document-less
+    # representation when the same metadata identity, period and known-at time
+    # have an actual document. Different documents remain ambiguity candidates.
+    frame['_metadata_id'] = frame.get('metadata_filing_id', frame.filing_id).fillna(frame.filing_id)
+    frame['_has_document'] = frame.get('document_sha256', pd.Series('', index=frame.index)).astype('string').str.fullmatch('[0-9a-f]{64}', na=False)
+    has_document = frame.groupby(keys+['_known_at', '_metadata_id'], dropna=False)._has_document.transform('any')
+    frame = frame[frame._has_document | ~has_document].drop(columns=['_metadata_id', '_has_document'])
     frame = frame.drop_duplicates('filing_id').sort_values(['_known_at', 'filing_id'])
     # Conflicting same-time revisions cannot be ordered by an arbitrary hash.
     ambiguous = frame.duplicated(keys+['_known_at'], keep=False)

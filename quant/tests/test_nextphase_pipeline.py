@@ -149,6 +149,8 @@ def test_historical_gate_uses_build_anchor_and_checks_unresolved_exclusions(tmp_
     monkeypatch.setattr('quant.pipeline.check_research_ready.audit_prices',lambda cfg,a,b,**kwargs:
         dict(status='READY',coverage_percent=100,latest_date=str(b)))
     assert check_research_ready(config,as_of=sessions[1].date(),history_start=start,min_history_sessions=1)['status']=='READY'
+    ledger.record('nse_corporate_actions', status='FAILED', error='Live API HTTP 403')
+    assert check_research_ready(config,as_of=sessions[1].date(),history_start=start,min_history_sessions=1)['status']=='READY'
     first_path=tmp_path/f'normalized/adjusted_prices/year={start.year}/month={start.month:02d}/{start}.parquet'
     original=pd.read_parquet(first_path)
     unresolved=original.copy(); unresolved['instrument_id']=None

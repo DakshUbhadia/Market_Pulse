@@ -14,9 +14,11 @@ from quant.storage.research_store import write_json
 
 
 def backfill_fundamentals(config, start, end, *, window_days=30, revision_overlap_days=14,
-                          refresh=False, client_factory=NseClient):
+                          refresh=False, client_factory=NseClient, expansion_decision=None):
     if start > end or not 1 <= window_days <= 90 or not 0 <= revision_overlap_days <= 90:
         raise ValueError('Invalid bounded fundamental backfill window or overlap')
+    from quant.research.acquisition_stages import require_expansion_decision
+    expansion = require_expansion_decision(config, start, decision_path=expansion_decision)
     root = config.data_dir/'state/fundamental_backfill'
     checkpoint_path = root/f'{start}-{end}-{window_days}.json'
     identity_path = config.data_dir/'normalized/security_history/identities.parquet'
@@ -71,6 +73,7 @@ def backfill_fundamentals(config, start, end, *, window_days=30, revision_overla
                       and len(checkpoint['windows']) == len(list(windows(start, end, days=window_days))) else 'BLOCKED',
                       checkpoint=str(checkpoint_path), windows=checkpoint['windows'],
                       coverage_status='UNASSESSED_UNIVERSE_COVERAGE_REQUIRED', fundamental_scoring_enabled=False)
+        report['expansion_decision'] = expansion
         frame = pd.concat([read_parquet_file(p) for p in (config.data_dir/'normalized/financials').rglob('*.parquet')], ignore_index=True) if any((config.data_dir/'normalized/financials').rglob('*.parquet')) else pd.DataFrame()
         report.update(requested_range=dict(start=str(start),end=str(end)),discovery_windows=len(checkpoint['windows']),
             filings_discovered=sum(r.get('records_seen',0) for r in checkpoint['windows'].values()),
@@ -93,12 +96,14 @@ def main():
     parser.add_argument('--window-days', type=int, default=30)
     parser.add_argument('--revision-overlap-days', type=int, default=14)
     parser.add_argument('--refresh', action='store_true', help='Revisit all completed windows for older revisions')
+    from pathlib import Path
+    parser.add_argument('--expansion-decision', type=Path)
     args = parser.parse_args()
     config = args.config(config)
     try:
         require_research_ready(config, args.end, args.start)
         result = backfill_fundamentals(config, args.start, args.end, window_days=args.window_days,
-            revision_overlap_days=args.revision_overlap_days, refresh=args.refresh)
+            revision_overlap_days=args.revision_overlap_days, refresh=args.refresh, expansion_decision=args.expansion_decision)
     except (ValueError, OSError) as error:
         result = dict(status='BLOCKED', reason=str(error), fundamental_scoring_enabled=False)
         write_json(config.data_dir/'reports/fundamental-backfill.json', result)

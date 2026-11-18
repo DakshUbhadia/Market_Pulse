@@ -33,8 +33,9 @@ def probe_nse_source(config):
                 raise NseSourceError('Calendar smoke returned fewer than five holidays')
             report.update(status='LIVE_SMOKE_PASSED', holiday_count=len(events))
         except (NseSourceError, ValueError) as error:
+            from quant.data.source_health import classify_failure
             report.update(status='LIVE_SOURCE_UNAVAILABLE', error=str(error),
-                          http_status=getattr(error, 'http_status', None))
+                          http_status=getattr(error, 'http_status', None), failure_class=classify_failure(error))
         if client.last_response is not None:
             raw = client.last_response
             report['observations'].append(dict(**raw.provenance(), http_status=raw.http_status))

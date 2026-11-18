@@ -22,6 +22,27 @@ def test_snapshot_uses_exact_publication_and_only_then_known_revision():
         fundamental_snapshot(rows, '2024-08-02')
 
 
+def test_discovery_metadata_does_not_conflict_with_its_own_parsed_document():
+    rows = pd.DataFrame([
+        filing(filing_id='metadata', metadata_filing_id='disclosure', parser_status='NEEDS_REVIEW', document_sha256=None),
+        filing(filing_id='document', metadata_filing_id='disclosure'),
+    ])
+    snapshot = fundamental_snapshot(rows, '2024-08-02T16:00:00+05:30')
+    assert snapshot.filing_id.tolist() == ['document'] and snapshot.revenue.iloc[0] == 100.
+    # A separate document with competing facts cannot be collapsed as metadata.
+    conflict = pd.DataFrame([filing(filing_id='conflict', metadata_filing_id='disclosure', document_sha256='b'*64, revenue=999.)])
+    assert fundamental_snapshot(pd.concat([rows, conflict]), '2024-08-02T16:00:00+05:30').empty
+
+
+def test_future_document_cannot_make_discovery_metadata_usable_earlier():
+    rows = pd.DataFrame([
+        filing(filing_id='metadata', metadata_filing_id='disclosure', parser_status='NEEDS_REVIEW', document_sha256=None),
+        filing(filing_id='document', metadata_filing_id='disclosure', revision_at='2024-08-03T16:00:00+05:30'),
+    ])
+    assert fundamental_snapshot(rows, '2024-08-02T16:00:00+05:30').empty
+    assert fundamental_snapshot(rows, '2024-08-04T16:00:00+05:30').filing_id.tolist() == ['document']
+
+
 def test_unknown_timing_bad_latest_revision_and_ambiguous_revisions_are_unusable():
     for update in [dict(timing_status='UNCERTAIN'), dict(parser_status='NEEDS_REVIEW'), dict(document_sha256=None)]:
         rows = pd.DataFrame([filing(), filing(filing_id='revision', revision_at='2024-08-03T16:00:00+05:30', **update)])

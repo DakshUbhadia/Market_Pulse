@@ -15,13 +15,19 @@ from quant.version import (MODEL_VERSION, FEATURE_VERSION, PORTFOLIO_ACCOUNTING_
 
 
 def update_shadow(root, prices, sessions, *, as_of, portfolio, cost_model, corporate_actions,
-                  lifecycle_events, lifecycle_scenario, security_transitions=None, transition_data_dir=None):
+                  lifecycle_events, lifecycle_scenario, security_transitions=None, transition_data_dir=None, model_card=None):
     batches, scores = read_signals(root)
     if scores.empty:
         raise ValueError('No frozen forward signals')
     selected = scores[scores.as_of <= pd.Timestamp(as_of)]
     expected = dict(model_version=MODEL_VERSION, feature_version=FEATURE_VERSION,
         security_transition_version=TRANSITION_VERSION,portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION, lifecycle_policy_version=LIFECYCLE_POLICY_VERSION)
+    if model_card is not None:
+        from quant.models.model_card import verify_model_card
+        verify_model_card(model_card)
+        expected.update(model_version=model_card['model_version'], feature_version=model_card['feature_version'])
+        if any(b['settings'].get('model_card_sha256') != model_card['sha256'] for b in batches):
+            raise ValueError('Shadow cohort differs from registered model card')
     if selected.empty or any(not selected[key].eq(value).all() for key,value in expected.items()):
         raise ValueError('Forward policy changed; create a separate paper cohort')
     settings = [batch['settings'] for batch in batches if batch['as_of'] <= str(as_of)[:10]]

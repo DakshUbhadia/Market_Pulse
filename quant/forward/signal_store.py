@@ -44,7 +44,23 @@ def append_record(path, record):
 
 def freeze_signals(root, scores, *, as_of, generated_at, data_as_of, git_commit,
                    source_manifest_hash, next_open, settings, validation_level='FORWARD_PAPER_ONLY',
-                   next_session_evidence=None):
+                   next_session_evidence=None, model_card=None):
+    model_version, feature_version = MODEL_VERSION, FEATURE_VERSION
+    weights = WEIGHTS
+    model_name = 'Factor V1'
+    if model_card is not None:
+        from quant.models.model_card import verify_model_card
+        from quant.version import FACTOR_V2_VERSION, FUNDAMENTAL_FEATURE_VERSION
+        from quant.models.factor_v2 import BLOCKS
+        verify_model_card(model_card)
+        model_version, feature_version = model_card['model_version'], model_card['feature_version']
+        if (model_version, feature_version) not in ((MODEL_VERSION, FEATURE_VERSION), (FACTOR_V2_VERSION, FUNDAMENTAL_FEATURE_VERSION)):
+            raise ValueError('Unsupported registered forward model versions')
+        if settings.get('model_card_sha256') != model_card['sha256']:
+            raise ValueError('Registered cohort settings must bind the immutable model card')
+        if model_version == FACTOR_V2_VERSION:
+            weights = {block: 1/len(BLOCKS) for block in BLOCKS}
+            model_name = 'Factor V2 challenger'
     day = pd.Timestamp(as_of).normalize()
     generated = pd.Timestamp(generated_at)
     opening = pd.Timestamp(next_open)
@@ -60,27 +76,29 @@ def freeze_signals(root, scores, *, as_of, generated_at, data_as_of, git_commit,
     if scores.empty or not pd.to_datetime(scores.as_of).eq(day).all() or scores.instrument_id.duplicated().any():
         raise ValueError('Expected one complete, unique cross section for the signal date')
     if (set(scores['rank']) != set(range(1, len(scores)+1)) or not scores.universe_size.eq(len(scores)).all()
-            or not scores.model_version.eq(MODEL_VERSION).all() or not scores.feature_version.eq(FEATURE_VERSION).all()):
+            or not scores.model_version.eq(model_version).all() or not scores.feature_version.eq(feature_version).all()):
         raise ValueError('Forward rankings must use the complete frozen V1 cross section')
     records = []
     for row in scores.sort_values('rank').to_dict('records'):
-        contributions = {name: float(row[name+'_score'])*weight for name, weight in WEIGHTS.items()}
+        contributions = {name: float(row[name+'_score'])*weight for name, weight in weights.items()}
         if (not row.get('eligible',False) or not row.get('feature_valid',False)
                 or not np.isfinite([row['raw_score'], row['percentile_score'], row['vol_63'], *contributions.values()]).all()
                 or row['vol_63'] <= 0 or not np.isclose(sum(contributions.values()), row['raw_score'])):
             raise ValueError('Invalid forward score, risk or factor contributions')
-        key = dict(as_of=str(day.date()), instrument_id=row['instrument_id'], model_version=MODEL_VERSION)
+        key = dict(as_of=str(day.date()), instrument_id=row['instrument_id'], model_version=model_version)
         records.append(dict(**key, signal_id=content_hash(key), symbol=row['symbol'],
-            model_name='Factor V1', feature_version=FEATURE_VERSION,
+            model_name=model_name, feature_version=feature_version,
             security_transition_version=TRANSITION_VERSION,portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,
             evidence_policy_version=EVIDENCE_POLICY_VERSION, lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,
             score=row['raw_score'], rank=int(row['rank']), universe_size=len(scores),
             factor_contributions=contributions, percentile_score=row['percentile_score'], vol_63=row['vol_63'],
             data_as_of=str(day.date()), generated_at=generated.isoformat(), git_commit=git_commit,
             source_manifest_hash=source_manifest_hash, validation_level=validation_level))
+        if model_card is not None and 'adv60' in row:
+            records[-1]['adv60'] = float(row['adv60'])
     batch = dict(as_of=str(day.date()), settings=clean_json(settings), signals=records,
                  next_session_open=opening.isoformat(),next_session_evidence=next_session_evidence)
-    versions = dict(model_version=MODEL_VERSION,feature_version=FEATURE_VERSION,
+    versions = dict(model_version=model_version,feature_version=feature_version,
         security_transition_version=TRANSITION_VERSION,portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,cost_model_version=COST_MODEL_VERSION,
         evidence_policy_version=EVIDENCE_POLICY_VERSION,lifecycle_policy_version=LIFECYCLE_POLICY_VERSION)
     existing, _ = read_signals(root)

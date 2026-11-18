@@ -29,6 +29,7 @@ class BacktestResult:
     dividends: pd.DataFrame = field(default_factory=pd.DataFrame)
     lifecycle: pd.DataFrame = field(default_factory=pd.DataFrame)
     security_transitions: pd.DataFrame = field(default_factory=pd.DataFrame)
+    target_orders: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def monthly_signal_dates(sessions):
@@ -69,6 +70,7 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
     signals = monthly_signal_dates(dates) if signal_dates is None else set(pd.to_datetime(signal_dates))
     cash, positions, basis = config.initial_cash, {}, {}
     equity, trades, holdings, skipped = [], [], [], []
+    target_orders = []
     prior_nav = config.initial_cash
     estimated_costs = False
     events = dividend_events(corporate_actions)
@@ -182,8 +184,9 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
                     or weights.sum() > 1+1e-10 or (weights > config.max_weight+1e-10).any()):
                 raise ValueError('Invalid target portfolio weights')
             target = {identity: prior_nav*weight for identity, weight in weights.items()}
+            rebalance_names = set(positions) | set(target)
             # Sell before buying. Missing/suspended opens do not generate fills.
-            for identity in sorted(set(positions) | set(target)):
+            for identity in sorted(rebalance_names):
                 bar = today.get(identity)
                 if not executable(bar) or not policy.status(identity, opening)['trading_allowed']:
                     skipped.append(dict(trade_date=day, signal_date=signal_day, instrument_id=identity,
@@ -226,6 +229,14 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
                 trades.append(dict(trade_date=day, signal_date=signal_day, instrument_id=identity, side='BUY',
                     quantity=quantity, price=price, turnover=turnover, realized_pnl=np.nan, **fee))
                 traded_value += turnover
+            for identity in sorted(rebalance_names):
+                bar = today.get(identity)
+                target_weight = target.get(identity, 0.)/prior_nav
+                filled_weight = (positions.get(identity, 0.)*bar['adjusted_open']/prior_nav
+                                 if executable(bar) else np.nan)
+                target_orders.append(dict(trade_date=day, signal_date=signal_day, instrument_id=identity,
+                    target_weight=target_weight, filled_open_weight=filled_weight,
+                    unfilled_target_weight=max(0., target_weight-filled_weight) if np.isfinite(filled_weight) else np.nan))
         dividend_records.extend(credits)
         cash_income = sum(row['cash_credit'] for row in credits)
         cash += cash_income
@@ -267,4 +278,5 @@ def run_backtest(prices, scores, sessions, *, start=None, end=None, portfolio=No
     return BacktestResult(pd.DataFrame(equity), pd.DataFrame(trades), pd.DataFrame(holdings), limitations,
         pd.DataFrame(skipped, columns=['trade_date','signal_date','instrument_id','side','reason']),
         pd.DataFrame(dividend_records, columns=['trade_date','event_id','instrument_id','quantity',
-            'dividend_per_share','split_factor','cash_credit','convention']), pd.DataFrame(lifecycle_records), pd.DataFrame(transitions.records))
+            'dividend_per_share','split_factor','cash_credit','convention']), pd.DataFrame(lifecycle_records), pd.DataFrame(transitions.records),
+        pd.DataFrame(target_orders, columns=['trade_date','signal_date','instrument_id','target_weight','filled_open_weight','unfilled_target_weight']))

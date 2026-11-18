@@ -122,7 +122,7 @@ def test_v2_and_matched_v1_use_identical_covered_names():
         frame[name]=np.arange(4)+i+1.
         frame['z_'+name]=np.arange(4)-1.5
     fields=['roe','cfo_pat','debt_equity','revenue_yoy','pat_yoy','earnings_yield','fcf_yield','book_yield']
-    fundamentals=frame[['as_of','instrument_id']].copy().assign(entity_type='IND_AS_INDUSTRIAL')
+    fundamentals=frame[['as_of','instrument_id']].copy().assign(entity_type='IND_AS_INDUSTRIAL', value_feature_valid=True)
     for name in fields:
         fundamentals[name]=[1.,2.,3.,np.nan]
     result=same_universe_scores(frame,fundamentals,min_group_size=2)
@@ -142,11 +142,11 @@ def test_numpy_ledoit_wolf_matches_published_numerical_example():
 
 
 def reviewed_spec():
-    from quant.models.factor_v2 import BLOCKS
-    return dict(review_status='REVIEWED',reviewed_by='synthetic-test-review',min_group_size=20,
-        block_weights={name:1/7 for name in BLOCKS},evaluation_windows=[{'from':'2024-01-01','to':'2026-01-01'}],
-        acceptance=dict(min_oos_sessions=504,min_mean_ic_improvement=.005,min_ir_improvement=.1,
-            max_drawdown_deterioration=.02,max_turnover=12,min_label_coverage=.995))
+    from quant.config import REPO_ROOT
+    spec = json.loads((REPO_ROOT/'quant/specs/factor_v2_1.0.0.json').read_text())
+    spec.update(review_status='REVIEWED', reviewed_by='synthetic-test-review',
+        evaluation_windows=[{'from':'2024-01-01','to':'2026-01-01'}])
+    return spec
 
 
 def test_specification_rejects_draft_and_detects_tampering(tmp_path):
@@ -164,10 +164,11 @@ def test_specification_rejects_draft_and_detects_tampering(tmp_path):
         load_specification(path)
 
 
-def test_v2_research_block_retains_outcome_without_completion(tmp_path):
+def test_v2_research_block_retains_outcome_without_completion(tmp_path, monkeypatch):
     from quant.config import Config
     from quant.research.specification import freeze_specification
     from quant.pipeline.run_factor_v2_research import run_factor_v2_research
+    monkeypatch.setattr('quant.pipeline.run_factor_v2_research.require_certified_implementation', lambda *a: {'scope': 'SYNTHETIC_ONLY'})
     spec=tmp_path/'spec.json'
     freeze_specification(reviewed_spec(),spec)
     with pytest.raises(FileNotFoundError):
@@ -186,7 +187,7 @@ def test_comparison_runs_shared_accounting_and_rejects_universe_mismatch():
     from quant.backtest.portfolio import PortfolioConfig
     from quant.backtest.costs import CostModel
     from quant.models.factor_v2 import BLOCKS
-    prices,benchmark,sessions=market_fixture(stocks=12,days=85,start='2024-10-01')
+    prices,benchmark,sessions=market_fixture(stocks=12,days=350,start='2023-10-02')
     scores=prices[['trade_date','instrument_id']].rename(columns={'trade_date':'as_of'}).copy()
     scores['raw_score']=scores.instrument_id.str[-3:].astype(int).astype(float)
     scores['percentile_score']=scores.groupby('as_of').raw_score.rank(pct=True)*100
@@ -196,10 +197,12 @@ def test_comparison_runs_shared_accounting_and_rejects_universe_mismatch():
     labels=scores[['as_of','instrument_id']].assign(label_available=True,exit_date=scores.as_of,
         excess_return_63=scores.raw_score/100,stock_return_63=scores.raw_score/100)
     arms={name:scores.copy() for name in ('full_v1','matched_v1','factor_v2')}
-    window={'from':str(sessions[0].date()),'to':str(sessions[-1].date())}
+    window={'from':str(sessions[270].date()),'to':str(sessions[-1].date())}
+    risk_features = prices[['trade_date', 'instrument_id']].rename(columns={'trade_date':'as_of'}).assign(adv60=100_000_000.)
     result,ic=compare_models(prices,arms,labels,benchmark,sessions,window,
-        portfolio=PortfolioConfig(holdings=2,max_weight=.5),cost_model=CostModel(allow_estimated_history=True))
-    assert all(r['metrics']['observations']==85 for r in result.values())
+        portfolio=PortfolioConfig(holdings=2,max_weight=.5),cost_model=CostModel(allow_estimated_history=True), risk_features=risk_features)
+    assert len(result) == 4
+    assert all(r['metrics']['observations']==80 for r in result.values())
     assert all(set(r['stress'])=={'1.5','2.0'} for r in result.values())
     assert not ic.empty and set(ic.block)==set(BLOCKS)
     assert v2_decision([result],reviewed_spec()['acceptance'])['decision']=='NO_GO_INVESTIGATE'
@@ -338,10 +341,10 @@ def test_complete_v2_runner_seals_synthetic_comparison_without_promotion(tmp_pat
                 entity_type='IND_AS_INDUSTRIAL',revenue=100.+i,pat=10.+i,equity=100.,assets=200.,borrowings=10.,
                 operating_cash_flow=20.,capex=5.))
     identities=sorted(prices.instrument_id.unique())
-    anchors=pd.DataFrame([dict(instrument_id=n,effective_date='2024-03-31',shares_outstanding=10.,
-        exchange_disseminated_at='2024-05-01T16:00:00+05:30',verification_status='VERIFIED',source_sha256=digest) for n in identities])
-    coverage=pd.DataFrame([dict(instrument_id=n,covered_from='2024-03-31',covered_through='2025-02-07',
-        known_at='2024-05-01T16:00:00+05:30',verification_status='VERIFIED',source_sha256=digest) for n in identities])
+    anchors=pd.DataFrame([dict(instrument_id=n,effective_date='2023-12-31',shares_outstanding=10.,
+        exchange_disseminated_at='2023-12-31T16:00:00+05:30',verification_status='VERIFIED',source_sha256=digest,raw_path=str(raw)) for n in identities])
+    coverage=pd.DataFrame([dict(instrument_id=n,covered_from='2023-12-31',covered_through='2025-02-07',
+        known_at='2023-12-31T16:00:00+05:30',verification_status='VERIFIED',source_sha256=digest,raw_path=str(raw)) for n in identities])
     inputs=[tmp_path/n for n in ('filings.parquet','anchors.parquet','events.parquet','coverage.parquet')]
     for path,frame in zip(inputs,[pd.DataFrame(rows),anchors,pd.DataFrame(),coverage]):
         write_parquet(frame,path)
@@ -352,6 +355,7 @@ def test_complete_v2_runner_seals_synthetic_comparison_without_promotion(tmp_pat
     # Only the external V1/data foundation is isolated. Feature construction,
     # PIT selection, coverage, all accounting comparisons and seals remain real.
     monkeypatch.setattr(runner,'require_completed_baselines',lambda *a:{'scope':'SYNTHETIC_TEST_ONLY'})
+    monkeypatch.setattr(runner,'require_certified_implementation',lambda *a:{'scope':'SYNTHETIC_TEST_ONLY'})
     monkeypatch.setattr(runner,'require_research_ready',lambda *a:{'status':'SYNTHETIC_TEST_ONLY'})
     monkeypatch.setattr(runner,'input_manifest',lambda *a:{'scope':'SYNTHETIC_TEST_ONLY'})
     monkeypatch.setattr(runner,'verify_manifest',lambda *a:None)
@@ -361,4 +365,5 @@ def test_complete_v2_runner_seals_synthetic_comparison_without_promotion(tmp_pat
         share_coverage_path=inputs[3],output_root=tmp_path/'research')
     assert verify_backtest_seal(folder)['status']=='COMPLETE'
     assert decision['decision']=='NO_GO_INVESTIGATE' and not decision['automatic_model_activation']
-    assert len(list((folder/'window-00').glob('*/metrics.json')))==3
+    assert len(list((folder/'window-00').glob('*/metrics.json')))==4
+    assert (folder/'window-00/capacity-scenarios.json').is_file()

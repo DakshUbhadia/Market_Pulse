@@ -25,12 +25,16 @@ def backfill_documents(config, start, end, *, limit=100, retry_review=False):
             raise ValueError('Run metadata discovery first')
         frame = frame.sort_values('first_seen_at').drop_duplicates('filing_id',keep='last')
         times = pd.to_datetime(frame.exchange_disseminated_at,utc=True,errors='coerce')
-        selected = frame[times.ge(pd.Timestamp(start,tz='Asia/Kolkata')) & times.lt(pd.Timestamp(end,tz='Asia/Kolkata')+pd.Timedelta(days=1))]
-        candidates = selected[selected.source_document.map(lambda x:isinstance(x,str) and bool(x.strip()))]
+        selected = frame[times.isna() | (times.ge(pd.Timestamp(start,tz='Asia/Kolkata')) & times.lt(pd.Timestamp(end,tz='Asia/Kolkata')+pd.Timedelta(days=1)))]
+        candidates = selected  # Missing document URLs must receive an explicit review classification too.
         if 'document_sha256' in candidates:
             candidates = candidates[candidates.document_sha256.isna()]
         if not retry_review:
             candidates = candidates[~candidates.filing_id.isin(state['attempted'])]
+        else:
+            from quant.pipeline.report_fundamental_acquisition import classify_attempt
+            permanent = {key for key, attempt in state['attempted'].items() if not classify_attempt(attempt)[1]}
+            candidates = candidates[~candidates.filing_id.isin(permanent)]
         history = read_parquet_file(config.data_dir/'normalized/security_history/identities.parquet')
         versions = FinancialVersionStore(config)
         attempted_this_batch, source_blocked = 0, False

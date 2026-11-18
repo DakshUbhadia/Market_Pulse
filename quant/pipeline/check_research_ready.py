@@ -112,7 +112,9 @@ def check_research_ready(config, *, as_of=None, history_start=RAW_PRICE_START,
             errors['historical_identity'] = identity_diagnostics
     state = PipelineState(config).data
     actions = state.get('nse_corporate_actions', {})
-    checks['corporate_actions_ready'] = (actions.get('status') == 'READY'
+    # Failed live refreshes retain the last certified archive range. The
+    # adjustment/action-version audit below still verifies the stored inputs.
+    checks['corporate_actions_ready'] = ((actions.get('status') == 'READY' or bool(actions.get('last_successful_at')))
         and actions.get('checked_from', '9999-12-31') <= str(history_start)
         and actions.get('checked_through', '') >= str(latest or target))
     adjusted = state.get('adjusted_prices', {})

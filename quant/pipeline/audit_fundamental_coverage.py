@@ -108,12 +108,8 @@ def audit_fundamental_coverage(universe, filings, sessions, *, start, end, frequ
         row['thresholds_met'] = bool(count and len(liquid) and row['coverage_pct'] >= universe_threshold
                                       and row['top_liquidity_coverage_pct'] >= liquidity_threshold)
         rows.append(row)
-    reliable = None
-    # A transient high-coverage month is not a reliable subsequent research window.
-    for i, row in enumerate(rows):
-        if all(item['thresholds_met'] for item in rows[i:]):
-            reliable = row['as_of']
-            break
+    from quant.research.coverage_policy import reliable_interval
+    reliable = reliable_interval(rows) if frequency == 'monthly' else None
     return dict(snapshot_version=SNAPSHOT_VERSION, basis=basis, max_age_days=max_age_days,
         max_quarter_age_days=max_quarter_age_days, frequency=frequency,
         usability_policy='PARSED_KNOWN_REVISION_WITH_VERIFIED_TIMING_IDENTITY_DURATION_BASIS_AND_ARCHIVED_SHA256',
@@ -121,7 +117,8 @@ def audit_fundamental_coverage(universe, filings, sessions, *, start, end, frequ
         requested_top_liquidity_count=top_liquidity_count,
         universe_threshold_pct=universe_threshold, liquidity_threshold_pct=liquidity_threshold,
         first_reliable_fundamental_signal_date=reliable,
-        reliable_window_rule='ALL_OBSERVED_PERIODS_FROM_START_THROUGH_AUDIT_END_MEET_THRESHOLDS',
+        reliable_window_rule='AT_LEAST_12_CONSECUTIVE_MONTHLY_CUTOFFS_AND_ALL_SUBSEQUENT_CUTOFFS_PASS',
+        minimum_consecutive_monthly_cutoffs=12,
         reliable_window_established=reliable is not None, fundamental_scoring_enabled=False,
         status='COVERAGE_ESTABLISHED' if reliable else 'NOT_READY', periods=rows)
 

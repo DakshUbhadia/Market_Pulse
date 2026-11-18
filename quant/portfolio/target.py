@@ -36,6 +36,8 @@ def risk_target_builder(prices, features, sessions, policy, *, lookback=252, min
             min_observations=min_observations).set_index('instrument_id').cluster_id
         weights,report=allocate_risk(covariance,pd.Series(old,dtype=float),universe.adv60,clusters,
                                     nav=nav,selected=selected.index,policy=policy)
-        reports.append(dict(as_of=str(signal_date),covariance=diagnostics,**report))
+        desired = selected.reindex(weights.index).fillna(0.)
+        reports.append(dict(as_of=str(signal_date),covariance=diagnostics,**report,
+            risk_limited_target_weight=float((desired-weights).clip(lower=0).sum())))
         return weights
     return target,reports
