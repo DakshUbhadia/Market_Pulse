@@ -149,7 +149,10 @@ def test_bounded_batch_acquires_only_planned_documents_and_rejects_reuse(tmp_pat
 def share_inputs():
     anchors = pd.DataFrame([dict(instrument_id='a', effective_date='2024-06-30',
         shares_outstanding=100., exchange_disseminated_at='2024-08-01T16:00:00+05:30',
-        source_sha256='a'*64, verification_status='VERIFIED')])
+        source_sha256='a'*64, verification_status='VERIFIED'),
+        dict(instrument_id='a', effective_date='2024-07-31', shares_outstanding=100.,
+             exchange_disseminated_at='2024-08-02T16:00:00+05:30',
+             source_sha256='d'*64, verification_status='VERIFIED')])
     coverage = pd.DataFrame([dict(instrument_id='a', covered_from='2024-06-30', covered_through='2024-10-31',
         known_at='2024-08-01T16:00:00+05:30', source_sha256='b'*64, verification_status='VERIFIED')])
     return anchors, pd.DataFrame(), coverage
@@ -162,10 +165,13 @@ def test_paid_up_capital_anchor_uses_dated_face_value_and_retains_provenance():
     anchors = derive_share_anchors(filings)
     assert anchors.shares_outstanding.iloc[0] == 100
     _, events, coverage = share_inputs()
+    later = anchors.iloc[[0]].assign(effective_date='2024-07-31',
+        exchange_disseminated_at='2024-08-02T16:00:00+05:30', known_at='2024-08-02T16:00:00+05:30', source_sha256='d'*64)
+    anchors = pd.concat([anchors, later], ignore_index=True)
     keys = pd.DataFrame([dict(instrument_id='a', signal_timestamp='2024-08-30T15:30:00+05:30')])
     result = share_history(anchors, events, coverage, keys).iloc[0]
     assert result.value_feature_valid and result.shares_outstanding == 100
-    assert result.verification_status == 'VERIFIED' and len(result.source) == 2
+    assert result.verification_status == 'VERIFIED' and len(result.source) == 3
     assert not share_history(anchors, events, pd.DataFrame(), keys).value_feature_valid.iloc[0]
     filings['face_value'] = 0
     assert derive_share_anchors(filings).empty
@@ -173,17 +179,20 @@ def test_paid_up_capital_anchor_uses_dated_face_value_and_retains_provenance():
 
 @pytest.mark.parametrize('event_type,fields,expected', [
     ('SPLIT', {'share_multiplier': 2.}, 200.), ('BONUS', {'share_multiplier': 1.5}, 150.),
-    ('BUYBACK', {'shares_after': 80.}, 80.), ('ISSUANCE', {'shares_after': 120.}, 120.),
-    ('MERGER', {'shares_after': 110.}, 110.)])
+    ('BUYBACK', {'shares_removed': 20., 'shares_after': 80.}, 80.),
+    ('ISSUANCE', {'shares_added': 20., 'shares_after': 120.}, 120.),
+    ('MERGER', {'shares_added': 10., 'shares_after': 110.}, 110.)])
 def test_share_history_replays_verified_capital_actions(event_type, fields, expected):
     from quant.features.share_history import share_history
     anchors, _, coverage = share_inputs()
     events = pd.DataFrame([dict(instrument_id='a', effective_date='2024-08-10',
         announced_at='2024-08-05T16:00:00+05:30', verification_status='VERIFIED',
         source_sha256='c'*64, event_type=event_type, **fields)])
+    anchors = pd.concat([anchors, anchors.iloc[[-1]].assign(effective_date='2024-08-11',
+        exchange_disseminated_at='2024-08-12T16:00:00+05:30', shares_outstanding=expected, source_sha256='e'*64)])
     keys = pd.DataFrame([dict(instrument_id='a', signal_timestamp='2024-08-30T15:30:00+05:30')])
     result = share_history(anchors, events, coverage, keys).iloc[0]
-    assert result.shares_outstanding == expected and result.effective_date == '2024-08-10'
+    assert result.shares_outstanding == expected and result.effective_date == '2024-08-11'
     events['verification_status'] = 'NEEDS_REVIEW'
     assert not share_history(anchors, events, coverage, keys).value_feature_valid.iloc[0]
 

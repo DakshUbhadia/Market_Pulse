@@ -1,7 +1,7 @@
 """Batch facade for the existing evidence-only historical-share reconstruction."""
 import pandas as pd
 import numpy as np
-from quant.features.fundamental_snapshot import pit_shares_outstanding, aware_times, number_or_nan, evidence_known_times
+from quant.features.fundamental_snapshot import pit_shares_outstanding, number_or_nan
 
 
 def derive_share_anchors(filings):
@@ -30,30 +30,24 @@ def derive_share_anchors(filings):
 
 
 def share_history(anchors, events, coverage, keys):
+    from quant.data.capital_events import reconcile_share_chain
     rows = []
     for row in keys.to_dict('records'):
         cutoff = pd.Timestamp(row['signal_timestamp'])
         if cutoff.tzinfo is None:
             raise ValueError('Shares cutoff requires a timezone')
-        if coverage.empty or anchors.empty:
-            rows.append(dict(**row, **pit_shares_outstanding(anchors, events, row['instrument_id'], cutoff)))
+        chain = reconcile_share_chain(anchors, events, coverage, row['instrument_id'], cutoff)
+        if not chain['value_feature_valid']:
+            invalid = pit_shares_outstanding(anchors, events, row['instrument_id'], cutoff)
+            invalid.update(reason=chain['reason'], share_chain_status=chain['share_chain_status'])
+            invalid['share_chain_version'] = chain['share_chain_version']
+            invalid.update({k: chain[k] for k in ('replayed_shares', 'reported_shares') if k in chain})
+            rows.append(dict(**row, **invalid))
             continue
-        known_anchors = anchors[anchors.instrument_id.eq(row['instrument_id'])
-            & anchors.verification_status.eq('VERIFIED')
-            & evidence_known_times(anchors, 'exchange_disseminated_at').le(cutoff)
-            & pd.to_datetime(anchors.effective_date).le(cutoff.tz_convert('Asia/Kolkata').tz_localize(None).normalize())] if not anchors.empty else anchors
-        anchor_date = pd.to_datetime(known_anchors.effective_date).max() if not known_anchors.empty else pd.NaT
-        verified = coverage[coverage.instrument_id.eq(row['instrument_id'])
-            & coverage.verification_status.eq('VERIFIED')
-            & aware_times(coverage.known_at).le(cutoff)
-            & coverage.source_sha256.astype('string').str.fullmatch('[0-9a-f]{64}',na=False)
-            & pd.to_datetime(coverage.covered_from).le(anchor_date)
-            & pd.to_datetime(coverage.covered_through).ge(cutoff.tz_convert('Asia/Kolkata').tz_localize(None).normalize())] if not coverage.empty else coverage
-        result = pit_shares_outstanding(anchors, events, row['instrument_id'], cutoff,
-                                       evidence_complete=bool(len(verified)))
-        if result['value_feature_valid']:
-            proof = verified.sort_values('known_at').iloc[-1]
-            result['known_at'] = max(pd.Timestamp(result['known_at']), pd.Timestamp(proof.known_at)).isoformat()
-            result['source'] = sorted(set(result['source']+[proof.source_sha256]))
+        result = dict(shares_outstanding=chain['shares_outstanding'], value_feature_valid=True,
+            known_at=chain['reconciliation_known_at'], effective_date=chain['reconciliation_anchor_date'],
+            source=chain['source'], verification_status='VERIFIED', reason=chain['reason'],
+            share_chain_status=chain['share_chain_status'], share_chain_version=chain['share_chain_version'])
+        result.update({k: chain[k] for k in ('starting_anchor_date', 'reconciliation_anchor_date', 'reconciliation_known_at')})
         rows.append(dict(**row, **result))
     return pd.DataFrame(rows)

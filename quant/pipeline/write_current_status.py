@@ -52,6 +52,9 @@ def write_current_status(config, *, public_state=None):
     report['fundamental_coverage_ceiling'] = read_report(root/'reports/fundamental-coverage-ceiling.json')
     report['fundamental_discovery_expansion'] = read_report(root/'reports/fundamental-discovery-expansion.json')
     report['share_evidence_plan'] = read_report(root/'reports/share-evidence-plan.json')
+    report['fundamental_discovery_gap'] = read_report(root/'reports/fundamental-discovery-gap.json')
+    report['capital_event_ledger'] = read_report(root/'reports/capital-event-candidates.json')
+    report['historical_certification_phase'] = read_report(root/'reports/historical-certification-phase.json')
     write_json(root/'reports/current-status.json',report)
     return report
 

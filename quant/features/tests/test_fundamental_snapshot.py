@@ -83,6 +83,7 @@ def test_shares_never_backfill_current_anchors_and_require_complete_capital_evid
     result = pit_shares_outstanding(anchors,events,'a','2024-09-02T16:00:00+05:30',evidence_complete=True)
     assert result['value_feature_valid'] and result['shares_outstanding'] == 200
     events.loc[0,'event_type'] = 'MERGER'
+    events.loc[0,'share_multiplier'] = float('nan')
     assert not pit_shares_outstanding(anchors,events,'a','2024-09-02T16:00:00+05:30', evidence_complete=True)['value_feature_valid']
     anchors['shares_outstanding'] = 'UNKNOWN'
     assert not pit_shares_outstanding(anchors,pd.DataFrame(),'a','2024-09-02T16:00:00+05:30', evidence_complete=True)['value_feature_valid']

@@ -166,7 +166,7 @@ def pit_shares_outstanding(anchors, events, instrument_id, signal_timestamp, *, 
     day = cutoff.tz_convert('Asia/Kolkata').tz_localize(None).normalize()
     known = anchors[(anchors.instrument_id == instrument_id) & anchors.verification_status.eq('VERIFIED')
                     & evidence_known_times(anchors, 'exchange_disseminated_at').le(cutoff)
-                    & pd.to_datetime(anchors.effective_date).le(day)]
+                    & pd.to_datetime(anchors.effective_date).le(day)].reset_index(drop=True)
     if known.empty:
         return invalid
     provenance = known.get('source_sha256', pd.Series('', index=known.index)).astype('string').str.fullmatch('[0-9a-f]{64}', na=False)
@@ -202,10 +202,17 @@ def pit_shares_outstanding(anchors, events, instrument_id, signal_timestamp, *, 
                 if not np.isfinite(multiplier) or multiplier <= 0:
                     return invalid
                 shares *= multiplier
-            elif row['event_type'] in ('BUYBACK', 'ISSUANCE', 'MERGER') and pd.notna(row.get('shares_after')):
+            elif row['event_type'] in ('BUYBACK', 'ISSUANCE', 'MERGER') and pd.notna(row.get('shares_after')) and not any(
+                    pd.notna(row.get(k)) for k in ('shares_added', 'shares_removed', 'share_multiplier')):
+                # Legacy replay helper; certified batch callers independently
+                # reconcile arithmetic and never certify from this value alone.
                 shares = number_or_nan(row['shares_after'])
             else:
-                return invalid
+                from quant.data.capital_events import replay_capital_event
+                try:
+                    shares = replay_capital_event(shares, row)
+                except ValueError:
+                    return invalid
     if not np.isfinite(shares) or shares <= 0:
         return invalid
     return dict(shares_outstanding=shares, value_feature_valid=True, reason='VERIFIED_PIT_SHARE_EVIDENCE',

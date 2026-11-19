@@ -6,6 +6,9 @@ Epic: `quant-data-coverage-and-model-validation`. Reviewed November 19, 2026
 Phase status: **IN PROGRESS**. Feasibility estimates, working software and
 passing software tests do not constitute validated investment results.
 
+This is the preceding phase snapshot. The subsequent implementation and
+measured evidence are in [HISTORICAL_CERTIFICATION_STATUS.md](HISTORICAL_CERTIFICATION_STATUS.md).
+
 ## Document assessment
 
 | Sections | Implementation and evidence assessment |

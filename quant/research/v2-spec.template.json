@@ -5,7 +5,7 @@
   "review_status": "DRAFT",
   "reviewed_by": null,
   "model_version": "factor_v2_candidate_1.0.0",
-  "feature_version": "fundamental_features_1.0.0",
+  "feature_version": "fundamental_features_1.1.0",
   "cost_model_version": "india_delivery_1.1.0",
   "risk_policy_version": "portfolio_risk_1.1.0",
   "return_basis": "PRICE",
@@ -78,7 +78,7 @@
   },
   "missing_data_rules": {
     "fundamentals": "Exclude incomplete block rows; no neutral imputation",
-    "shares": "Value missing unless PIT value_feature_valid is true",
+    "shares": "Value missing unless PIT value_feature_valid is true after starting anchor, complete capital events and later reconciliation anchor",
     "unsupported_entities": "Exclude from V2; retain in full V1 denominator",
     "annual_max_age_days": 550,
     "quarter_max_age_days": 180

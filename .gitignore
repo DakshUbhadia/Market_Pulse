@@ -34,6 +34,7 @@
 !quant/EVIDENCE_PHASE_STATUS.md
 !quant/EVIDENCE_CLOSURE_STATUS.md
 !quant/DATA_COVERAGE_STATUS.md
+!quant/HISTORICAL_CERTIFICATION_STATUS.md
 
 # debug
 npm-debug.log*

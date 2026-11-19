@@ -57,6 +57,8 @@ def main():
     # Filings must retain checksum-verified metadata and source documents.
     from quant.pipeline.audit_fundamental_coverage import verify_filing_archives
     inputs[1]=verify_filing_archives(inputs[1],args.config(config).data_dir)
+    from quant.pipeline.audit_share_history_coverage import verify_share_archives
+    inputs[2:] = [verify_share_archives(frame, args.config(config).data_dir) for frame in inputs[2:]]
     result=build_fundamental_features(*inputs)
     write_parquet(result,args.output)
     report=dict(status='RESEARCH_INPUTS_ONLY',feature_version=FUNDAMENTAL_FEATURE_VERSION,

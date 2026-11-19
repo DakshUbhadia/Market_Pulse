@@ -920,3 +920,63 @@ The public run URL is an optional REST-quota fallback. Certification checks the
 full commit link and successful unit workflow on GitHub, archives the page
 hash, and keeps live source failures separate. No abbreviated SHA, unrelated
 workflow, failed run or dirty source tree can authorize real historical runs.
+
+# Data completion and historical certification
+
+The current assessment is [HISTORICAL_CERTIFICATION_STATUS.md](HISTORICAL_CERTIFICATION_STATUS.md).
+Build the authoritative discovery ledger from matching snapshots:
+
+```powershell
+python -m quant.pipeline.build_fundamental_discovery_gap --universe <dated-universe.parquet> --coverage <coverage.json> --ceiling <ceiling.json> --filings <filings.parquet> --output <gap.json>
+python -m quant.pipeline.discover_fundamentals_targeted --data-dir <workspace-output-root> --corpus-data-dir <retained-source-root> --universe <dated-universe.parquet> --coverage <coverage.json> --ceiling <ceiling.json> --filings <filings.parquet> --attempts <attempts.json> --calendar <certified-calendar.parquet> --identities <dated-identities.parquet> --max-instruments 25 --max-cells 100 --max-requests 25 --max-documents 25
+```
+
+Each call creates a new `research/discovery-batches/<id>/` with raw-response
+references, selected cells, normalized filings, PIT coverage, ceiling, gap,
+acquisition plan and attempt checkpoint. Pass that batch's combined
+`filings.parquet`, `coverage.json`, `coverage-ceiling.json`, and `attempts.json`
+to the next call. Supply `--previous-batch <batch-report.json>` (repeatable)
+to skip verified completed queries and continue bounded discovery. Changed
+archives or missing previously discovered observations invalidate reuse.
+NSE HTTP 403 stops its route and remains visible; it does not certify absence.
+
+Optional `--fallback-manifest <reviewed-sources.json>` is a list of filing
+metadata records. Each includes `instrument_id`, `symbol`, `period_start`,
+`period_end`, `period_type`, `standalone_or_consolidated`, `source_type`
+(`BSE_OFFICIAL` or `ISSUER_IR`), `source_exchange`, `source_url`,
+`exchange_disseminated_at`, `reason_primary_source_unavailable`,
+`dissemination_evidence_path`, `dissemination_evidence_sha256` and
+`dissemination_reviewed_by`. Dissemination evidence bytes must be under the
+output data root. BSE additionally requires `cross_listing_verified=true`
+and `bse_security_code`. Issuers require `--issuer-host <reviewed-host>`,
+`issuer_host_reviewed_by` and `reason_exchange_archive_unavailable`.
+Use the preserved historical timestamp; retrieval time is never a substitute.
+Document downloads and failed HTTP responses retain immutable raw bytes.
+
+Create a capital-event ledger from explicit dated evidence, or bootstrap
+review candidates from the official retained corporate-action corpus:
+
+```powershell
+python -m quant.pipeline.build_capital_event_ledger --data-dir <data-root> --events <capital-events.parquet> --output <ledger.parquet>
+python -m quant.pipeline.build_capital_event_ledger --data-dir <workspace-output-root> --corporate-actions-root <retained-source-root> --output <candidate-ledger.parquet>
+```
+
+The bootstrap copies/checksums referenced official bytes into the output
+root. It does not infer capital-effective dates from ex-dates, actual credit
+from proposal deadlines, or historical dissemination from current retrieval.
+All bootstrap rows require review. Complete event intervals are separate inputs.
+
+Certified share history requires two distinct known anchor dates, every
+material intervening event, complete interval evidence through the cutoff,
+and reconciliation of each later reported count. Events after the final
+anchor need another anchor. Issuance/buyback/conversion terms must explain
+changes; an asserted `shares_after` cannot force reconciliation. Ambiguous
+same-day actions require a reviewed composite row. Unknown terms, lineage
+conflicts and mismatches leave Value invalid. The low-level legacy replay
+helper is not a certification API; use `share_history` / `build_share_history`.
+
+Successful implementation certificates are archived as
+`reports/implementation-certification-<short-sha>.json`. The current report
+records absolute JUnit paths and hashes. Preserve those bytes for subsequent
+historical runner verification. A new SHA or changed source requires a new
+certificate and reviewed frozen research specification.
