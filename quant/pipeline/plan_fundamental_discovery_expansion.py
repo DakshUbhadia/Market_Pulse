@@ -44,7 +44,7 @@ def plan_discovery_expansion(universe, coverage, ceiling):
                 annual_period_end_no_earlier_than=str((pd.Timestamp(period['as_of'])-pd.Timedelta(days=coverage.get('max_age_days', 550))).date()),
                 quarter_period_end_no_earlier_than=str((pd.Timestamp(period['as_of'])-pd.Timedelta(days=coverage.get('max_quarter_age_days', 180))).date()),
                 requested_facts=['verified dissemination timestamp', 'consolidated period financial statements'],
-                routes=['OFFICIAL_EXCHANGE_STATIC_ARCHIVE', 'ISSUER_INVESTOR_RELATIONS', 'OFFICIAL_EXCHANGE_ANNOUNCEMENTS'])
+                routes=['NSE_OFFICIAL', 'BSE_OFFICIAL', 'ISSUER_IR'])
             cells.append(cell)
             by_name[cell['instrument_id']].append(pd.Period(cell['as_of'], freq='M').ordinal)
     longest = {}
@@ -57,9 +57,10 @@ def plan_discovery_expansion(universe, coverage, ceiling):
         longest[iid] = best
     for cell in cells:
         cell['consecutive_missing_months'] = longest[cell['instrument_id']]
+        cell['missing_months_for_instrument'] = len(by_name[cell['instrument_id']])
     cells.sort(key=lambda c: (-int(c['top100']), c['overall_names_to_threshold']+c['top100_names_to_threshold'],
         -c['consecutive_missing_months'], -int(any(x in str(c['entity_type']).upper() for x in ('BANK', 'NBFC'))),
-        c['adv_rank'], c['as_of'], c['instrument_id']))
+        -c['missing_months_for_instrument'], c['adv_rank'], c['as_of'], c['instrument_id']))
     for rank, cell in enumerate(cells, 1):
         cell['priority_rank'] = rank
     return dict(status='TARGETED_DISCOVERY_REQUIRED' if cells else 'NO_TARGETED_GAPS',

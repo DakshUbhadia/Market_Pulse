@@ -36,7 +36,7 @@ def audit_share_history_coverage(universe, anchors, events, coverage, sessions, 
         verified = share_history(anchors, events, coverage,
             cross[['as_of', 'instrument_id']].assign(signal_timestamp=cutoff))
         names = set(verified.loc[verified.value_feature_valid.eq(True), 'instrument_id']) if len(verified) else set()
-        liquid = cross.sort_values(['adv60', 'instrument_id'], ascending=[False, True]).head(100)
+        liquid = cross.dropna(subset=['adv60']).sort_values(['adv60', 'instrument_id'], ascending=[False, True]).head(100)
         count, top = len(cross), len(liquid)
         available = int(cross.instrument_id.isin(names).sum())
         top_available = int(liquid.instrument_id.isin(names).sum())
@@ -46,11 +46,14 @@ def audit_share_history_coverage(universe, anchors, events, coverage, sessions, 
             overall_share_coverage=overall, top100_share_coverage=top_pct,
             top100_adv_count=top, top100_with_verified_shares=top_available,
             top100_verified_share_coverage=top_pct,
+            broken_share_chains=int(verified.share_chain_status.eq('BROKEN').sum()) if len(verified) else 0,
+            share_chain_failure_reasons=verified.loc[~verified.value_feature_valid, 'reason'].value_counts().to_dict() if len(verified) else {},
             thresholds_met=bool(count and top and overall >= 80 and top_pct >= 90)))
     reliable = reliable_interval(rows)
     return dict(status='COVERAGE_ESTABLISHED' if reliable else 'NOT_READY', periods=rows,
         first_reliable_share_signal_date=reliable, reliable_window_established=reliable is not None,
         minimum_consecutive_monthly_cutoffs=12, coverage_units='PERCENT',
+        share_chain_policy='START_ANCHOR_ALL_MATERIAL_EVENTS_LATER_RECONCILIATION_ANCHOR',
         value_feature_policy='MISSING_UNLESS_VALUE_FEATURE_VALID_TRUE', current_shares_backfilled=False)
 
 

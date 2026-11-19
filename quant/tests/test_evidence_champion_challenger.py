@@ -103,8 +103,10 @@ def test_historical_share_denominator_rejects_future_anchor():
     cutoffs = pd.Series(dates, index=dates).groupby(dates.to_period('M')).last()
     universe = pd.DataFrame([dict(as_of=d, instrument_id='a', eligible=True, adv60=1e8) for d in cutoffs])
     anchors = pd.DataFrame([dict(instrument_id='a', effective_date='2023-12-31', shares_outstanding=100.,
-        exchange_disseminated_at='2023-12-31T12:00:00+05:30', verification_status='VERIFIED', source_sha256='a'*64)])
-    evidence = pd.DataFrame([dict(instrument_id='a', covered_from='2023-12-31', covered_through='2024-12-31',
+        exchange_disseminated_at='2023-12-31T12:00:00+05:30', verification_status='VERIFIED', source_sha256='a'*64),
+        dict(instrument_id='a', effective_date='2023-12-30', shares_outstanding=100.,
+        exchange_disseminated_at='2023-12-30T12:00:00+05:30', verification_status='VERIFIED', source_sha256='b'*64)])
+    evidence = pd.DataFrame([dict(instrument_id='a', covered_from='2023-12-30', covered_through='2024-12-31',
         known_at='2023-12-31T12:00:00+05:30', verification_status='VERIFIED', source_sha256='a'*64)])
     report = audit_share_history_coverage(universe, anchors, pd.DataFrame(), evidence, dates,
         start=date(2024, 1, 1), end=date(2024, 12, 31))
@@ -275,9 +277,11 @@ def test_exact_sha_ci_ignores_live_failure_but_blocks_dirty_tree(tmp_path, monke
             dict(id=2, name='Quant live source smoke tests', head_sha=commit, status='completed', conclusion='failure')]
     response = SimpleNamespace(raise_for_status=lambda: None, json=lambda: {'workflow_runs':runs})
     client = SimpleNamespace(get=lambda *a, **k: response)
-    assert module.certify_implementation(Config(data_dir=tmp_path), session=client)['status'] == 'CERTIFIED'
+    junit = tmp_path/'unit.xml'
+    junit.write_text('<testsuite><testcase name="unit"/></testsuite>')
+    assert module.certify_implementation(Config(data_dir=tmp_path), session=client, unit_results=junit)['status'] == 'CERTIFIED'
     dirty[0] = ' M quant/models/factor_v2.py'
-    assert module.certify_implementation(Config(data_dir=tmp_path), session=client)['status'] == 'NOT_CERTIFIED'
+    assert module.certify_implementation(Config(data_dir=tmp_path), session=client, unit_results=junit)['status'] == 'NOT_CERTIFIED'
 
 
 def test_value_block_cannot_use_finite_values_with_unverified_shares():

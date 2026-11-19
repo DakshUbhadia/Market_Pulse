@@ -1,0 +1,93 @@
+{
+  "status": "CERTIFIED",
+  "git_commit": "5697196bade75fe6ff0caa5ac951d37c6c0141cd",
+  "branch": "feat/quant-evidence-champion-challenger",
+  "PUBLIC_MAIN_SHA": "babf56c0538fae8592ed74216613cd5c0e7bd59e",
+  "LOCAL_IMPLEMENTATION_SHA": "5697196bade75fe6ff0caa5ac951d37c6c0141cd",
+  "RESEARCH_CERTIFIED_SHA": "5697196bade75fe6ff0caa5ac951d37c6c0141cd",
+  "public_main_error": null,
+  "unit_ci_verification_source": "GITHUB_REST_API",
+  "unit_ci_page_sha256": null,
+  "sha": "5697196bade75fe6ff0caa5ac951d37c6c0141cd",
+  "working_tree_clean": true,
+  "runs": [
+    {
+      "id": 44489171483,
+      "name": "Quant unit tests",
+      "head_sha": "5697196bade75fe6ff0caa5ac951d37c6c0141cd",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44489171483",
+      "created_at": "2026-11-19T08:37:25Z"
+    },
+    {
+      "id": 44489006158,
+      "name": "Quant unit tests",
+      "head_sha": "5697196bade75fe6ff0caa5ac951d37c6c0141cd",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44489006158",
+      "created_at": "2026-11-19T08:36:15Z"
+    }
+  ],
+  "unit_ci_passed": true,
+  "unit_ci_status": "PASS",
+  "unit_ci_run": "https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44489171483",
+  "unit_ci_run_url": "https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44489171483",
+  "unit_test_count": 381,
+  "local_unit_test_status": "PASS",
+  "dependency_check": {
+    "status": "PASS",
+    "output": "No broken requirements found."
+  },
+  "compile_check": {
+    "status": "PASS",
+    "output": ""
+  },
+  "whitespace_check": {
+    "status": "PASS",
+    "output": ""
+  },
+  "live_test_status": "FAIL",
+  "live_test_failures": [
+    {
+      "test": "quant.tests.integration.test_nse_bhavcopy_live.test_live_bhavcopy[None]",
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403"
+    },
+    {
+      "test": "quant.tests.integration.test_nse_calendar_live.test_live_calendar",
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403"
+    },
+    {
+      "test": "quant.tests.integration.test_nse_calendar_live.test_live_independent_special_session_evidence",
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403"
+    },
+    {
+      "test": "quant.tests.integration.test_nse_market_live.test_known_reliance_bonus_reconciles",
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403"
+    },
+    {
+      "test": "quant.tests.test_calendar.test_live_calendar",
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403"
+    }
+  ],
+  "live_passed": 6,
+  "live_failed": 5,
+  "live_failure_classes": [
+    "HTTP_403_ACCESS_DENIED"
+  ],
+  "live_ci_required_for_historical_research": false,
+  "certified_at": "2026-11-19T08:51:39.310523+00:00",
+  "verified_at": "2026-11-19T08:51:39.310523+00:00",
+  "remote_error": null,
+  "local_test_evidence": {
+    "data\\coverage-validation\\reports\\verified-unit-tests.xml": "fa1b22b172237258660f097f7c2235e6e0f240547a6e05a3b7dbbc7c0d96fd0d",
+    "data\\coverage-validation\\reports\\live-tests.xml": "0a6dd6f6c50bf7459744d00a0fe31d566afdd4db1d8f48e1cd18428bfbe4d634"
+  },
+  "remote_unit_ci_status": "PASS",
+  "remote_run_url": "https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44489171483",
+  "dependency_status": "PASS",
+  "compile_status": "PASS",
+  "whitespace_status": "PASS",
+  "junit_sha256": "fa1b22b172237258660f097f7c2235e6e0f240547a6e05a3b7dbbc7c0d96fd0d"
+}

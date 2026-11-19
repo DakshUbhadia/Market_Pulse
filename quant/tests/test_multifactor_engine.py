@@ -354,7 +354,9 @@ def test_complete_v2_runner_seals_synthetic_comparison_without_promotion(tmp_pat
     identities=sorted(prices.instrument_id.unique())
     anchors=pd.DataFrame([dict(instrument_id=n,effective_date='2023-12-31',shares_outstanding=10.,
         exchange_disseminated_at='2023-12-31T16:00:00+05:30',verification_status='VERIFIED',source_sha256=digest,raw_path=str(raw)) for n in identities])
-    coverage=pd.DataFrame([dict(instrument_id=n,covered_from='2023-12-31',covered_through='2025-02-07',
+    anchors=pd.concat([anchors, anchors.assign(effective_date='2023-09-30',
+        exchange_disseminated_at='2023-10-01T16:00:00+05:30')], ignore_index=True)
+    coverage=pd.DataFrame([dict(instrument_id=n,covered_from='2023-09-30',covered_through='2025-02-07',
         known_at='2023-12-31T16:00:00+05:30',verification_status='VERIFIED',source_sha256=digest,raw_path=str(raw)) for n in identities])
     inputs=[tmp_path/n for n in ('filings.parquet','anchors.parquet','events.parquet','coverage.parquet')]
     for path,frame in zip(inputs,[pd.DataFrame(rows),anchors,pd.DataFrame(),coverage]):

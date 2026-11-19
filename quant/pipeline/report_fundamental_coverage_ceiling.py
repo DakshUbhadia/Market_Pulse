@@ -94,6 +94,11 @@ def coverage_ceiling(universe, coverage, filings, *, attempts=None):
             current_coverage=pct(current, count), theoretical_max_coverage=pct(current+with_candidate, count),
             current_top100_coverage=pct(current_top, top),
             theoretical_max_top100_coverage=pct(current_top+top_with_candidate, top),
+            theoretical_discovered_coverage=pct(current+with_candidate, count),
+            theoretical_discovered_top100_coverage=pct(current_top+top_with_candidate, top),
+            gap_to_80=max(0., overall-pct(current, count)) if count else None,
+            gap_to_90=max(0., top_threshold-pct(current_top, top)) if top else None,
+            missing_cells=len(details), missing_instruments=len({r['instrument_id'] for r in details}),
             classification='ALREADY_PASSING' if passing else 'REACHABLE' if reachable else 'UNREACHABLE_WITH_CURRENT_DISCOVERY',
             thresholds_met=reachable, missing_details=details))
     reliable = reliable_interval(rows)

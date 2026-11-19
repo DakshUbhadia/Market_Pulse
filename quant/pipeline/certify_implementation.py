@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 import requests
 
 from quant.config import REPO_ROOT
-from quant.storage.research_store import git_commit, write_json
+from quant.storage.research_store import git_commit, write_json, digest_file
 
 
 def verify_public_run_page(client, url, commit, *, timeout):
@@ -54,9 +54,10 @@ def junit_summary(path):
     failed = [dict(test=c.get('classname', '')+'.'+c.get('name', ''),
                    message=' '.join((e.get('message') or e.text or '') for e in c if e.tag in ('failure', 'error')))
               for c in cases if any(e.tag in ('failure', 'error') for e in c)]
-    return dict(status='FAIL' if failed else 'PASS' if cases else 'UNASSESSED',
+    skipped = sum(any(e.tag == 'skipped' for e in c) for c in cases)
+    return dict(status='FAIL' if failed else 'PASS' if len(cases) > skipped else 'UNASSESSED',
                 tests=len(cases), failures=failed,
-                skipped=sum(any(e.tag == 'skipped' for e in c) for c in cases))
+                skipped=skipped)
 
 
 def certify_implementation(config, *, session=None, unit_results=None, live_results=None, unit_ci_run_url=None):
@@ -114,7 +115,7 @@ def certify_implementation(config, *, session=None, unit_results=None, live_resu
                 main_error = 'Public main ref could not be verified'
         except (OSError, subprocess.SubprocessError) as exc:
             main_error = str(exc)
-    certified = passed and not dirty and all(c['status'] == 'PASS' for c in checks.values()) and unit['status'] != 'FAIL'
+    certified = passed and not dirty and all(c['status'] == 'PASS' for c in checks.values()) and unit['status'] == 'PASS'
     now = datetime.now(timezone.utc).isoformat()
     def failure_class(failure):
         message = failure['message'].upper()
@@ -140,15 +141,38 @@ def certify_implementation(config, *, session=None, unit_results=None, live_resu
         certified_at=now if certified else None, verified_at=now, remote_error=error)
     from quant.storage.research_store import digest_file
     report['local_test_evidence'] = {str(p): digest_file(p) for p in (unit_results, live_results) if p is not None}
+    report.update(remote_unit_ci_status=report['unit_ci_status'], remote_run_url=report['unit_ci_run_url'],
+        junit_sha256=digest_file(unit_results) if unit_results else None,
+        dependency_status=checks['dependency_check']['status'], compile_status=checks['compile_check']['status'],
+        whitespace_status=checks['whitespace_check']['status'],
+        unit_results_path=str(Path(unit_results).resolve()) if unit_results else None,
+        live_results_path=str(Path(live_results).resolve()) if live_results else None)
     write_json(config.data_dir/'reports/implementation-certification.json', report)
+    if certified:
+        from quant.forward.signal_store import append_record
+        archive = config.data_dir/f'reports/implementation-certification-{commit[:7]}.json'
+        if not archive.exists():
+            append_record(archive, report)
     return report
 
 
 def require_certified_implementation(config):
     prior_path = config.data_dir/'reports/implementation-certification.json'
     prior = json.loads(prior_path.read_text(encoding='utf-8')) if prior_path.exists() else {}
-    report = certify_implementation(config, unit_ci_run_url=prior.get('unit_ci_run_url') if prior.get('git_commit') == git_commit() else None)
-    if report['status'] != 'CERTIFIED':
+    same_sha = prior.get('git_commit') == git_commit() and prior.get('RESEARCH_CERTIFIED_SHA') == git_commit()
+    unit, live = (prior.get(k) if same_sha else None for k in ('unit_results_path', 'live_results_path'))
+    for path in (unit, live):
+        if path and (not Path(path).is_file() or digest_file(Path(path)) != prior.get('local_test_evidence', {}).get(path)):
+            # Reports before absolute-path fields were added may use relative
+            # keys; never silently admit changed or missing JUnit evidence.
+            expected = next((h for p, h in prior.get('local_test_evidence', {}).items()
+                             if Path(p).resolve() == Path(path).resolve()), None)
+            if not Path(path).is_file() or digest_file(Path(path)) != expected:
+                raise ValueError('Certified local JUnit evidence is missing or changed')
+    report = certify_implementation(config, unit_results=Path(unit) if unit else None,
+        live_results=Path(live) if live else None,
+        unit_ci_run_url=prior.get('unit_ci_run_url') if same_sha else None)
+    if report['status'] != 'CERTIFIED' or report.get('RESEARCH_CERTIFIED_SHA') != git_commit():
         raise ValueError('Real historical research requires public passing unit CI on the exact clean implementation SHA')
     return report
 
