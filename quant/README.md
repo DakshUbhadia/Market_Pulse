@@ -875,3 +875,48 @@ verification. Packaging refuses existing destinations and unvalidated models.
 Verification works after relocation; the optional data directory additionally
 verifies archived input bytes. Price-only V1 declares fundamental/share reports
 NOT_APPLICABLE. No release or journal action promotes a model automatically.
+# Coverage feasibility and Stage 1 replanning
+
+The November 19, 2026 phase assessment is in
+[DATA_COVERAGE_STATUS.md](DATA_COVERAGE_STATUS.md). Before acquiring more
+documents, use the same dated universe, filing snapshot and attempt checkpoint
+as the PIT coverage audit:
+
+```powershell
+python -m quant.pipeline.report_fundamental_coverage_ceiling --universe <universe.parquet> --coverage <coverage.json> --filings <filings.parquet> --attempts <checkpoint.json> --output <ceiling.json>
+python -m quant.pipeline.plan_fundamental_discovery_expansion --universe <universe.parquet> --coverage <coverage.json> --ceiling <ceiling.json> --output <discovery-plan.json>
+python -m quant.pipeline.plan_fundamental_acquisition --universe <universe.parquet> --coverage <coverage.json> --filings <filings.parquet> --attempts <checkpoint.json> --output <acquisition-plan.json>
+python -m quant.pipeline.acquire_fundamentals_stage1 --from 2024-01-01 --to <certified-session> --plan <acquisition-plan.json> --batch-size 100 --max-batches 1
+```
+
+After **each** batch, parse and normalize the acquired observations, rerun the
+PIT audit and ceiling, and rebuild the plan. Input hashes and acquisition-state
+hashes reject stale reuse. Stage 1 freezes a candidate set; retryable failures
+and unreviewed parser findings do not close the stage. Missing source URLs are
+classified without pretending a download was attempted.
+
+Shares require archived anchors, dated capital changes and complete event
+interval evidence. `--filings` derives anchors from normalized paid-up equity
+capital and contemporaneous face value; `--anchors` accepts explicitly prepared
+anchors instead. Both require source hashes/raw paths under the data directory.
+
+```powershell
+python -m quant.pipeline.build_share_history --data-dir <data-root> --from 2024-01-01 --to <certified-session> --keys <dated-keys.parquet> --filings <filings.parquet> --capital-events <events.parquet> --share-coverage <intervals.parquet> --output <share-history.parquet>
+python -m quant.pipeline.audit_share_history --data-dir <data-root> --from 2024-01-01 --to <certified-session> --universe <universe.parquet> --anchors <anchors.parquet> --capital-events <events.parquet> --share-coverage <intervals.parquet>
+python -m quant.pipeline.plan_share_evidence --data-dir <data-root> --from 2024-01-01 --to <certified-session> --universe <universe.parquet> --anchors <anchors.parquet> --capital-events <events.parquet> --share-coverage <intervals.parquet> --output <share-plan.json>
+```
+
+Unknown shares remain `value_feature_valid=false`. A candidate anchor can
+appear in the discovery plan while a missing complete event chain still keeps
+its theoretical share-coverage ceiling at zero.
+
+After pushing, certify the exact clean SHA using the local JUnit files:
+
+```powershell
+python -m quant.pipeline.certify_implementation --data-dir <report-root> --unit-results <unit-tests.xml> --live-results <live-tests.xml> --unit-ci-run-url https://github.com/DakshUbhadia/Market_Pulse/actions/runs/<run-id>
+```
+
+The public run URL is an optional REST-quota fallback. Certification checks the
+full commit link and successful unit workflow on GitHub, archives the page
+hash, and keeps live source failures separate. No abbreviated SHA, unrelated
+workflow, failed run or dirty source tree can authorize real historical runs.

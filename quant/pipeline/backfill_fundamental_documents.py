@@ -23,24 +23,39 @@ def backfill_documents(config, start, end, *, limit=100, retry_review=False, pla
         state = json.loads(checkpoint.read_text()) if checkpoint.exists() else dict(attempted={})
         if frame.empty:
             raise ValueError('Run metadata discovery first')
+        if plan_path is not None:
+            from quant.pipeline.plan_fundamental_acquisition import load_plan, acquisition_state_hash
+            plan = load_plan(plan_path)
+            if plan.get('acquisition_state_sha256') != acquisition_state_hash(frame, state['attempted']):
+                raise ValueError('Acquisition plan is stale; parse, normalize, audit coverage, recompute ceiling and rebuild plan')
         frame = frame.sort_values('first_seen_at').drop_duplicates('filing_id',keep='last')
         times = pd.to_datetime(frame.exchange_disseminated_at,utc=True,errors='coerce')
         selected = frame[times.isna() | (times.ge(pd.Timestamp(start,tz='Asia/Kolkata')) & times.lt(pd.Timestamp(end,tz='Asia/Kolkata')+pd.Timedelta(days=1)))]
+        from quant.research.coverage_deficits import candidate_id
+        selected = selected.copy()
+        selected['_candidate_id'] = [candidate_id(row) for row in selected.to_dict('records')]
+        declaration = config.data_dir/'state/fundamental_backfill'/f'stage1-candidates-{start}-{end}.json'
+        if declaration.exists():
+            from quant.forward.signal_store import content_hash
+            scope = json.loads(declaration.read_text(encoding='utf-8'))
+            if scope.get('sha256') != content_hash({k: v for k, v in scope.items() if k != 'sha256'}):
+                raise ValueError('Stage 1 candidate declaration checksum changed')
+            selected = selected[selected._candidate_id.isin(scope['candidate_ids'])]
         candidates = selected  # Missing document URLs must receive an explicit review classification too.
         if 'document_sha256' in candidates:
             candidates = candidates[candidates.document_sha256.isna()]
         if not retry_review:
-            candidates = candidates[~candidates.filing_id.isin(state['attempted'])]
+            candidates = candidates[~candidates._candidate_id.isin(state['attempted']) & ~candidates.filing_id.isin(state['attempted'])]
         else:
             from quant.pipeline.report_fundamental_acquisition import classify_attempt
             permanent = {key for key, attempt in state['attempted'].items() if not classify_attempt(attempt)[1]}
-            candidates = candidates[~candidates.filing_id.isin(permanent)]
+            candidates = candidates[~candidates._candidate_id.isin(permanent) & ~candidates.filing_id.isin(permanent)]
         if plan_path is not None:
             from quant.pipeline.plan_fundamental_acquisition import load_plan
             from quant.research.coverage_deficits import candidate_id
             plan = load_plan(plan_path)
             priorities = {r['filing_id']: r['priority_rank'] for r in plan['candidates']}
-            candidates = candidates.copy()
+            candidates = candidates[candidates._candidate_id.isin(priorities)].copy()
             candidates['_priority'] = [priorities.get(candidate_id(r), len(priorities)+1) for r in candidates.to_dict('records')]
             candidates = candidates.sort_values(['_priority', 'filing_id']).drop(columns='_priority')
         history = read_parquet_file(config.data_dir/'normalized/security_history/identities.parquet')
@@ -48,7 +63,7 @@ def backfill_documents(config, start, end, *, limit=100, retry_review=False, pla
         attempted_this_batch, source_blocked = 0, False
         with NseClient(config) as client:
             for row in candidates.head(limit).to_dict('records'):
-                key = row['filing_id']
+                key = row.pop('_candidate_id')
                 # Metadata IDs must remain stable when FinancialVersionStore derives document IDs.
                 row['filing_id'] = row.get('metadata_filing_id') or key
                 parsed, review = archive_filings(client,pd.DataFrame([row]),'financials',history)
@@ -58,7 +73,9 @@ def backfill_documents(config, start, end, *, limit=100, retry_review=False, pla
                     config.data_dir/row['metadata_raw_path'],200)
                 versions.publish(parsed,raw)
                 state['attempted'][key] = dict(parser_status=parsed.iloc[0].get('parser_status'),
-                    document_sha256=parsed.iloc[0].get('document_sha256'),review=review)
+                    document_sha256=parsed.iloc[0].get('document_sha256'),review=review,
+                    attempt_count=state['attempted'].get(key, {}).get('attempt_count', 0)+1,
+                    last_attempted_at=observed)
                 write_json(checkpoint,state)
                 attempted_this_batch += 1
                 if any(r.get('source_status')=='LIVE_SOURCE_UNAVAILABLE' for r in review):

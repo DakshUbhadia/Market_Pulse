@@ -11,6 +11,20 @@ from quant.storage.research_store import write_json
 def acquire_stage1(config,start,end,*,batch_size=100,max_batches=1,plan_path=None):
     if start<date(2024,1,1) or not 1<=batch_size<=250 or not 1<=max_batches<=250:
         raise ValueError('Stage 1 requires 2024-present and bounded document/batch limits')
+    if max_batches != 1:
+        raise ValueError('Run one bounded batch, then parse/normalize, audit coverage, recompute ceiling and rebuild the acquisition plan')
+    if plan_path is None:
+        raise ValueError('Stage 1 acquisition requires a fresh coverage-based acquisition plan')
+    from quant.pipeline.report_fundamental_acquisition import report_fundamental_acquisition
+    from quant.forward.signal_store import append_record, content_hash
+    declaration = config.data_dir/'state/fundamental_backfill'/f'stage1-candidates-{start}-{end}.json'
+    if not declaration.exists():
+        snapshot = report_fundamental_acquisition(config, start, end)
+        if not snapshot['declared_candidate_ids']:
+            raise ValueError('Run metadata discovery before declaring Stage 1')
+        body = dict(start=str(start), end=str(end), candidate_ids=snapshot['declared_candidate_ids'],
+                    declared_at=datetime.now(timezone.utc).isoformat())
+        append_record(declaration, dict(**body, sha256=content_hash(body)))
     results=[]
     status='BATCH_BUDGET_REACHED'
     checkpoint=config.data_dir/'state/fundamental_backfill'/f'documents-{start}-{end}.json'
@@ -38,8 +52,12 @@ def acquire_stage1(config,start,end,*,batch_size=100,max_batches=1,plan_path=Non
         historical_expansion_enabled=False,factor_v2_enabled=False,
         coverage_status='UNASSESSED_REQUIRES_DATED_UNIVERSE_AUDIT')
     from quant.pipeline.report_fundamental_acquisition import report_fundamental_acquisition
-    result['candidate_classification'] = {k:v for k,v in report_fundamental_acquisition(config, start, end).items()
+    classification = report_fundamental_acquisition(config, start, end)
+    result['candidate_classification'] = {k:v for k,v in classification.items()
                                           if k != 'details'}
+    result['replanning_required'] = any(r['attempted_this_batch'] for r in results)
+    result['next_steps'] = ['parse and normalize', 'audit PIT coverage', 'recompute coverage ceiling', 'rebuild acquisition plan']
+    result['stage1_complete'] = classification['stage1_complete']
     write_json(config.data_dir/'reports/fundamental-stage1-acquisition.json',result)
     return result
 

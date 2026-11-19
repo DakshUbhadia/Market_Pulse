@@ -35,8 +35,9 @@ def test_acquisition_classifies_missing_urls_without_claiming_attempts():
                          filing(filing_id='network', document_sha256=None, source_document='https://official.example/a.xml')])
     report = acquisition_report(rows, {'network':dict(parser_status='NEEDS_REVIEW', review=[dict(reason='HTTP 403')])},
         start='2024-01-01', end='2024-12-31')
-    assert report['terminal_status_count'] == 2 and report['attempted_count'] == 1
+    assert report['terminal_status_count'] == 1 and report['attempted_count'] == 1
     assert report['terminal_status_counts'] == {'MISSING_SOURCE_URL':1, 'RETRYABLE_FAILURE':1}
+    assert not report['stage1_complete'] and report['unattempted_in_scope'] == 0
     assert report['usable_document_pct'] == 0 and report['unattempted_count'] == 1
 
 
@@ -65,7 +66,7 @@ def test_planner_priorities_are_causal_marginal_and_return_independent():
     selected = {r['filing_id']:r for r in result['candidates']}
     assert result['candidates'][0]['filing_id'] == 'a-long'
     assert selected['a-long']['potential_marginal_name_months'] == 3
-    assert selected['a-overlap']['potential_marginal_name_months'] == 0
+    assert 'a-overlap' not in selected
     assert selected['b-later']['repair_months'] == ['2024-09-30', '2024-10-31']
     assert 'c-future' not in selected
     universe['future_return'] = 9999.
