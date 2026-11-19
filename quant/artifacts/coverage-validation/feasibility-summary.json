@@ -1,0 +1,70 @@
+{
+  "epic": "quant-data-coverage-and-model-validation",
+  "as_of": "2026-11-19",
+  "market_session": "2026-11-17",
+  "scope": "FEASIBILITY_ONLY_NOT_RESEARCH_VALIDATION",
+  "source_corpus": "D:/Market_Pulse_Quant_20261113/data",
+  "source_snapshot_sha256": {
+    "data\\evidence-closure\\inputs\\attempts.json": "b68554b9bae3b50df877eff2c22ca8c2e34cdfed0f4e23767fa1d6297bf9d5a7",
+    "data\\evidence-closure\\inputs\\filings.parquet": "3f9e56c2657a5c5cd2fa2f28a21c52ea61d6ec3114a34eeb4a098857eb41359b",
+    "data\\evidence-closure\\inputs\\universe.parquet": "50eaef05e588691f3cec2be0717260ad8669ca14e64fdc4cfc9d50f3499e5407"
+  },
+  "derived_anchor_rows": 74,
+  "coverage_certified": false,
+  "research_phase_complete": false,
+  "reports": {
+    "fundamental-coverage-ceiling.json": {
+      "report_path": "data\\coverage-validation\\reports\\fundamental-coverage-ceiling.json",
+      "sha256": "339c50fbdf5ce56485c7d7eeedc2e96cdfd9687c47ab5fd9342391df58b21067",
+      "status": "DISCOVERY_EXPANSION_REQUIRED",
+      "monthly_cutoffs": 35,
+      "unreachable_cutoffs": 35,
+      "peak_theoretical_coverage": 58.26086956521739,
+      "theoretical_reliable_start": null
+    },
+    "fundamental-discovery-expansion.json": {
+      "report_path": "data\\coverage-validation\\reports\\fundamental-discovery-expansion.json",
+      "sha256": "0b7369343994603b65828e1793c1fd5ee61b722cc9d620203f9b143237a9712b",
+      "status": "TARGETED_DISCOVERY_REQUIRED",
+      "target_name_months": 6460,
+      "target_names": 509
+    },
+    "fundamental-acquisition-plan.json": {
+      "report_path": "data\\coverage-validation\\reports\\fundamental-acquisition-plan.json",
+      "sha256": "7aa2300c5c4ff4d08f2d8629509b33df84ab5d8dff57e92e4112b48b989183c9",
+      "status": "PLANNED",
+      "candidate_count": 192,
+      "potentially_addressed_name_months": 1868
+    },
+    "fundamental-acquisition.json": {
+      "report_path": "data\\coverage-validation\\reports\\fundamental-acquisition.json",
+      "sha256": "8eff9368633c736229dd01bcb488775ab8cdd94cef8b01143e51ff4ebd74b6d7",
+      "status": "INCOMPLETE",
+      "terminal_status_count": 3222,
+      "unattempted_in_scope": 18702,
+      "stage1_complete": false
+    },
+    "share-evidence-plan.json": {
+      "report_path": "data\\coverage-validation\\reports\\share-evidence-plan.json",
+      "sha256": "cfd949502cd1e829d27596e8d5cd94d4bd31c39073ac7873eea7592ddbc903e5",
+      "status": "PLANNED"
+    },
+    "share-history-coverage.json": {
+      "report_path": "data\\coverage-validation\\reports\\share-history-coverage.json",
+      "sha256": "fe28b0bdcd32e5db9edbd3e6c786c1887e42d0a0b9b0b6a72e4d5fac04db98e7",
+      "status": "NOT_READY"
+    },
+    "share-history.json": {
+      "report_path": "data\\coverage-validation\\reports\\share-history.json",
+      "sha256": "b00d9d15398cee2a88ddaeb947c12e8cca427f373307f860243aaec5354a21e7",
+      "status": null,
+      "rows": 9143,
+      "verified_rows": 0
+    },
+    "security-transition-search": {
+      "report_path": "data\\coverage-validation\\reports\\security-transitions\\search-audit-followup-20261119.json",
+      "sha256": "6bc595ca14eb1ea6270945af358902a7438e3d1e181b597a06024d754cc1679a",
+      "status": "EVIDENCE_SEARCH_ACTIVE"
+    }
+  }
+}

@@ -13,6 +13,16 @@ from quant.storage.parquet_store import read_parquet_file
 from quant.storage.research_store import digest_file, write_json
 
 
+def acquisition_state_hash(filings, attempts):
+    columns = ('filing_id', 'metadata_filing_id', 'instrument_id', 'source_document', 'timing_status',
+               'standalone_or_consolidated', 'period_start', 'period_end', 'period_type',
+               'exchange_disseminated_at', 'revision_at', 'available_at', 'document_revision_detected_at',
+               'parser_status', 'document_sha256')
+    rows = filings.reindex(columns=columns).astype('string').fillna('').drop_duplicates()
+    rows = rows.sort_values(list(columns)).to_dict('records')
+    return content_hash(dict(filings=rows, attempts=attempts))
+
+
 def plan_acquisition(universe, coverage, filings, *, attempts=None):
     attempts = attempts or {}
     if universe.duplicated(['as_of', 'instrument_id']).any():
@@ -118,6 +128,8 @@ def plan_acquisition(universe, coverage, filings, *, attempts=None):
             heapq.heappush(queue, (current, index))
             continue
         remaining = candidate['repair_cells']-claimed
+        if not remaining:
+            continue
         for cell in remaining:
             if cells[cell]['top']:
                 top_claimed[cell[0]] += 1
@@ -127,6 +139,7 @@ def plan_acquisition(universe, coverage, filings, *, attempts=None):
             potential_top100_repairs=-current[0], repair_months=sorted(c[0] for c in remaining),
             adv_ranks={c[0]: liquidity[c] for c in remaining}))
     report = dict(status='PLANNED', method='GREEDY_MARGINAL_NAME_MONTH_COVERAGE',
+        acquisition_state_sha256=acquisition_state_hash(filings, attempts),
         performance_used_to_prioritize=False, gains_are_estimates_not_certification=True,
         candidate_count=len(selected), candidates=selected,
         deficit_name_months=len(cells), potentially_addressed_name_months=len(claimed),
@@ -140,6 +153,10 @@ def load_plan(path):
     if (report.get('sha256') != content_hash({k: v for k, v in report.items() if k != 'sha256'})
             or report.get('performance_used_to_prioritize') is not False):
         raise ValueError('Acquisition plan checksum or evidence-only policy changed')
+    for filename, expected in report.get('input_sha256', {}).items():
+        source = Path(filename)
+        if not source.is_file() or digest_file(source) != expected:
+            raise ValueError('Acquisition plan inputs changed; audit coverage and rebuild the plan')
     return report
 
 

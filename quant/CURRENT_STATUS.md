@@ -4,9 +4,10 @@ Updated November 19, 2026, Asia/Kolkata. This is the canonical status.
 Earlier phase files are historical snapshots. Audit completion percentages
 are estimates, not measured research completion or investment performance.
 
-Epic: `quant-evidence-closure-and-model-selection`. The detailed requirement
-assessment, implementation paths and remaining gates are in
-[EVIDENCE_CLOSURE_STATUS.md](EVIDENCE_CLOSURE_STATUS.md). The previous phase is
+Epic: `quant-data-coverage-and-model-validation`. The current 33-section
+assessment, feasibility measurements and remaining gates are in
+[DATA_COVERAGE_STATUS.md](DATA_COVERAGE_STATUS.md). Prior implementation status
+is retained in [EVIDENCE_CLOSURE_STATUS.md](EVIDENCE_CLOSURE_STATUS.md). The previous phase is
 retained in [EVIDENCE_PHASE_STATUS.md](EVIDENCE_PHASE_STATUS.md). Commands and artifact
 contracts are in [README.md](README.md).
 
@@ -117,3 +118,8 @@ Repository-local execution reports are under
 snapshot, fresh source downloads/search status, public CI observation and
 separate unit/live test results. They do not overwrite old experiments.
 The complete research phase remains **IN PROGRESS**.
+# Latest coverage-feasibility phase
+
+See [DATA_COVERAGE_STATUS.md](DATA_COVERAGE_STATUS.md) for the November 19,
+2026 document assessment, monthly ceiling results, targeted discovery and
+historical-share evidence. The research phase remains IN PROGRESS.

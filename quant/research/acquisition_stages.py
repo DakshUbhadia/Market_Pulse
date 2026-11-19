@@ -31,8 +31,9 @@ def require_expansion_decision(config, start, *, decision_path=None):
             raise ValueError('Expansion certification evidence is missing or changed')
         reports[key] = json.loads(path.read_text(encoding='utf-8'))
     acquisition = reports['acquisition_report']
-    if (acquisition.get('status') != 'ALL_CANDIDATES_CLASSIFIED' or acquisition.get('unattempted') != 0
-            or acquisition.get('retryable_failures') != 0):
+    if (acquisition.get('status') != 'ALL_CANDIDATES_CLASSIFIED' or acquisition.get('unattempted_in_scope') != 0
+            or acquisition.get('stage1_complete') is not True
+            or not acquisition.get('candidate_set_sha256')):
         raise ValueError('Previous acquisition stage is incomplete')
     if any(not reports[k].get('reliable_window_established')
            or reports[k].get('minimum_consecutive_monthly_cutoffs', 0) < 12 for k in ('coverage_report', 'share_report')):

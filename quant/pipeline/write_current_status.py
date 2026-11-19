@@ -46,6 +46,12 @@ def write_current_status(config, *, public_state=None):
     report['registered_forward_cohorts'] = [str(p.parent.relative_to(root)) for p in
         sorted((root/'forward/registered').rglob('cohort.json')) if any((p.parent/'signals').glob('*.json'))]
     report['research_releases'] = [str(p.parent.relative_to(root)) for p in sorted((root/'research/releases').rglob('checksums.json'))]
+    certificate = report['implementation_certification'].get('report', {})
+    report.update(PUBLIC_MAIN_SHA=(public_state or {}).get('PUBLIC_MAIN_SHA') or certificate.get('PUBLIC_MAIN_SHA'),
+        LOCAL_IMPLEMENTATION_SHA=git_commit(), RESEARCH_CERTIFIED_SHA=certificate.get('RESEARCH_CERTIFIED_SHA'))
+    report['fundamental_coverage_ceiling'] = read_report(root/'reports/fundamental-coverage-ceiling.json')
+    report['fundamental_discovery_expansion'] = read_report(root/'reports/fundamental-discovery-expansion.json')
+    report['share_evidence_plan'] = read_report(root/'reports/share-evidence-plan.json')
     write_json(root/'reports/current-status.json',report)
     return report
 

@@ -10,6 +10,18 @@ def aware_times(values):
         and pd.Timestamp(value).tzinfo else pd.NaT), utc=True)
 
 
+def evidence_known_times(frame, primary, extras=('known_at',)):
+    """Knowledge is the latest disclosed timestamp, never a naive wall clock."""
+    stamps = [aware_times(frame[primary])]
+    valid = stamps[0].notna()
+    for key in extras:
+        if key in frame:
+            parsed = aware_times(frame[key])
+            valid &= frame[key].isna() | parsed.notna()
+            stamps.append(parsed)
+    return pd.concat(stamps, axis=1).max(axis=1).where(valid)
+
+
 def number_or_nan(value):
     try:
         return float(value)
@@ -147,12 +159,13 @@ def pit_shares_outstanding(anchors, events, instrument_id, signal_timestamp, *, 
     cutoff = pd.Timestamp(signal_timestamp)
     if cutoff.tzinfo is None:
         raise ValueError('signal_timestamp requires an explicit timezone')
-    invalid = dict(shares_outstanding=None, value_feature_valid=False, reason='INCOMPLETE_SHARE_EVIDENCE')
+    invalid = dict(shares_outstanding=None, value_feature_valid=False, reason='INCOMPLETE_SHARE_EVIDENCE',
+                   known_at=None, effective_date=None, source=[], verification_status='NEEDS_REVIEW')
     if anchors.empty or evidence_complete is not True:
         return invalid
     day = cutoff.tz_convert('Asia/Kolkata').tz_localize(None).normalize()
     known = anchors[(anchors.instrument_id == instrument_id) & anchors.verification_status.eq('VERIFIED')
-                    & aware_times(anchors.exchange_disseminated_at).le(cutoff)
+                    & evidence_known_times(anchors, 'exchange_disseminated_at').le(cutoff)
                     & pd.to_datetime(anchors.effective_date).le(day)]
     if known.empty:
         return invalid
@@ -161,22 +174,29 @@ def pit_shares_outstanding(anchors, events, instrument_id, signal_timestamp, *, 
         return invalid
     anchor = known.sort_values(['effective_date', 'exchange_disseminated_at']).iloc[-1]
     shares = number_or_nan(anchor.shares_outstanding)
+    known_at = evidence_known_times(known, 'exchange_disseminated_at').loc[anchor.name]
+    effective = pd.Timestamp(anchor.effective_date)
+    sources = [anchor.source_sha256]
     if not np.isfinite(shares) or shares <= 0:
         return invalid
     if not events.empty:
-        announced = aware_times(events.announced_at)
+        announced = evidence_known_times(events, 'announced_at')
         changes = events[(events.instrument_id == instrument_id)
                          & (announced.le(cutoff) | announced.isna())
                          & pd.to_datetime(events.effective_date).gt(pd.Timestamp(anchor.effective_date))
                          & pd.to_datetime(events.effective_date).le(day)]
         if (not changes.verification_status.eq('VERIFIED').all()
-                or aware_times(changes.announced_at).isna().any()
-                or not aware_times(changes.announced_at).le(cutoff).all()
+                or evidence_known_times(changes, 'announced_at').isna().any()
+                or not evidence_known_times(changes, 'announced_at').le(cutoff).all()
                 or changes.duplicated('effective_date').any()):
             return invalid
         if not changes.get('source_sha256', pd.Series('', index=changes.index)).astype('string').str.fullmatch('[0-9a-f]{64}', na=False).all():
             return invalid
         for row in changes.sort_values('effective_date').to_dict('records'):
+            known_at = max(known_at, pd.Timestamp(row['announced_at']),
+                           pd.Timestamp(row['known_at']) if pd.notna(row.get('known_at')) else pd.Timestamp(row['announced_at']))
+            effective = max(effective, pd.Timestamp(row['effective_date']))
+            sources.append(row['source_sha256'])
             if row['event_type'] in ('SPLIT', 'BONUS') and pd.notna(row.get('share_multiplier')):
                 multiplier = number_or_nan(row['share_multiplier'])
                 if not np.isfinite(multiplier) or multiplier <= 0:
@@ -188,4 +208,6 @@ def pit_shares_outstanding(anchors, events, instrument_id, signal_timestamp, *, 
                 return invalid
     if not np.isfinite(shares) or shares <= 0:
         return invalid
-    return dict(shares_outstanding=shares, value_feature_valid=True, reason='VERIFIED_PIT_SHARE_EVIDENCE')
+    return dict(shares_outstanding=shares, value_feature_valid=True, reason='VERIFIED_PIT_SHARE_EVIDENCE',
+                known_at=known_at.isoformat(), effective_date=str(effective.date()),
+                source=sorted(set(sources)), verification_status='VERIFIED')

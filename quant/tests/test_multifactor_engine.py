@@ -278,7 +278,10 @@ def test_stage1_supervisor_stops_on_source_failure(tmp_path,monkeypatch):
         calls.append(kwargs['limit'])
         return dict(status='BLOCKED_SOURCE',attempted_this_batch=1,parsed=0,needs_review=1,remaining_unattempted=99)
     monkeypatch.setattr(stage,'backfill_documents',batch)
-    report=stage.acquire_stage1(Config(data_dir=tmp_path),date(2024,1,1),date(2024,12,31),max_batches=10)
+    from quant.storage.parquet_store import write_parquet
+    write_parquet(pd.DataFrame([filing(document_sha256=None, source_document='https://nsearchives.nseindia.com/doc.xml')]),
+                  tmp_path/'normalized/financials/metadata.parquet')
+    report=stage.acquire_stage1(Config(data_dir=tmp_path),date(2024,1,1),date(2024,12,31),max_batches=1,plan_path=tmp_path/'plan.json')
     assert calls==[100] and report['status']=='LIVE_SOURCE_UNAVAILABLE'
 
 
