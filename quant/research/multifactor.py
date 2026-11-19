@@ -82,6 +82,8 @@ def v2_decision(windows, criteria):
         def finite(*values):
             return all(v is not None and np.isfinite(v) for v in values)
         row=dict(adequate_oos=v2['observations']>=criteria['min_oos_sessions'],
+            minimum_ic=finite(v2.get('mean_IC')) and v2['mean_IC'] >= criteria['min_mean_ic'],
+            minimum_ir=finite(v2.get('information_ratio')) and v2['information_ratio'] >= criteria['min_ir'],
             mature_labels=(v2.get('label_coverage') or 0)>=criteria['min_label_coverage'],
             ic_improves=finite(v1.get('mean_IC'),v2.get('mean_IC')) and v2['mean_IC']-v1['mean_IC']>=criteria['min_mean_ic_improvement'],
             ir_improves=finite(v1.get('information_ratio'),v2.get('information_ratio')) and v2['information_ratio']-v1['information_ratio']>=criteria['min_ir_improvement'],
@@ -93,8 +95,12 @@ def v2_decision(windows, criteria):
             survives_cost_stress=sum(r['annualized_excess_return'] > 0 for r in compared['factor_v2']['stress'].values())
                 / len(compared['factor_v2']['stress']) >= criteria['min_robustness_survival'])
         checks.append(row)
-    passed=bool(checks) and all(all(c.values()) for c in checks)
-    return dict(decision='GO_FURTHER_V2_RESEARCH' if passed else 'NO_GO_INVESTIGATE',
+    valid = sum(c['adequate_oos'] and c['mature_labels'] for c in checks)
+    sufficient = valid >= criteria['min_valid_windows'] and valid == len(checks)
+    passed=sufficient and all(all(c.values()) for c in checks)
+    decision = ('BLOCKED' if not windows else 'INCONCLUSIVE' if not sufficient else
+                'GO_FURTHER_V2_RESEARCH' if passed else 'NO_GO_V2')
+    return dict(decision=decision, valid_windows=valid,
         risk_budget_capacity_passed=bool(windows) and all(w.get('risk_budgeted_v2', {}).get('risk_evidence', {}).get('capacity_violations') == 0 for w in windows),
         window_checks=checks,production_validated=False,automatic_model_activation=False,
         elastic_net_research_gate_passed=passed,elastic_net_weight=0.)

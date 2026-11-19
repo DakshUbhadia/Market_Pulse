@@ -13,7 +13,7 @@ from quant.storage.parquet_store import read_parquet_file
 from quant.storage.research_store import write_json
 
 
-def backfill_documents(config, start, end, *, limit=100, retry_review=False):
+def backfill_documents(config, start, end, *, limit=100, retry_review=False, plan_path=None):
     if limit < 1 or start > end:
         raise ValueError('Invalid document batch')
     files = sorted((config.data_dir/'normalized/financials').rglob('*.parquet'))
@@ -35,6 +35,14 @@ def backfill_documents(config, start, end, *, limit=100, retry_review=False):
             from quant.pipeline.report_fundamental_acquisition import classify_attempt
             permanent = {key for key, attempt in state['attempted'].items() if not classify_attempt(attempt)[1]}
             candidates = candidates[~candidates.filing_id.isin(permanent)]
+        if plan_path is not None:
+            from quant.pipeline.plan_fundamental_acquisition import load_plan
+            from quant.research.coverage_deficits import candidate_id
+            plan = load_plan(plan_path)
+            priorities = {r['filing_id']: r['priority_rank'] for r in plan['candidates']}
+            candidates = candidates.copy()
+            candidates['_priority'] = [priorities.get(candidate_id(r), len(priorities)+1) for r in candidates.to_dict('records')]
+            candidates = candidates.sort_values(['_priority', 'filing_id']).drop(columns='_priority')
         history = read_parquet_file(config.data_dir/'normalized/security_history/identities.parquet')
         versions = FinancialVersionStore(config)
         attempted_this_batch, source_blocked = 0, False
@@ -75,8 +83,10 @@ def main():
     parser,config = parser_config(__doc__)
     parser.add_argument('--limit',type=int,default=100)
     parser.add_argument('--retry-review',action='store_true')
+    from pathlib import Path
+    parser.add_argument('--plan', type=Path)
     args = parser.parse_args()
-    result = backfill_documents(args.config(config),args.start,args.end,limit=args.limit,retry_review=args.retry_review)
+    result = backfill_documents(args.config(config),args.start,args.end,limit=args.limit,retry_review=args.retry_review,plan_path=args.plan)
     print(json.dumps(result,indent=2))
     return 0 if result['status']=='BATCH_EXHAUSTED' and result['needs_review']==0 else 1
 

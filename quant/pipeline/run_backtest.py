@@ -21,6 +21,7 @@ from quant.features.labels import forward_labels
 from quant.models.factor_v1 import score_factor_v1
 from quant.universe.config import UniverseConfig
 from quant.pipeline.check_research_ready import require_research_ready
+from quant.pipeline.certify_implementation import require_certified_implementation
 from quant.storage.research_store import input_manifest, load_research_data, write_json, verify_manifest
 from quant.version import MODEL_VERSION, FEATURE_VERSION, COST_MODEL_VERSION
 from quant.version import PORTFOLIO_ACCOUNTING_VERSION
@@ -68,6 +69,7 @@ def run_research(config, start, end, *, estimate_historical_costs=False, full_ro
 def _run_research(config, start, end, *, estimate_historical_costs=False, full_robustness=True, total_return=False,
                   lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,prepared_root=None, evaluation_window=None):
     readiness = require_research_ready(config, end, start)
+    implementation = require_certified_implementation(config)
     manifest = input_manifest(config, end)
     prices, benchmark_frame, sessions, delivery, indices = load_research_data(config, end)
     lifecycle_events = load_lifecycle(config)
@@ -128,7 +130,9 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         cluster_concentration=float(exposure.max_cluster_weight.max()) if not exposure.empty else None,
         clusters_assessed=assessed, pit_data_verified=readiness['status']=='READY' and readiness.get('lifecycle_data_ready',False))
     verify_manifest(config, manifest)
-    run_config = dict(**manifest, model_version=MODEL_VERSION, feature_version=FEATURE_VERSION,
+    run_config = dict(**manifest, implementation_certification=implementation,
+        manifest=manifest,
+        model_version=MODEL_VERSION, feature_version=FEATURE_VERSION,
         cost_model_version=COST_MODEL_VERSION, date_range={'from': str(start), 'to': str(end)},
         universe_settings=universe, portfolio_settings=portfolio, cost_settings=vars(costs),
         cost_sources=SOURCES,
@@ -151,6 +155,8 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
     path = save_backtest(root, config=run_config, metrics=metrics, result=result, ic=ic, deciles=deciles,
                           rolling=rolling, evidence=evidence, extra=stress)
     write_json(path/'input-manifest.json', manifest)
+    if prepared_root is not None:
+        write_json(path/'specification.json', json.loads((prepared_root/'frozen-baseline.json').read_text(encoding='utf-8')))
     if evaluation_window is not None:
         write_json(path/'evaluation-window.json', evaluation_window)
     write_json(path / 'benchmarks.json', baselines)

@@ -61,5 +61,24 @@ def update_shadow(root, prices, sessions, *, as_of, portfolio, cost_model, corpo
         lifecycle=result.lifecycle[result.lifecycle.trade_date.eq(day)].to_dict('records') if not result.lifecycle.empty else [],
         dividends=result.dividends[result.dividends.trade_date.eq(day)].to_dict('records') if not result.dividends.empty else [],
         validation_level='FORWARD_PAPER_ONLY')
+    record['capacity_violations'] = None
+    record['cluster_concentration'] = None
+    if model_card is not None:
+        from quant.portfolio.constraints import RiskPolicy
+        policy = RiskPolicy()
+        trades = pd.DataFrame(record['trades'])
+        if trades.empty:
+            record['capacity_violations'] = 0
+        elif 'adv60' in selected:
+            dated = trades.merge(selected[['as_of', 'instrument_id', 'adv60']].rename(columns={'as_of':'signal_date'}),
+                                 on=['signal_date', 'instrument_id'], validate='many_to_one', how='left')
+            if dated.adv60.notna().all() and np.isfinite(dated.adv60).all() and dated.adv60.gt(0).all():
+                record['capacity_violations'] = int((dated.turnover/dated.adv60).gt(policy.adv_fraction+1e-9).sum())
+        if record['holdings']:
+            from quant.risk.clusters import return_clusters, cluster_exposure
+            held = pd.DataFrame(record['holdings'])
+            clusters = return_clusters(prices, sessions, day, instrument_ids=set(held.instrument_id))
+            record['cluster_concentration'] = cluster_exposure(held.set_index('instrument_id').value/curve.loc[day, 'nav'], clusters)
+    record['capacity_policy'] = 'portfolio_risk_1.1.0_ADV_FRACTION_0.01'
     record['sha256'] = content_hash(record)
     return append_record(Path(root)/'shadow'/f'{day.date()}.json', record)

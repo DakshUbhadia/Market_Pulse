@@ -1,12 +1,13 @@
 # Current quant status
 
-Updated November 18, 2026, Asia/Kolkata. This is the canonical status.
+Updated November 19, 2026, Asia/Kolkata. This is the canonical status.
 Earlier phase files are historical snapshots. Audit completion percentages
 are estimates, not measured research completion or investment performance.
 
-Epic: `quant-evidence-and-champion-challenger`. The detailed requirement
+Epic: `quant-evidence-closure-and-model-selection`. The detailed requirement
 assessment, implementation paths and remaining gates are in
-[EVIDENCE_PHASE_STATUS.md](EVIDENCE_PHASE_STATUS.md). Commands and artifact
+[EVIDENCE_CLOSURE_STATUS.md](EVIDENCE_CLOSURE_STATUS.md). The previous phase is
+retained in [EVIDENCE_PHASE_STATUS.md](EVIDENCE_PHASE_STATUS.md). Commands and artifact
 contracts are in [README.md](README.md).
 
 ## Implemented controls
@@ -37,6 +38,14 @@ contracts are in [README.md](README.md).
 - Registered V1/V2 forward collection and matched-date cohort reporting are
   prepared. Feature/IC drift, coverage/parser health, rank turnover, portfolio
   risk and freshness monitoring produce review alerts without retraining.
+- Dataset-specific approved sources, marginal-coverage acquisition plans,
+  attributable deficits and terminal classifications are implemented.
+- Specification freezing requires certified filing/share reports and binds
+  their hashes and exact code SHA. Decisions distinguish inadequate samples
+  from tested rejection. Both real historical runners require certification.
+- Incident journals preserve opening/resolution history and bind monitoring
+  and promotion. Portable research-release bundles retain original seals and
+  supplemental inputs. Forward comparisons require matching data snapshots.
 
 The proposed `quant/specs/factor_v2_1.0.0.json` remains explicitly DRAFT.
 Its formulas, missingness, normalization, costs, portfolio, risk, capital
@@ -58,17 +67,22 @@ valuation bridge remain unproven. Additional exchange retrieval timed out.
 The search is **EVIDENCE_SEARCH_ACTIVE**; no exhaustion, verified transition,
 fallback window or successful baseline has been fabricated.
 
-The existing bounded Stage 1 worker was observed running and left undisturbed.
-A fresh local acquisition snapshot counted **21,940 candidates, 2,025 attempted,
-1,986 parsed without outstanding attempt review, and 19,915 unattempted**:
-**9.23% attempt completion**. This denominator includes missing-document
+A fresh local acquisition snapshot counted **21,940 candidates, 3,125 attempted,
+3,085 parsed without outstanding attempt review, and 18,815 unattempted**:
+**14.24% attempt completion**. There are **3,238 terminal classifications**,
+including **113 missing source URLs**. This denominator includes missing-document
 candidates. It is a dated snapshot of a changing corpus, not coverage
 certification. The corrected fundamental audit spans 35 monthly cutoffs with
-maximum usable consolidated coverage **43.03%** and no reliable PIT interval.
+maximum usable consolidated coverage **43.44%** and no reliable PIT interval.
 A real-data selector defect that treated discovery metadata and its own parsed
 document as conflicting revisions was fixed in `pit_fundamentals_1.1.0`;
 genuine conflicts and future revisions remain blocked. No verified historical
 share corpus is present.
+
+The coverage planner identified 745 documents with 1,868 estimated marginal
+name-month repairs. The top-priority official static document was actually
+retrieved and parsed successfully, outside the original corpus and frozen
+coverage snapshot. This is an acquisition observation, not certification.
 
 No real V2 decision, real forward cohort, champion, production promotion or
 completed phase is claimed. Elastic Net remains deferred with zero weight:
@@ -77,27 +91,29 @@ multi-year PIT feature coverage. Untested ML is not labelled REJECTED.
 
 ## Provenance and validation
 
-The prior 314-test implementation `269760f1aa12753547bb65b0e16c09f000dea406`
-has [passing exact-SHA unit CI](https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44345064718).
-That workflow does not certify subsequent changes. The new real V2 gate
-requires public unit CI on its exact clean implementation SHA.
+The starting implementation `f06add81a556cbd8fb422fd13015a2b9acbda8b9`
+has [passing exact-SHA unit CI](https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44370186408).
+That workflow does not certify subsequent working-tree changes. Both real
+historical runners require public unit CI on their exact clean implementation SHA.
 
 Factor V1 model `factor_v1_1.0.0`, features `factor_v1_features_1.0.5`,
 accounting `ex_date_cash_1.3.0`, transition `security_transitions_1.1.0`,
 lifecycle `pit_lifecycle_1.2.0`, and costs `india_delivery_1.1.0` are
 unchanged. Risk research is now `portfolio_risk_1.1.0`; the new controls
-are `evidence_champion_challenger_1.0.0`.
+are `evidence_closure_1.0.0`; evaluation-window admission is
+`validated_data_window_1.1.0`.
 
-The final full implementation regression passed **340 non-integration tests**.
-After the snapshot repair, the final targeted selection passed **57 tests**,
-covering **342 unique non-integration cases** across both selections. Remote
-exact-SHA CI and publication are recorded in machine reports separately.
-All **11 live checks** ran separately: **6 passed, 5 failed**, each failure
-caused by NSE API warm-up HTTP 403. No live failure was skipped or relabelled
-as an archived success.
+The final full regression passed **357 non-integration tests**. Final affected
+selections cover **358 unique cases** across the full and targeted runs.
+Live checks returned **6 passed / 5 failed**, all failures NSE API warm-up
+HTTP 403. Dependency, compilation and whitespace checks passed. Fresh archive
+readiness remains READY through November 17; live health is DEGRADED and the
+incident ledger records the source outage. Remote exact-SHA certification for
+the uncommitted implementation remains pending.
 
 Repository-local execution reports are under
-`data/evidence-champion-challenger/reports/`. They preserve the acquisition
+`data/evidence-closure/reports/`. Previous reports remain under
+`data/evidence-champion-challenger/reports/`. The new reports preserve the acquisition
 snapshot, fresh source downloads/search status, public CI observation and
 separate unit/live test results. They do not overwrite old experiments.
 The complete research phase remains **IN PROGRESS**.

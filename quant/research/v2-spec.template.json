@@ -1,5 +1,7 @@
 {
   "spec_version": "factor_v2_1.0.0",
+  "evaluation_dates_selected_using": "CERTIFIED_COVERAGE_ONLY",
+  "performance_used_to_choose_dates": false,
   "review_status": "DRAFT",
   "reviewed_by": null,
   "model_version": "factor_v2_candidate_1.0.0",
@@ -129,6 +131,9 @@
     10000000
   ],
   "acceptance": {
+    "min_mean_ic": 0.01,
+    "min_ir": 0.1,
+    "min_valid_windows": 1,
     "min_oos_sessions": 504,
     "min_mean_ic_improvement": 0.005,
     "min_ir_improvement": 0.1,

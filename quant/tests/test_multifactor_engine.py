@@ -149,13 +149,21 @@ def reviewed_spec():
     return spec
 
 
+def synthetic_coverage_reports(spec):
+    dates = pd.date_range(pd.Timestamp(spec['evaluation_windows'][0]['from'])-pd.DateOffset(months=13),
+                          pd.Timestamp(spec['evaluation_windows'][-1]['to'])+pd.offsets.MonthEnd(0), freq='ME')
+    periods = [dict(as_of=str(d.date()), coverage_pct=100., top_liquidity_coverage_pct=100.,
+                    verified_share_coverage=100., top100_verified_share_coverage=100., thresholds_met=True) for d in dates]
+    return {k:dict(scope='SYNTHETIC_TEST_ONLY', frequency='monthly', periods=periods) for k in ('filings', 'shares')}
+
+
 def test_specification_rejects_draft_and_detects_tampering(tmp_path):
     from quant.research.specification import freeze_specification,load_specification
     spec=reviewed_spec()
     with pytest.raises(ValueError,match='review'):
         freeze_specification(dict(spec,review_status='DRAFT'),tmp_path/'draft.json')
     path=tmp_path/'frozen.json'
-    freeze_specification(spec,path)
+    freeze_specification(spec,path,coverage_reports=synthetic_coverage_reports(spec))
     assert load_specification(path)==spec
     record=json.loads(path.read_text())
     record['specification']['min_group_size']=2
@@ -170,7 +178,7 @@ def test_v2_research_block_retains_outcome_without_completion(tmp_path, monkeypa
     from quant.pipeline.run_factor_v2_research import run_factor_v2_research
     monkeypatch.setattr('quant.pipeline.run_factor_v2_research.require_certified_implementation', lambda *a: {'scope': 'SYNTHETIC_ONLY'})
     spec=tmp_path/'spec.json'
-    freeze_specification(reviewed_spec(),spec)
+    freeze_specification(reviewed_spec(),spec,coverage_reports=synthetic_coverage_reports(reviewed_spec()))
     with pytest.raises(FileNotFoundError):
         run_factor_v2_research(Config(data_dir=tmp_path),spec_path=spec,
             price_baseline=tmp_path/'no-price-baseline',total_return_baseline=tmp_path/'no-tr-baseline',
@@ -205,7 +213,7 @@ def test_comparison_runs_shared_accounting_and_rejects_universe_mismatch():
     assert all(r['metrics']['observations']==80 for r in result.values())
     assert all(set(r['stress'])=={'1.5','2.0'} for r in result.values())
     assert not ic.empty and set(ic.block)==set(BLOCKS)
-    assert v2_decision([result],reviewed_spec()['acceptance'])['decision']=='NO_GO_INVESTIGATE'
+    assert v2_decision([result],reviewed_spec()['acceptance'])['decision']=='INCONCLUSIVE'
     arms['matched_v1']=scores.iloc[1:]
     with pytest.raises(ValueError,match='identical dated'):
         compare_models(prices,arms,labels,benchmark,sessions,window)
@@ -351,7 +359,7 @@ def test_complete_v2_runner_seals_synthetic_comparison_without_promotion(tmp_pat
     spec=reviewed_spec()
     spec['evaluation_windows']=[dict(**{'from':'2025-01-01','to':'2025-02-07'})]
     spec_path=tmp_path/'frozen-spec.json'
-    freeze_specification(spec,spec_path)
+    freeze_specification(spec,spec_path,coverage_reports=synthetic_coverage_reports(spec))
     # Only the external V1/data foundation is isolated. Feature construction,
     # PIT selection, coverage, all accounting comparisons and seals remain real.
     monkeypatch.setattr(runner,'require_completed_baselines',lambda *a:{'scope':'SYNTHETIC_TEST_ONLY'})
@@ -364,6 +372,6 @@ def test_complete_v2_runner_seals_synthetic_comparison_without_promotion(tmp_pat
         total_return_baseline=tmp_path/'total',filings_path=inputs[0],anchors_path=inputs[1],events_path=inputs[2],
         share_coverage_path=inputs[3],output_root=tmp_path/'research')
     assert verify_backtest_seal(folder)['status']=='COMPLETE'
-    assert decision['decision']=='NO_GO_INVESTIGATE' and not decision['automatic_model_activation']
+    assert decision['decision']=='INCONCLUSIVE' and not decision['automatic_model_activation']
     assert len(list((folder/'window-00').glob('*/metrics.json')))==4
     assert (folder/'window-00/capacity-scenarios.json').is_file()

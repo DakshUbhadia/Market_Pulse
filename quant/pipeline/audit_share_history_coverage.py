@@ -43,6 +43,7 @@ def audit_share_history_coverage(universe, anchors, events, coverage, sessions, 
         overall, top_pct = (100*available/count if count else None), (100*top_available/top if top else None)
         rows.append(dict(as_of=str(day.date()), eligible_count=count,
             eligible_with_verified_shares=available, verified_share_coverage=overall,
+            overall_share_coverage=overall, top100_share_coverage=top_pct,
             top100_adv_count=top, top100_with_verified_shares=top_available,
             top100_verified_share_coverage=top_pct,
             thresholds_met=bool(count and top and overall >= 80 and top_pct >= 90)))

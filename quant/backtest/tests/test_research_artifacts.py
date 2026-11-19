@@ -70,6 +70,7 @@ def test_full_research_runner_writes_reproducible_artifact_contract(tmp_path, mo
     prices, benchmark, sessions = market_fixture(stocks=35, days=440, start='2023-01-02')
     indices = pd.concat([benchmark.assign(index_name=name) for name in ('NIFTY 50','NIFTY 500')])
     monkeypatch.setattr(runner,'require_research_ready',lambda *args: {'status':'SYNTHETIC_TEST_ONLY'})
+    monkeypatch.setattr(runner,'require_certified_implementation',lambda *a:dict(scope='SYNTHETIC_TEST_ONLY'))
     monkeypatch.setattr(runner,'load_research_data',lambda *args: (prices,benchmark,sessions,None,indices))
     monkeypatch.setattr(runner,'input_manifest',lambda *args: dict(input_sha256='synthetic',git_commit='test',files=[]))
     path,evidence=runner.run_research(Config(data_dir=tmp_path),date(2024,1,2),sessions[-1].date(),
@@ -80,6 +81,11 @@ def test_full_research_runner_writes_reproducible_artifact_contract(tmp_path, mo
                  'benchmarks.json','IC-confidence-interval.json','ranking-top30.json'):
         assert (path/name).is_file()
     manifest=json.loads((path/'config.json').read_text())
+    assert manifest['manifest']['input_sha256'] == 'synthetic'
+    frozen = json.loads((path/'specification.json').read_text())
+    assert frozen['decision'] == 'PENDING'
+    original = next((tmp_path/'research/experiments').glob('*/frozen-baseline.json'))
+    assert frozen == json.loads(original.read_text())
     assert manifest['return_basis']=='PRICE' and manifest['cost_settings']['allow_estimated_history']
     assert len(json.loads((path/'benchmarks.json').read_text()))==5
     assert list((path/'walk_forward/2024').glob('run-*/metrics.json'))
@@ -93,6 +99,7 @@ def test_total_return_runner_records_tri_basis_clusters_and_production_gate(tmp_
     tri = indices.assign(index_name=indices.index_name + ' TRI')
     actions = pd.DataFrame(columns=['event_id','action_type','ex_date','instrument_id','cash_amount','parse_status'])
     monkeypatch.setattr(runner,'require_research_ready',lambda *args: dict(status='READY'))
+    monkeypatch.setattr(runner,'require_certified_implementation',lambda *a:dict(scope='SYNTHETIC_TEST_ONLY'))
     monkeypatch.setattr(runner,'load_research_data',lambda *args: (prices,benchmark,sessions,None,indices))
     monkeypatch.setattr(runner,'input_manifest',lambda *args: dict(input_sha256='synthetic',git_commit='test',files=[]))
     monkeypatch.setattr(runner,'query_dataset',lambda root,name,**kwargs: actions if name=='corporate_actions' else tri)

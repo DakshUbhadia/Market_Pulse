@@ -24,6 +24,16 @@ def validate_model_card(card):
         raise ValueError('Model card requires a full git commit')
     if card['decision'] not in ('PENDING', 'PASS', 'FAIL'):
         raise ValueError('Unknown historical decision')
+    if card['decision'] == 'PASS':
+        for field in ('historical_experiment', 'historical_completion_sha256', 'forward_policy'):
+            if not card.get(field):
+                raise ValueError('Validated model cards must freeze historical evidence and forward sample policy')
+        if not re.fullmatch('[0-9a-f]{64}', card['historical_completion_sha256']):
+            raise ValueError('Model card requires a historical completion SHA-256')
+        policy = card['forward_policy']
+        for key, minimum in (('min_signal_sessions', 126), ('min_rebalance_cycles', 6), ('min_matured_63_signals', 30)):
+            if type(policy.get(key)) is not int or policy[key] < minimum:
+                raise ValueError('Model card forward sample policy is insufficient')
     return card
 
 
@@ -36,7 +46,7 @@ def make_model_card(value):
 
 
 def verify_model_card(card):
-    validate_model_card(card)
     if card.get('sha256') != content_hash({k: v for k, v in card.items() if k != 'sha256'}):
         raise ValueError('Immutable model card checksum changed')
+    validate_model_card(card)
     return card

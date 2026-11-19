@@ -19,6 +19,7 @@ def test_research_runner_accounting_contract(tmp_path,monkeypatch,total_return):
     actions = pd.DataFrame(columns=['event_id','action_type','ex_date','instrument_id','cash_amount','parse_status'])
     tri = indices.assign(index_name=indices.index_name+' TRI')
     monkeypatch.setattr(runner,'require_research_ready',lambda *a:dict(status='SYNTHETIC_TEST_ONLY'))
+    monkeypatch.setattr(runner,'require_certified_implementation',lambda *a:dict(scope='SYNTHETIC_TEST_ONLY'))
     monkeypatch.setattr(runner,'input_manifest',lambda *a:dict(files=[],input_sha256='synthetic'))
     monkeypatch.setattr(runner,'load_research_data',lambda *a:(prices,benchmark,sessions,None,indices))
     monkeypatch.setattr(runner,'query_dataset',lambda root,name,**kw: actions if name=='corporate_actions' else tri)

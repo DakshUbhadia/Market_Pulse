@@ -7,7 +7,7 @@ import pandas as pd
 
 from quant.forward.signal_store import append_record, content_hash
 
-EVALUATION_WINDOW_VERSION = 'validated_data_window_1.0.0'
+EVALUATION_WINDOW_VERSION = 'validated_data_window_1.1.0'
 SEARCH_STATES = {'EVIDENCE_SEARCH_ACTIVE', 'EVIDENCE_COMPLETE', 'EVIDENCE_EXHAUSTED_UNRESOLVED'}
 
 
@@ -16,13 +16,40 @@ def validate_search_audit(audit):
         raise ValueError('Evidence search requires an event ID and explicit search status')
     if audit['status'] == 'EVIDENCE_EXHAUSTED_UNRESOLVED':
         required = ('sources_checked', 'dates_checked', 'documents_checked', 'search_completed_at',
-                    'reason_transition_cannot_be_certified', 'reviewed_by')
+                    'reason_transition_cannot_be_certified', 'reviewed_by', 'reviewed_at',
+                    'missing_facts', 'evidence_hashes', 'conclusion')
         if any(not audit.get(key) for key in required):
             raise ValueError('Evidence exhaustion requires a completed, reviewed search audit')
+        for key in ('sources_checked', 'dates_checked', 'documents_checked', 'missing_facts'):
+            if not isinstance(audit[key], list) or any(not isinstance(v, str) or not v.strip() for v in audit[key]):
+                raise ValueError('Evidence exhaustion requires explicit nonempty search audit lists')
         completed = pd.Timestamp(audit['search_completed_at'])
         if completed.tzinfo is None or completed > pd.Timestamp.now(tz='UTC'):
             raise ValueError('Evidence search completion must be a past timestamp with timezone')
+        reviewed = pd.Timestamp(audit['reviewed_at'])
+        if reviewed.tzinfo is None or reviewed < completed or reviewed > pd.Timestamp.now(tz='UTC'):
+            raise ValueError('Evidence exhaustion review must follow search completion')
+        import re
+        hashes = audit['evidence_hashes']
+        if not isinstance(hashes, dict) or any(not re.fullmatch('[0-9a-f]{64}', str(h)) for h in hashes.values()):
+            raise ValueError('Evidence exhaustion requires document SHA-256 hashes')
+        if audit.get('performance_used_to_choose_start') is not False:
+            raise ValueError('Evidence exhaustion cannot be influenced by performance')
+        if audit.get('performance_used_to_decide_exhaustion') is not False:
+            raise ValueError('Evidence exhaustion must be decided independently of performance')
     return audit
+
+
+def record_search_audit(audit, output, *, data_dir):
+    """Archive a formal audit after checking referenced evidence bytes."""
+    validate_search_audit(audit)
+    from quant.storage.research_store import digest_file
+    base = Path(data_dir).resolve()
+    for name, expected in audit.get('evidence_hashes', {}).items():
+        path = (base/name).resolve()
+        if not path.is_relative_to(base) or not path.is_file() or digest_file(path) != expected:
+            raise ValueError('Evidence search source is missing or its checksum changed')
+    append_record(Path(output), dict(audit=audit, sha256=content_hash(audit)))
 
 
 def select_evaluation_window(requested_start, sessions, blocking_events, *, warmup_sessions):

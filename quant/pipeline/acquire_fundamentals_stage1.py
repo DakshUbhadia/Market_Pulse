@@ -8,7 +8,7 @@ from quant.pipeline.backfill_fundamental_documents import backfill_documents
 from quant.storage.research_store import write_json
 
 
-def acquire_stage1(config,start,end,*,batch_size=100,max_batches=1):
+def acquire_stage1(config,start,end,*,batch_size=100,max_batches=1,plan_path=None):
     if start<date(2024,1,1) or not 1<=batch_size<=250 or not 1<=max_batches<=250:
         raise ValueError('Stage 1 requires 2024-present and bounded document/batch limits')
     results=[]
@@ -20,7 +20,7 @@ def acquire_stage1(config,start,end,*,batch_size=100,max_batches=1):
     for _ in range(max_batches):
         before=json.loads(checkpoint.read_text()).get('attempted',{}) if checkpoint.exists() else {}
         previous_parsed=sum(r.get('parser_status')=='PARSED' for r in before.values())
-        report=backfill_documents(config,start,end,limit=batch_size)
+        report=backfill_documents(config,start,end,limit=batch_size, **({'plan_path': plan_path} if plan_path else {}))
         count=report['attempted_this_batch']
         parsed=report['parsed']-previous_parsed
         results.append(dict(**report,batch_parse_success=parsed/count if count else None))
@@ -37,6 +37,9 @@ def acquire_stage1(config,start,end,*,batch_size=100,max_batches=1):
     result=dict(status=status,pid=os.getpid(),range=dict(start=str(start),end=str(end)),batches=results,
         historical_expansion_enabled=False,factor_v2_enabled=False,
         coverage_status='UNASSESSED_REQUIRES_DATED_UNIVERSE_AUDIT')
+    from quant.pipeline.report_fundamental_acquisition import report_fundamental_acquisition
+    result['candidate_classification'] = {k:v for k,v in report_fundamental_acquisition(config, start, end).items()
+                                          if k != 'details'}
     write_json(config.data_dir/'reports/fundamental-stage1-acquisition.json',result)
     return result
 
@@ -47,8 +50,10 @@ def main():
     parser.set_defaults(start=date(2024,1,1))
     parser.add_argument('--batch-size',type=int,default=100)
     parser.add_argument('--max-batches',type=int,default=1)
+    from pathlib import Path
+    parser.add_argument('--plan', type=Path)
     args=parser.parse_args()
-    report=acquire_stage1(args.config(config),args.start,args.end,batch_size=args.batch_size,max_batches=args.max_batches)
+    report=acquire_stage1(args.config(config),args.start,args.end,batch_size=args.batch_size,max_batches=args.max_batches,plan_path=args.plan)
     print(json.dumps(report,indent=2))
     return 0 if report['status'] in ('BATCH_BUDGET_REACHED','ACQUISITION_EXHAUSTED','ACQUIRED_WITH_REVIEW') else 1
 

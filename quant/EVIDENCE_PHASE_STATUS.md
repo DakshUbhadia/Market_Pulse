@@ -1,5 +1,9 @@
 # Evidence and champion/challenger phase
 
+Historical phase snapshot. The November 19 implementation and latest measured
+evidence are in [EVIDENCE_CLOSURE_STATUS.md](EVIDENCE_CLOSURE_STATUS.md) and
+[CURRENT_STATUS.md](CURRENT_STATUS.md).
+
 Epic: `quant-evidence-and-champion-challenger`. Reviewed November 18, 2026,
 Asia/Kolkata, against `Market_Pulse_Next_Major_Phase_Evidence_Champion_Challenger.md`.
 The document's completion percentages are estimates. This report distinguishes

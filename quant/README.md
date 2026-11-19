@@ -688,7 +688,10 @@ mandatory held blocker. Its input is a JSON list of audits containing
 `event_id`, `mandatory_held_event=true`, `boundary_date`,
 `status=EVIDENCE_EXHAUSTED_UNRESOLVED`, `sources_checked`, `dates_checked`,
 `documents_checked`, `search_completed_at`,
-`reason_transition_cannot_be_certified` and `reviewed_by`. The current TIDEWATER
+`reason_transition_cannot_be_certified`, `reviewed_by`, `reviewed_at`,
+`missing_facts`, `evidence_hashes` (archive-relative path to SHA-256), `conclusion`,
+`performance_used_to_decide_exhaustion=false` and
+`performance_used_to_choose_start=false`. The current TIDEWATER
 search is ACTIVE and cannot supply this input. Once permitted:
 
 ```powershell
@@ -721,8 +724,10 @@ python -m quant.pipeline.run_registered_forward --registry <registry-dir> --mode
 Cards contain all provenance fields in `quant/models/model_card.py`, plus
 `historical_experiment` and `historical_completion_sha256` for validation.
 For V2, `spec_hash` is the canonical `content_hash` of the inner specification;
-`data_manifest_hash` hashes the experiment's `manifest`. For V1 it hashes the
-`files` object from config. Model versions, feature versions, policies and
+`data_manifest_hash` hashes the experiment's `manifest`, including new V1 runs.
+New V1 cards hash the sealed `specification.json`, which preserves the original
+pre-run `frozen-baseline.json`. Legacy configs without a manifest use their
+`files` object. Model versions, feature versions, policies and
 sealed decisions must agree. Forward V2 also requires `--spec`, `--filings`,
 `--anchors`, `--capital-events`, and `--share-coverage`. Registered stores are
 under `forward/registered/<model-id>/<cohort>/`; existing V1 stores are retained.
@@ -733,8 +738,9 @@ Use `report_forward_comparison --v1-root ... --v2-root ... --to ... --output ...
 for matched-date cohorts. `report_research_monitoring --help` lists the dated
 feature, IC, NAV and observation inputs. Observation JSON contains
 `source_health`, fractional `coverage` (`overall`, `top100`, `parser_attempts`,
-`parser_failures`), fractional `cluster_weights`, and assessed `incidents`
-(`data`, `lifecycle`, `transition`, `accounting`). IC inputs include `block`,
+`parser_failures`) and fractional `cluster_weights`. Supply `--incident-root`
+and the cohort's `--model-id`; the journal supplies assessed incident counts.
+IC inputs include `block`,
 `IC` and `exit_date`; features include `as_of`, and NAV includes `trade_date`.
 The reference feature window must precede the current window. Unassessed
 dimensions cannot pass monitoring; alerts never retrain.
@@ -742,7 +748,8 @@ dimensions cannot pass monitoring; alerts never retrain.
 Champion promotion additionally needs a frozen card `forward_policy` with at
 least 126 signal sessions, 6 rebalance cycles and 30 distinct matured
 63-session signals. Supply `--forward-root`, `--monitoring-report`, `--reviewer`
-and `--manual-record`. The manual record identifies `model_id`,
+`--manual-record` and `--incident-root`. The monitoring report must bind the
+current incident-journal hash, with zero unresolved incidents. The manual record identifies `model_id`,
 `model_card_sha256`, `monitoring_sha256`, `reviewed_by`, `reviewed_at`,
 `decision=PROMOTE` and a reason. Retire an existing champion before promoting
 another. No production publishing is enabled by these commands.
@@ -757,3 +764,114 @@ and timezone-aware `reviewed_at`, plus `acquisition_report`, `coverage_report`
 and `share_report`, each containing `path` and `sha256` for verified reports
 inside the data directory. The previous stage must have no unattempted or
 retryable candidates and certified monthly filing/share continuity.
+
+## Evidence closure and model selection
+
+The section-by-section implementation assessment and actual blockers are in
+[EVIDENCE_CLOSURE_STATUS.md](EVIDENCE_CLOSURE_STATUS.md). All commands below
+write to explicit destinations or the configured data directory; use
+`--data-dir` when collecting a separate local operational snapshot.
+
+`certify_implementation --unit-results <unit.xml> --live-results <live.xml>`
+records the full commit, clean-tree observation, exact-SHA CI URL/status,
+local test count, dependency/compile/whitespace checks and independent live
+failures. Unknown local counts remain null. Both V1 and V2 real historical
+runners require clean exact-SHA unit certification. The CI workflow retains
+JUnit evidence as `quant-unit-evidence`. NSE 403 failures stay visible without
+revoking independently verified historical files.
+
+Dataset observations can be supplied to `validate_source_health` using
+`--dataset-observations <observations.json>`. Each row names `dataset`,
+`source_id`, `source_class`, `status`, `provenance_verified`, and, for current
+work, `verified_session`. Archived copies also require `checksum_verified`.
+`quant/data/source_requirements.py` declares datasets for historical research,
+forward refresh, fundamental acquisition and production publishing. Approved
+official static files can satisfy the same dataset as an unavailable API.
+The four health dimensions remain separate. No anti-bot bypass is introduced.
+
+Run an attributable coverage audit before planning acquisition:
+
+```powershell
+python -m quant.pipeline.audit_fundamental_coverage --from 2024-01-01 --to <certified-session> --universe <dated-universe.parquet> --attempts <checkpoint.json> --share-validity <dated-share-validity.parquet>
+python -m quant.pipeline.plan_fundamental_acquisition --universe <same-universe.parquet> --coverage <coverage.json> --filings <filings-snapshot.parquet> --attempts <checkpoint.json> --output <plan.json>
+python -m quant.pipeline.acquire_fundamentals_stage1 --from 2024-01-01 --to <certified-session> --plan <plan.json> --batch-size 100 --max-batches 1
+```
+
+`--share-validity` is optional; absent evidence produces null share deficits.
+Coverage gaps are percentage points, with separate integer name deficits.
+Missing-name reasons cover unattempted, download, parser, timing, identity and
+unsupported-entity failures. Candidate IDs and historical ADV bind the planner
+to each cutoff. Priorities use potential marginal name-month repairs: top-100
+gaps first, then proximity to 80%, consecutive months and bank/NBFC gaps.
+Already planned repairs are discounted; future disclosures never repair an
+earlier month. Estimates do not certify successful acquisition. Candidates
+outside the plan remain eligible for later bounded batches. No return column
+is used. Preserve and regenerate plans as the acquisition snapshot changes.
+
+Acquisition reports retain legacy counters and add `candidate_count`,
+`attempted_count`, `terminal_status_count`, `retryable_count`,
+`unattempted_count`, `attempt_completion_pct`, `usable_document_pct` and
+per-candidate `terminal_status`. Missing URLs are classified explicitly while
+remaining unattempted. Retryable failures remain visible even though they have
+a terminal classification for the current attempt. Neither terminal
+classification nor parser success establishes PIT universe coverage.
+
+Formal evidence-search audits can be preserved with
+`record_evidence_search --audit <audit.json> --output <new-record.json>`.
+Every referenced archive is checksum-verified. Exhaustion requires the full
+review record above. The fallback loader uses `validated_data_window_1.1.0`;
+it never modifies an original blocked experiment.
+
+Freezing V2 now requires both certified reports:
+
+```powershell
+python -m quant.pipeline.freeze_v2_specification --spec <reviewed-policy.json> --coverage <filing-coverage.json> --share-coverage <share-coverage.json> --output <frozen-spec.json>
+```
+
+The envelope binds both reports, the full code SHA, source hashes and the
+coverage-only date-selection declaration. Monthly percentages are rechecked;
+twelve passing cutoffs must precede OOS and continuous coverage must span the
+declared interval. Frozen source inputs are checked again at research entry.
+The draft now includes absolute minimum IC/IR and minimum valid windows,
+alongside improvement, turnover, drawdown, label and cost-stress thresholds.
+These are proposals awaiting real review. Outcomes are `BLOCKED`,
+`INCONCLUSIVE`, `NO_GO_V2` or `GO_FURTHER_V2_RESEARCH`; an insufficient sample
+cannot be reported as a tested rejection. No Elastic Net fit is admitted yet.
+
+Initialize the operational incident journal explicitly, then open or resolve
+incidents from reviewable JSON files:
+
+```powershell
+python -m quant.monitoring.incidents --root <incident-ledger>
+python -m quant.pipeline.open_research_incident --ledger <incident-ledger> --record <opening.json>
+python -m quant.pipeline.resolve_research_incident --ledger <incident-ledger> --incident-id <id> --record <resolution.json>
+```
+
+An opening supplies `incident_class`, `severity` (LOW/MEDIUM/HIGH/CRITICAL),
+`affected_models`, `affected_cohorts` (absolute cohort paths), `affected_dates`
+(ISO dates) and `evidence`; `incident_id` is optional. An empty scope list means
+all models/cohorts/dates. A resolution supplies `resolution`, `reviewer` and
+`evidence`. Opening and resolution are separate immutable, chained events.
+An absent journal remains unassessed. Monitoring, comparison and promotion
+read current scoped incidents; model/risk incidents also block promotion.
+
+Matched cohort comparison requires identical signal dates, assumptions,
+market/event file manifests and next-session execution times. Reports retain
+21/63-session outcomes, excess returns, rank IC, hit rate, Sharpe, IR,
+drawdown, turnover, costs and cash, and add capacity, cluster and incident
+assessments. Older records with absent diagnostics stay unassessed.
+
+For a historically validated registry candidate:
+
+```powershell
+python -m quant.pipeline.build_research_release --registry <registry> --model-id <id> --output <new-release-directory>
+python -m quant.pipeline.build_research_release --output <release-directory> --verify-only --data-dir <immutable-source-data>
+```
+
+The bundle includes the model card, policy, original completion seal, input
+manifest, coverage/share reports, metrics, factor/risk evidence, environment
+and checksums, plus an unchanged `source-experiment/` for independent seal
+verification. Packaging refuses existing destinations and unvalidated models.
+Verification works after relocation; the optional data directory additionally
+verifies archived input bytes. Price-only V1 declares fundamental/share reports
+NOT_APPLICABLE. No release or journal action promotes a model automatically.

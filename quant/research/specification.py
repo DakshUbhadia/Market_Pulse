@@ -42,13 +42,18 @@ def validate_specification(spec):
         last=end
     required={'min_oos_sessions','min_mean_ic_improvement','min_ir_improvement',
               'max_drawdown_deterioration','max_turnover','min_label_coverage',
-              'max_turnover_increase','min_robustness_survival'}
+              'max_turnover_increase','min_robustness_survival', 'min_mean_ic', 'min_ir', 'min_valid_windows'}
     criteria=spec.get('acceptance',{})
     if set(criteria)!=required or any(not isinstance(v,(int,float)) or not float('-inf')<v<float('inf') for v in criteria.values()):
         raise ValueError('Declare all numerical promotion criteria')
     if (criteria['min_oos_sessions']<504 or min(criteria.values())<0
             or not 0<criteria['min_label_coverage']<=1 or criteria['max_turnover']<=0):
         raise ValueError('Invalid promotion criteria or insufficient declared OOS length')
+    if type(criteria['min_valid_windows']) is not int or criteria['min_valid_windows'] < 1:
+        raise ValueError('Declare a positive minimum number of valid windows')
+    if (spec.get('evaluation_dates_selected_using') != 'CERTIFIED_COVERAGE_ONLY'
+            or spec.get('performance_used_to_choose_dates') is not False):
+        raise ValueError('Evaluation dates require an evidence-only selection declaration')
     from quant.backtest.portfolio import PortfolioConfig
     from quant.backtest.costs import CostModel
     from quant.portfolio.constraints import RiskPolicy
@@ -78,8 +83,42 @@ def validate_specification(spec):
     return spec
 
 
-def freeze_specification(spec, output):
+def validate_coverage_reports(spec, reports):
+    from quant.research.coverage_policy import reliable_interval
+    if not reports or set(reports) != {'filings', 'shares'}:
+        raise ValueError('Freeze requires certified filing and historical-share coverage reports')
+    start, end = spec['evaluation_windows'][0]['from'], spec['evaluation_windows'][-1]['to']
+    for name, report in reports.items():
+        rows = report.get('periods', [])
+        overall, top = ('coverage_pct', 'top_liquidity_coverage_pct') if name == 'filings' else ('verified_share_coverage', 'top100_verified_share_coverage')
+        if not rows or any(type(r.get(k)) not in (int, float) or not 0 <= r[k] <= 100
+                           for r in rows for k in (overall, top)):
+            raise ValueError('Coverage certification requires assessed monthly percentages')
+        checked = [dict(r, thresholds_met=r[overall] >= 80 and r[top] >= 90) for r in rows]
+        reliable = reliable_interval(checked, minimum_months=spec['coverage_policy']['minimum_consecutive_months'])
+        if (not reliable or len([r for r in checked if reliable <= r['as_of'] < start]) < spec['coverage_policy']['minimum_consecutive_months']
+                or pd.Period(checked[-1]['as_of'], freq='M') < pd.Period(end, freq='M')
+                or (name == 'filings' and report.get('frequency') != 'monthly')):
+            raise ValueError('Certified continuous monthly coverage must precede and span OOS dates')
+    return reports
+
+
+def verify_coverage_inputs(record, data_dir):
+    """Reject frozen certificates whose immutable input files have changed."""
+    base = Path(data_dir).resolve()
+    for report in record['coverage_reports'].values():
+        paths = dict(report.get('input_sha256', {}))
+        provenance = report.get('input_provenance', {})
+        paths.update(provenance.get('financial_files', {}))
+        for name, expected in paths.items():
+            path = (base/name).resolve()
+            if not path.is_relative_to(base) or not path.is_file() or digest_file(path) != expected:
+                raise ValueError('Frozen coverage source is missing or changed')
+
+
+def freeze_specification(spec, output, *, coverage_reports=None):
     validate_specification(spec)
+    validate_coverage_reports(spec, coverage_reports)
     # One version has one policy in a specification store. Re-evaluation requires
     # the same frozen record; policy edits require a new spec_version.
     import re
@@ -88,7 +127,10 @@ def freeze_specification(spec, output):
     output = Path(output)
     append_record(output.parent/'.specification-versions'/f'{spec["spec_version"]}.json',
         dict(specification_sha256=content_hash(spec), source_code_sha256=research_code_hashes()))
-    body=dict(specification=spec,source_code_sha256=research_code_hashes(),
+    from quant.storage.research_store import git_commit
+    body=dict(specification=spec,source_code_sha256=research_code_hashes(), git_commit=git_commit(),
+              coverage_reports=coverage_reports,
+              coverage_report_sha256={k:content_hash(v) for k,v in coverage_reports.items()},
               frozen_at=datetime.now(timezone.utc).isoformat())
     append_record(output,dict(**body,sha256=content_hash(body)))
 
@@ -99,4 +141,11 @@ def load_specification(path):
         raise ValueError('Frozen specification checksum changed')
     if record['source_code_sha256']!=research_code_hashes():
         raise ValueError('Research implementation changed after specification freeze; review a new specification')
-    return validate_specification(record['specification'])
+    from quant.storage.research_store import git_commit
+    if record.get('git_commit') != git_commit():
+        raise ValueError('Specification is bound to a different code SHA')
+    spec = validate_specification(record['specification'])
+    reports = validate_coverage_reports(spec, record.get('coverage_reports'))
+    if record.get('coverage_report_sha256') != {k:content_hash(v) for k,v in reports.items()}:
+        raise ValueError('Frozen coverage evidence changed')
+    return spec

@@ -16,7 +16,8 @@ from quant.storage.research_store import digest_file, write_json
 
 
 def research_monitoring(*, root, as_of, reference, current, features, reference_ic,
-                        current_ic, curve, source_health, coverage, cluster_weights, incidents):
+                        current_ic, curve, source_health, coverage, cluster_weights, incidents=None,
+                        incident_root=None, model_id=None):
     batches, signals = read_signals(root)
     batches = [b for b in batches if b['as_of'] <= str(as_of)]
     cards = {b['settings'].get('model_card_sha256') for b in batches}
@@ -35,7 +36,16 @@ def research_monitoring(*, root, as_of, reference, current, features, reference_
     statuses = [v['status'] for k, v in panels.items() if k != 'factor_ic']+[r['status'] for r in ic_rows]
     if not ic_rows:
         statuses.append('UNASSESSED')
-    if any(not isinstance(incidents.get(k), int) or incidents[k] < 0 for k in ('data', 'lifecycle', 'transition', 'accounting')):
+    ledger = None
+    if incident_root is not None:
+        from quant.monitoring.incidents import IncidentLedger
+        if model_id is not None and any(b['settings'].get('model_id') != model_id for b in batches):
+            raise ValueError('Incident model scope differs from the monitored cohort')
+        ledger = IncidentLedger(incident_root).report(model_id=model_id, cohort_root=root)
+        incidents = ledger['counts']
+    incidents = incidents or {}
+    if (any(type(incidents.get(k)) is not int or incidents[k] < 0 for k in ('data', 'lifecycle', 'transition', 'accounting'))
+            or any(type(v) is not int or v < 0 for v in incidents.values())):
         raise ValueError('All incident dimensions require assessed nonnegative counts')
     unresolved = sum(incidents.values())
     # Signals and next-session shadow records must both exist before integrity passes.
@@ -67,6 +77,7 @@ def research_monitoring(*, root, as_of, reference, current, features, reference_
     return dict(status=status, as_of=str(as_of), generated_at=datetime.now(timezone.utc).isoformat(),
         model_card_sha256=next(iter(cards)), cohort_root=str(Path(root).resolve()), panels=panels,
         incidents=incidents, unresolved_incidents=unresolved, operational_integrity=integrity,
+        incident_ledger=ledger,
         rank_turnover=turnover, automatic_retraining=False, automatic_promotion=False,
         cohort_evidence_sha256=content_hash([b['sha256'] for b in batches]))
 
@@ -78,12 +89,15 @@ def main():
     for key in ('reference', 'current', 'reference-ic', 'current-ic', 'curve', 'observations', 'output'):
         parser.add_argument('--'+key, type=Path, required=True)
     parser.add_argument('--features', nargs='+', required=True)
+    parser.add_argument('--incident-root', type=Path, required=True)
+    parser.add_argument('--model-id', required=True)
     args = parser.parse_args()
     observations = json.loads(args.observations.read_text(encoding='utf-8'))
     inputs = [args.reference, args.current, args.reference_ic, args.current_ic, args.curve]
     frames = [read_parquet_file(p) for p in inputs]
     report = research_monitoring(root=args.root, as_of=args.as_of, reference=frames[0], current=frames[1],
-        features=args.features, reference_ic=frames[2], current_ic=frames[3], curve=frames[4], **observations)
+        features=args.features, reference_ic=frames[2], current_ic=frames[3], curve=frames[4],
+        incident_root=args.incident_root, model_id=args.model_id, **observations)
     report['input_sha256'] = {str(p): digest_file(p) for p in [*inputs, args.observations]}
     write_json(args.output, report)
     print(json.dumps(report, indent=2))

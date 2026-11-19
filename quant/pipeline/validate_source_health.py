@@ -8,7 +8,7 @@ from quant.pipeline.check_research_ready import check_research_ready
 from quant.storage.research_store import write_json
 
 
-def validate_source_health(config, *, as_of, backtest_start=None, output=None):
+def validate_source_health(config, *, as_of, backtest_start=None, output=None, dataset_observations=None):
     # Revalidate archived inputs, rather than trusting an old READY JSON file.
     readiness = check_research_ready(config, as_of=as_of,
         requested_backtest_start=backtest_start, write=False)
@@ -35,7 +35,7 @@ def validate_source_health(config, *, as_of, backtest_start=None, output=None):
         live_api_ready=live, last_live_probe=probe.get('finished_at'),
         last_success=probe.get('finished_at') if live == 'READY' else None,
         failure_class='STALE_SOURCE' if stale else classify_failure(http_status=probe.get('http_status')) if live == 'UNAVAILABLE' else None)],
-        required_session=as_of)
+        required_session=as_of, dataset_observations=dataset_observations)
     report['archive_audit'] = readiness
     report['live_probe_scope'] = 'CALENDAR_ONLY; unprobed API endpoints remain unassessed'
     report['generated_at'] = datetime.now(timezone.utc).isoformat()
@@ -49,8 +49,10 @@ def main():
     parser, config = parser_config(__doc__)
     parser.add_argument('--backtest-start', type=date.fromisoformat)
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--dataset-observations', type=Path)
     args = parser.parse_args()
-    report = validate_source_health(args.config(config), as_of=args.end, backtest_start=args.backtest_start, output=args.output)
+    report = validate_source_health(args.config(config), as_of=args.end, backtest_start=args.backtest_start, output=args.output,
+        dataset_observations=json.loads(args.dataset_observations.read_text(encoding='utf-8')) if args.dataset_observations else None)
     print(json.dumps(report, indent=2))
     return 0 if report['historical_research_ready'] else 1
 

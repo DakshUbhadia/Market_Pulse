@@ -58,6 +58,10 @@ def blocker(**kwargs):
         status='EVIDENCE_EXHAUSTED_UNRESOLVED', sources_checked=['official exchange', 'issuer', 'depository'],
         dates_checked=['2016-03-01/2016-04-30'], documents_checked=['synthetic search audit'],
         search_completed_at='2026-11-18T00:00:00+05:30', reviewed_by='synthetic-test',
+        reviewed_at='2026-11-18T01:00:00+05:30', missing_facts=['credit', 'tradability'],
+        evidence_hashes={'synthetic search audit':'a'*64}, conclusion='Synthetic evidence exhausted',
+        performance_used_to_choose_start=False,
+        performance_used_to_decide_exhaustion=False,
         reason_transition_cannot_be_certified='Synthetic missing credit and tradability evidence', **kwargs)
 
 
@@ -132,6 +136,7 @@ def card_values(**kwargs):
         test_window={'from':'2024-01-01','to':'2026-01-01'}, coverage_policy={'overall':.8, 'top100':.9},
         cost_model_version='india_delivery_1.1.0', risk_policy_version='portfolio_risk_1.0.0',
         historical_metrics={'scope':'SYNTHETIC_ONLY'}, decision='PENDING', decision_reason='Synthetic test candidate')
+    card['forward_policy'] = dict(min_signal_sessions=126, min_rebalance_cycles=6, min_matured_63_signals=30)
     card.update(kwargs)
     return card
 
@@ -157,6 +162,7 @@ def validated_registry(tmp_path):
     experiment = tmp_path/'experiment'
     values = card_values()
     spec = {k: values[k] for k in ('model_version', 'feature_version', 'cost_model_version', 'risk_policy_version', 'coverage_policy')}
+    spec['evaluation_windows'] = [values['test_window']]
     manifest = {'files':[]}
     write_json(experiment/'config.json', dict(specification=spec, manifest=manifest, git_commit='b'*40))
     write_json(experiment/'v2-decision.json', dict(decision='GO_FURTHER_V2_RESEARCH'))
@@ -237,13 +243,13 @@ def test_earlier_acquisition_cannot_bypass_explicit_stage_decision(tmp_path):
 
 
 def test_same_spec_version_cannot_change_thresholds_after_freeze(tmp_path):
-    from quant.tests.test_multifactor_engine import reviewed_spec
+    from quant.tests.test_multifactor_engine import reviewed_spec, synthetic_coverage_reports
     from quant.research.specification import freeze_specification
     spec = reviewed_spec()
-    freeze_specification(spec, tmp_path/'first.json')
+    freeze_specification(spec, tmp_path/'first.json', coverage_reports=synthetic_coverage_reports(spec))
     spec['acceptance']['min_mean_ic_improvement'] = 0.
     with pytest.raises(ValueError, match='Immutable'):
-        freeze_specification(spec, tmp_path/'second.json')
+        freeze_specification(spec, tmp_path/'second.json', coverage_reports=synthetic_coverage_reports(spec))
     assert not (tmp_path/'second.json').exists()
 
 
@@ -262,6 +268,8 @@ def test_exact_sha_ci_ignores_live_failure_but_blocks_dirty_tree(tmp_path, monke
     commit = 'a'*40
     dirty = ['']
     monkeypatch.setattr(module, 'git_commit', lambda: commit)
+    monkeypatch.setattr(module, 'local_checks', lambda: {k:dict(status='PASS') for k in
+        ('dependency_check', 'compile_check', 'whitespace_check')})
     monkeypatch.setattr(module.subprocess, 'run', lambda *a, **k: SimpleNamespace(stdout=dirty[0]))
     runs = [dict(id=1, name='Quant unit tests', head_sha=commit, status='completed', conclusion='success', created_at='2026-11-18'),
             dict(id=2, name='Quant live source smoke tests', head_sha=commit, status='completed', conclusion='failure')]
