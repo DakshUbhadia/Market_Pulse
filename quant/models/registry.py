@@ -89,6 +89,14 @@ class ModelRegistry:
             raise ValueError('Historical input manifest differs from model card')
         if is_v2 and content_hash(config['specification']) != card['spec_hash']:
             raise ValueError('Historical specification differs from model card')
+        windows = config['specification'].get('evaluation_windows', []) if is_v2 else [config.get('date_range', {})]
+        interval = {'from':windows[0].get('from'), 'to':windows[-1].get('to')} if windows else None
+        if not interval or not all(interval.values()) or card['test_window'] not in (interval, windows):
+            raise ValueError('Historical evaluation interval differs from model card')
+        if not is_v2:
+            specification = root/'specification.json'
+            if not specification.is_file() or content_hash(json.loads(specification.read_text(encoding='utf-8'))) != card['spec_hash']:
+                raise ValueError('Historical V1 frozen specification differs from model card')
         if is_v2 and any(config['specification'].get(k) != card[k] for k in (
                 'model_version', 'feature_version', 'cost_model_version', 'risk_policy_version', 'coverage_policy')):
             raise ValueError('Historical model policies differ from model card')
@@ -98,7 +106,7 @@ class ModelRegistry:
         return dict(historical_experiment=str(root), completion_sha256=card['historical_completion_sha256'])
 
     def transition(self, model_id, state, *, reason, reviewer=None, forward_root=None,
-                   monitoring_report=None, manual_record=None):
+                   monitoring_report=None, manual_record=None, incident_root=None):
         if state not in STATES or not str(reason).strip():
             raise ValueError('A valid model state and reason are required')
         with state_lock(self.root/'registry.lock'):
@@ -111,6 +119,12 @@ class ModelRegistry:
             if state in ('HISTORICALLY_VALIDATED', 'FORWARD_CHALLENGER', 'FORWARD_CHAMPION'):
                 evidence.update(self._historical_evidence(card))
             if state == 'FORWARD_CHAMPION':
+                if incident_root is None:
+                    raise ValueError('Champion promotion requires manual review and an assessed incident ledger')
+                from quant.monitoring.incidents import IncidentLedger
+                incident_report = IncidentLedger(incident_root).report(model_id=model_id, cohort_root=forward_root)
+                if incident_report['unresolved_incidents'] != 0:
+                    raise ValueError('Champion promotion requires zero unresolved incidents')
                 if any(r['state'] == state for r in snapshot.values()):
                     raise ValueError('Retire the existing champion before promoting another')
                 if not reviewer or not manual_record or not forward_root or not monitoring_report:
@@ -130,6 +144,8 @@ class ModelRegistry:
                         or metrics['outcomes']['63']['distinct_signals'] < policy['min_matured_63_signals']):
                     raise ValueError('Insufficient independent forward sample under the frozen policy')
                 monitor = json.loads(Path(monitoring_report).read_text(encoding='utf-8'))
+                if monitor.get('incident_ledger') != incident_report:
+                    raise ValueError('Monitoring incident ledger is missing or stale')
                 cohort_hash = content_hash([b['sha256'] for b in batches])
                 if (monitor.get('status') != 'PASS' or monitor.get('model_card_sha256') != card['sha256']
                         or monitor.get('cohort_root') != str(Path(forward_root).resolve())
@@ -147,6 +163,7 @@ class ModelRegistry:
                 if reviewed.tzinfo is None or reviewed > pd.Timestamp.now(tz='UTC'):
                     raise ValueError('Manual promotion review requires a past timezone-aware timestamp')
                 evidence.update(forward_metrics=metrics, monitoring_sha256=digest_file(monitoring_report),
+                                incident_ledger_sha256=incident_report['ledger_sha256'],
                                 manual_record_sha256=digest_file(manual_record))
             return self._append(card, state, prior, reason=reason, evidence=evidence, reviewer=reviewer)
 

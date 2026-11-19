@@ -26,6 +26,7 @@ def test_verified_transition_runs_through_entire_research_tree(tmp_path,monkeypa
     indices=pd.concat([benchmark.assign(index_name=n) for n in ['NIFTY 50','NIFTY 500']])
     actions=pd.DataFrame(columns=['event_id','action_type','ex_date','instrument_id','cash_amount','parse_status'])
     monkeypatch.setattr(runner,'require_research_ready',lambda *a:dict(status='SYNTHETIC_TEST_ONLY'))
+    monkeypatch.setattr(runner,'require_certified_implementation',lambda *a:dict(scope='SYNTHETIC_TEST_ONLY'))
     monkeypatch.setattr(runner,'load_research_data',lambda *a:(prices,benchmark,sessions,None,indices))
     monkeypatch.setattr(runner,'query_dataset',lambda root,name,**kw: actions if name=='corporate_actions' else indices.assign(index_name=indices.index_name+' TRI'))
     # Real manifests, feature construction, engine, all 13 stress scenarios,

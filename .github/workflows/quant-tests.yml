@@ -27,4 +27,9 @@ jobs:
       - run: python -m pip check
       - run: python -m compileall -q quant
       - run: python -m pytest --collect-only quant -q
-      - run: python -m pytest quant -m "not integration" -q
+      - run: python -m pytest quant -m "not integration" -q --junitxml=reports/unit-tests.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quant-unit-evidence
+          path: reports/unit-tests.xml

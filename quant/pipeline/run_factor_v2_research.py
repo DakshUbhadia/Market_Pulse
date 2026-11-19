@@ -32,6 +32,8 @@ def run_factor_v2_research(config, *, spec_path, price_baseline, total_return_ba
     folder.mkdir(parents=True,exist_ok=False)
     try:
         spec=load_specification(spec_path)
+        from quant.research.specification import verify_coverage_inputs
+        verify_coverage_inputs(json.loads(Path(spec_path).read_text(encoding='utf-8')), config.data_dir)
         implementation = require_certified_implementation(config)
         baselines=require_completed_baselines(config,price_baseline,total_return_baseline)
         start=pd.Timestamp(spec['evaluation_windows'][0]['from']).date()
@@ -149,6 +151,10 @@ def run_factor_v2_research(config, *, spec_path, price_baseline, total_return_ba
             implementation_certification=implementation,
             extra_input_sha256=hashes,source_code_sha256=research_code_hashes(),git_commit=git_commit(),
             return_basis=return_basis,historical_cost_estimates=True,production_validated=False))
+        write_json(folder/'input-manifest.json', manifest)
+        write_json(folder/'specification-freeze.json', json.loads(Path(spec_path).read_text(encoding='utf-8')))
+        write_json(folder/'metrics.json', {f'window-{i:02d}': {name:r['metrics'] for name,r in compared.items()}
+                                          for i,compared in enumerate(compared_windows)})
         write_json(folder/'outcome.json',dict(status='COMPLETE',decision=decision))
         seal_backtest(folder)
         return folder,decision

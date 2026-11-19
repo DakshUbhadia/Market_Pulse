@@ -31,12 +31,21 @@ def write_current_status(config, *, public_state=None):
         source_health=read_report(root/'reports/source-health.json'),
         implementation_certification=read_report(root/'reports/implementation-certification.json'),
         fundamental_acquisition=read_report(root/'reports/fundamental-acquisition.json'),
+        fundamental_acquisition_plan=read_report(root/'reports/fundamental-acquisition-plan.json'),
+        evidence_closure_diagnostics=read_report(root/'reports/diagnostic-summary.json'),
         share_history_coverage=read_report(root/'reports/share-history-coverage.json'),
         fundamentals=read_report(root/'reports/fundamental-universe-coverage.json'),
         fundamental_backfill=read_report(root/'reports/fundamental-backfill-status.json'),
         fundamental_documents=read_report(root/'reports/fundamental-document-backfill-status.json'),
         historical_costs=read_report(root/'reports/historical-cost-evidence-review.json'),
         factor_v2_enabled=False,production_promotion=False)
+    from quant.monitoring.incidents import IncidentLedger
+    ledger = root/'research/incidents'
+    report['incident_ledger'] = (IncidentLedger(ledger).report() if (ledger/'ledger.json').is_file()
+                                 else dict(status='UNASSESSED', unresolved_incidents=None))
+    report['registered_forward_cohorts'] = [str(p.parent.relative_to(root)) for p in
+        sorted((root/'forward/registered').rglob('cohort.json')) if any((p.parent/'signals').glob('*.json'))]
+    report['research_releases'] = [str(p.parent.relative_to(root)) for p in sorted((root/'research/releases').rglob('checksums.json'))]
     write_json(root/'reports/current-status.json',report)
     return report
 

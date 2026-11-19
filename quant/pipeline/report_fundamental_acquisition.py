@@ -15,6 +15,8 @@ def classify_attempt(attempt):
         return 'DOWNLOAD_FAILED', True
     if attempt.get('parser_status') == 'PARSED':
         return ('NEEDS_REVIEW', False) if reviews else ('PARSED', False)
+    if attempt.get('parser_status') in ('SUPPORTED_BUT_NO_REQUIRED_FACT', 'NO_REQUIRED_FACT'):
+        return 'SUPPORTED_BUT_NO_REQUIRED_FACT', False
     if 'ENTITY' in reasons and 'UNRESOLVED_IDENTITY' not in reasons:
         return 'UNSUPPORTED_ENTITY', False
     if any(token in reasons for token in ('TAXONOMY', 'NO_XBRL_DOCUMENT', 'UNSUPPORTED_DOCUMENT')):
@@ -22,6 +24,21 @@ def classify_attempt(attempt):
     if attempt.get('parser_status') == 'SUPPORTED_BUT_NO_REQUIRED_FACT':
         return 'SUPPORTED_BUT_NO_REQUIRED_FACT', False
     return 'NEEDS_REVIEW', False
+
+
+TERMINAL_STATES = {'PARSED', 'NO_REQUIRED_FACT', 'UNSUPPORTED_ENTITY', 'UNSUPPORTED_DOCUMENT',
+                   'PERMANENT_REVIEW', 'RETRYABLE_FAILURE', 'MISSING_SOURCE_URL'}
+
+
+def terminal_status(status, retryable, source_document):
+    if status == 'PARSED':
+        return 'PARSED'
+    if not isinstance(source_document, str) or not source_document.strip():
+        return 'MISSING_SOURCE_URL'
+    if retryable:
+        return 'RETRYABLE_FAILURE'
+    return {'SUPPORTED_BUT_NO_REQUIRED_FACT': 'NO_REQUIRED_FACT',
+            'NEEDS_REVIEW': 'PERMANENT_REVIEW'}.get(status, status)
 
 
 def acquisition_report(filings, attempts, *, start, end):
@@ -42,7 +59,10 @@ def acquisition_report(filings, attempts, *, start, end):
         if attempt is None and isinstance(row.get('document_sha256'), str):
             attempt = dict(parser_status=row.get('parser_status'), document_sha256=row['document_sha256'], review=[])
         status, retry = classify_attempt(attempt) if attempt is not None else ('UNATTEMPTED', False)
+        terminal = terminal_status(status, retry, row.get('source_document'))
         details.append(dict(filing_id=key, status=status, retryable=retry, attempted=attempt is not None,
+            terminal_status=terminal, instrument_id=row.get('instrument_id'),
+            source_document=row.get('source_document'),
             downloaded=bool(attempt and isinstance(attempt.get('document_sha256'), str)),
             timing_verified=row.get('timing_status') == 'VERIFIED',
             identity_resolved=isinstance(row.get('instrument_id'), str) and bool(row['instrument_id']),
@@ -52,8 +72,10 @@ def acquisition_report(filings, attempts, *, start, end):
             taxonomy=str((attempt or {}).get('taxonomy') or 'UNASSESSED')))
     attempted = sum(r['attempted'] for r in details)
     parsed = sum(r['status'] == 'PARSED' for r in details)
+    usable = sum(r['status'] == 'PARSED' and r['downloaded'] and r['timing_verified'] and r['identity_resolved'] for r in details)
     review = sum(r['attempted'] and r['status'] != 'PARSED' and not r['retryable'] for r in details)
     total = len(details)
+    terminal_count = sum(r['terminal_status'] in TERMINAL_STATES for r in details)
     result = dict(candidate_documents=total, attempted=attempted, downloaded=sum(r['downloaded'] for r in details),
         parsed=parsed, needs_review=review, permanent_failures=review,
         retryable_failures=sum(r['retryable'] for r in details), unattempted=total-attempted,
@@ -61,7 +83,13 @@ def acquisition_report(filings, attempts, *, start, end):
         parse_success_pct=100*parsed/attempted if attempted else None,
         timing_verified_pct=100*sum(r['timing_verified'] for r in details if r['attempted'])/attempted if attempted else None,
         identity_resolved_pct=100*sum(r['identity_resolved'] for r in details if r['attempted'])/attempted if attempted else None,
-        status='ALL_CANDIDATES_CLASSIFIED' if total and total == attempted else 'INCOMPLETE',
+        candidate_count=total, attempted_count=attempted, terminal_status_count=terminal_count,
+        retryable_count=sum(r['retryable'] for r in details), unattempted_count=total-attempted,
+        attempt_completion_pct=100*attempted/total if total else None,
+        usable_document_count=usable, usable_document_pct=100*usable/total if total else None,
+        usable_document_scope='PARSED_WITH_VERIFIED_TIMING_AND_IDENTITY_NOT_UNIVERSE_CERTIFICATION',
+        terminal_status_counts=dict(Counter(r['terminal_status'] for r in details)),
+        status='ALL_CANDIDATES_CLASSIFIED' if total and total == terminal_count else 'INCOMPLETE',
         factor_v2_enabled=False, coverage_certified=False, details=details)
     for dimension in ('entity_type', 'period_type', 'year', 'taxonomy'):
         groups = {}

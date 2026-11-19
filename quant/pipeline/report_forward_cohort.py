@@ -7,7 +7,7 @@ from quant.forward.signal_store import content_hash, read_signals
 from quant.storage.research_store import write_json
 
 
-def report_forward_cohort(config, as_of, cohort=None, *, root=None):
+def report_forward_cohort(config, as_of, cohort=None, *, root=None, incident_root=None):
     custom_root = root is not None
     root = root if custom_root else cohort_root(config,cohort)
     report = forward_metrics(root,as_of=as_of)
@@ -74,6 +74,23 @@ def report_forward_cohort(config, as_of, cohort=None, *, root=None):
     outcome_report = root/'reports/forward-outcomes.json' if custom_root else cohort_report(config,cohort,'forward-outcomes.json')
     report['blocked_outcomes'] = json.loads(outcome_report.read_text()).get('blocked',[]) if outcome_report.exists() else []
     report['automatic_production_promotion'] = False
+    assessed_capacity = bool(shadows) and all(r.get('capacity_violations') is not None for r in shadows)
+    report['capacity_violations'] = sum(r['capacity_violations'] for r in shadows) if assessed_capacity else None
+    cluster_rows = [r['cluster_concentration'] for r in shadows if r.get('cluster_concentration')]
+    report['cluster_concentration'] = max((r['max_cluster_weight'] for r in cluster_rows), default=None)
+    report['cluster_assessment'] = 'ASSESSED' if cluster_rows and all(r['assessed'] for r in cluster_rows) else 'UNASSESSED'
+    from quant.monitoring.incidents import IncidentLedger
+    ledger_root = incident_root or config.data_dir/'research/incidents'
+    model_ids = {b['settings'].get('model_id') for b in batches}
+    model_id = next(iter(model_ids)) if len(model_ids) == 1 else None
+    if (ledger_root/'ledger.json').exists():
+        report['incident_ledger'] = IncidentLedger(ledger_root).report(model_id=model_id, cohort_root=root)
+        report['incidents'] = report['incident_ledger']['counts']
+    else:
+        report['incident_ledger'] = None
+        report['incidents'] = dict.fromkeys(('data', 'accounting', 'lifecycle', 'transition', 'model', 'risk'))
+    report['max_drawdown'] = report['drawdown']
+    report['distinct_names'] = report['distinct_recommendations']
     write_json(root/'reports/forward-cohort.json' if custom_root else cohort_report(config,cohort,'forward-cohort.json'),report)
     return report
 

@@ -62,7 +62,7 @@ class SourceHealth:
 
 
 def source_health_gates(sources, *, required_session, model_approved=False,
-                        monitoring_ready=False, incidents_resolved=False):
+                        monitoring_ready=False, incidents_resolved=False, dataset_observations=None):
     rows = [asdict(row) if isinstance(row, SourceHealth) else asdict(SourceHealth(**row)) for row in sources]
     if len({r['source_id'] for r in rows}) != len(rows):
         raise ValueError('Duplicate source health observations')
@@ -78,8 +78,19 @@ def source_health_gates(sources, *, required_session, model_approved=False,
     live_status = ('UNASSESSED' if not live else
                    'READY' if all(s == 'READY' for s in live) else
                    'UNAVAILABLE' if all(s == 'UNAVAILABLE' for s in live) and not archive_available else 'DEGRADED')
+    requirements = None
+    if dataset_observations is not None:
+        from quant.data.source_requirements import assess_requirements, PIPELINE_DATASETS
+        requirements = {pipeline: assess_requirements(pipeline, dataset_observations,
+            required_session=required_session) for pipeline in PIPELINE_DATASETS}
+        history_ready = requirements['historical_research']['ready']
+        refresh_ready = requirements['forward_refresh']['ready']
     return dict(historical_research_ready=history_ready, forward_refresh_ready=refresh_ready,
+        current_eod_ready=refresh_ready,
+        dataset_requirements=requirements,
+        fundamental_acquisition_ready=requirements['fundamental_acquisition']['ready'] if requirements else None,
         live_source_health=live_status,
         production_publish_ready=bool(history_ready and refresh_ready and model_approved
-                                      and monitoring_ready and incidents_resolved),
+                                      and monitoring_ready and incidents_resolved
+                                      and (requirements is None or requirements['production_publishing']['ready'])),
         required_session=str(required_session), sources=rows)

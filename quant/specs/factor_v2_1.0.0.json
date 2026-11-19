@@ -97,6 +97,8 @@
     "embargo_sessions": 63
   },
   "evaluation_windows": [],
+  "evaluation_dates_selected_using": "CERTIFIED_COVERAGE_ONLY",
+  "performance_used_to_choose_dates": false,
   "portfolio": {
     "holdings": 25,
     "entry_percentile": 90,
@@ -129,6 +131,9 @@
     10000000
   ],
   "acceptance": {
+    "min_mean_ic": 0.01,
+    "min_ir": 0.1,
+    "min_valid_windows": 1,
     "min_oos_sessions": 504,
     "min_mean_ic_improvement": 0.005,
     "min_ir_improvement": 0.1,
