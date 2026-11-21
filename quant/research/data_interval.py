@@ -1,0 +1,69 @@
+"""A shared continuous filing/share interval, measured at identical cutoffs."""
+import math
+
+import pandas as pd
+
+from quant.forward.signal_store import content_hash
+from quant.research.coverage_policy import reliable_interval
+
+
+def certify_data_interval(filings, shares, *, minimum_months=12):
+    def indexed(report, fields):
+        rows = report.get('periods', [])
+        dates = [r['as_of'] for r in rows]
+        periods = pd.PeriodIndex(dates, freq='M')
+        if periods.has_duplicates or not periods.is_monotonic_increasing:
+            raise ValueError('Shared interval requires unique ordered monthly cutoffs')
+        for row in rows:
+            for key in fields:
+                v = row.get(key)
+                if v is not None and (type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 100):
+                    raise ValueError('Shared interval requires coverage percentages')
+        return {r['as_of']: r for r in rows}
+
+    fkeys = ('coverage_pct', 'top_liquidity_coverage_pct')
+    skeys = ('verified_share_coverage', 'top100_verified_share_coverage')
+    f, s = indexed(filings, fkeys), indexed(shares, skeys)
+    # The union preserves missing months and unmatched cutoff dates as failures.
+    dates = sorted(set(f) | set(s))
+    rows = [dict(as_of=d, thresholds_met=bool(d in f and d in s
+        and all(type(f[d].get(k)) in (int, float) and f[d][k] >= t for k, t in zip(fkeys, (80, 90)))
+        and all(type(s[d].get(k)) in (int, float) and s[d][k] >= t for k, t in zip(skeys, (80, 90))))) for d in dates]
+    start = reliable_interval(rows, minimum_months=minimum_months) if filings.get('frequency') == 'monthly' else None
+    cutoffs = [d for d in dates if start and d >= start]
+    body = dict(start=start, end=cutoffs[-1] if cutoffs else None, monthly_cutoffs=cutoffs,
+        filing_coverage_hash=content_hash(filings), share_coverage_hash=content_hash(shares),
+        minimum_overall_filing=min((f[d][fkeys[0]] for d in cutoffs), default=None),
+        minimum_top100_filing=min((f[d][fkeys[1]] for d in cutoffs), default=None),
+        minimum_overall_shares=min((s[d][skeys[0]] for d in cutoffs), default=None),
+        minimum_top100_shares=min((s[d][skeys[1]] for d in cutoffs), default=None),
+        continuous=bool(start), certified=bool(start), minimum_months=minimum_months,
+        status='CERTIFIED' if start else 'BLOCKED')
+    return dict(body, sha256=content_hash(body))
+
+
+def require_data_interval(record, filings, shares):
+    expected = certify_data_interval(filings, shares, minimum_months=record.get('minimum_months', 12))
+    if record != expected or not expected['certified']:
+        raise ValueError('V2 requires a certified shared filing/share interval')
+    return record
+
+
+def main():
+    import argparse
+    import json
+    from pathlib import Path
+    from quant.storage.research_store import write_json
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--filings', type=Path, required=True)
+    parser.add_argument('--shares', type=Path, required=True)
+    parser.add_argument('--output', type=Path, required=True)
+    args = parser.parse_args()
+    record = certify_data_interval(*(json.loads(p.read_text(encoding='utf-8')) for p in (args.filings, args.shares)))
+    write_json(args.output, record)
+    print(json.dumps(record, indent=2))
+    return 0 if record['certified'] else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -13,6 +13,7 @@ from quant.features.share_history import share_history
 from quant.pipeline.report_fundamental_coverage_ceiling import coverage_ceiling
 from quant.tests.test_evidence_closure import planner_fixture
 from quant.forward.signal_store import content_hash
+from quant.tests.governance_fixtures import complete_interval
 
 
 def test_discovery_ledger_keeps_the_missing_workload_and_never_uses_future_returns():
@@ -64,12 +65,12 @@ def chain_inputs():
         for d, s, t, h in [('2024-03-31', 100, '2024-04-01T16:00:00+05:30', 'a'),
                            ('2024-06-30', 220, '2024-07-01T16:00:00+05:30', 'b')]])
     events = pd.DataFrame([dict(instrument_id='a', effective_date=d, event_type=k,
-        announced_at='2024-04-02T16:00:00+05:30', verification_status='VERIFIED', source_sha256='c'*64, **f)
+        announced_at='2024-04-02T16:00:00+05:30', verification_status='VERIFIED_COMPLETE', source_sha256='c'*64, **f)
         for d, k, f in [('2024-04-15', 'SPLIT', dict(share_multiplier=2)),
                         ('2024-05-15', 'ESOP_ISSUANCE', dict(shares_added=20))]])
     coverage = pd.DataFrame([dict(instrument_id='a', covered_from='2024-03-31', covered_through='2024-08-30',
         known_at='2024-08-30T15:00:00+05:30', source_sha256='d'*64, verification_status='VERIFIED')])
-    return anchors, events, coverage
+    return anchors, events, complete_interval(anchors, events, coverage)
 
 
 def test_chain_requires_later_reconciliation_and_all_material_events():
@@ -78,7 +79,7 @@ def test_chain_requires_later_reconciliation_and_all_material_events():
     result = reconcile_share_chain(anchors, events, coverage, 'a', cutoff)
     assert result['share_chain_status'] == 'VERIFIED_COMPLETE' and result['shares_outstanding'] == 220
     assert not reconcile_share_chain(anchors.iloc[:1], events, coverage, 'a', cutoff)['value_feature_valid']
-    broken = reconcile_share_chain(anchors, events.iloc[:1], coverage, 'a', cutoff)
+    broken = reconcile_share_chain(anchors, events.iloc[:1], complete_interval(anchors, events.iloc[:1], coverage), 'a', cutoff)
     assert broken['share_chain_status'] == 'BROKEN' and broken['reason'] == 'UNEXPLAINED_ANCHOR_MISMATCH'
     keys = pd.DataFrame([dict(instrument_id='a', signal_timestamp=cutoff)])
     assert share_history(anchors, events, coverage, keys).value_feature_valid.iloc[0]
@@ -93,7 +94,8 @@ def test_reconciliation_cannot_leak_later_knowledge_or_erase_an_earlier_mismatch
     assert not reconcile_share_chain(future, events, coverage, 'a', cutoff)['value_feature_valid']
     middle = anchors.iloc[[0]].assign(effective_date='2024-04-30', shares_outstanding=150,
                                      exchange_disseminated_at='2024-05-01T12:00:00+05:30')
-    result = reconcile_share_chain(pd.concat([anchors, middle]), events, coverage, 'a', cutoff)
+    changed = pd.concat([anchors, middle])
+    result = reconcile_share_chain(changed, events, complete_interval(changed, events, coverage), 'a', cutoff)
     assert result['share_chain_status'] == 'BROKEN'
     coverage['known_at'] = '2024-09-01T12:00:00+05:30'
     assert not reconcile_share_chain(anchors, events, coverage, 'a', cutoff)['value_feature_valid']
@@ -125,7 +127,8 @@ def test_action_candidates_do_not_assume_ex_date_is_a_share_effective_date():
 def test_capital_event_without_a_later_anchor_cannot_validate_value():
     anchors, events, coverage = chain_inputs()
     tail = events.iloc[[0]].assign(effective_date='2024-07-15')
-    result = reconcile_share_chain(anchors, pd.concat([events, tail]), coverage, 'a', '2024-08-30T15:30:00+05:30')
+    changed = pd.concat([events, tail])
+    result = reconcile_share_chain(anchors, changed, complete_interval(anchors, changed, coverage), 'a', '2024-08-30T15:30:00+05:30')
     assert result['reason'] == 'LATER_ANCHOR_REQUIRED_AFTER_CAPITAL_EVENT'
     assert not result['value_feature_valid']
 

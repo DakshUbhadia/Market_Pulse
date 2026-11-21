@@ -73,7 +73,9 @@ def test_fallback_is_derived_from_last_boundary_and_warmup_and_immutable(tmp_pat
     assert window['original_baseline_status'] == 'BLOCKED' and not window['performance_used_to_choose_start']
     path = tmp_path/'window.json'
     freeze_evaluation_window(window, path)
-    assert load_evaluation_window(path)['effective_start'] == window['effective_start']
+    assert load_evaluation_window(path, require_admission=False)['effective_start'] == window['effective_start']
+    with pytest.raises(ValueError, match='human governance'):
+        load_evaluation_window(path)
     with pytest.raises(ValueError, match='Immutable'):
         freeze_evaluation_window(dict(window, effective_start='2017-12-29'), path)
     tampered = dict(window, effective_start='2017-12-29')
@@ -108,6 +110,8 @@ def test_historical_share_denominator_rejects_future_anchor():
         exchange_disseminated_at='2023-12-30T12:00:00+05:30', verification_status='VERIFIED', source_sha256='b'*64)])
     evidence = pd.DataFrame([dict(instrument_id='a', covered_from='2023-12-30', covered_through='2024-12-31',
         known_at='2023-12-31T12:00:00+05:30', verification_status='VERIFIED', source_sha256='a'*64)])
+    from quant.tests.governance_fixtures import complete_interval
+    evidence = complete_interval(anchors, pd.DataFrame(), evidence)
     report = audit_share_history_coverage(universe, anchors, pd.DataFrame(), evidence, dates,
         start=date(2024, 1, 1), end=date(2024, 12, 31))
     assert report['reliable_window_established'] and all(r['verified_share_coverage'] == 100 for r in report['periods'])
@@ -248,10 +252,11 @@ def test_same_spec_version_cannot_change_thresholds_after_freeze(tmp_path):
     from quant.tests.test_multifactor_engine import reviewed_spec, synthetic_coverage_reports
     from quant.research.specification import freeze_specification
     spec = reviewed_spec()
-    freeze_specification(spec, tmp_path/'first.json', coverage_reports=synthetic_coverage_reports(spec))
+    from quant.tests.governance_fixtures import freeze_test_specification
+    freeze_test_specification(spec, tmp_path/'first.json', coverage_reports=synthetic_coverage_reports(spec))
     spec['acceptance']['min_mean_ic_improvement'] = 0.
     with pytest.raises(ValueError, match='Immutable'):
-        freeze_specification(spec, tmp_path/'second.json', coverage_reports=synthetic_coverage_reports(spec))
+        freeze_test_specification(spec, tmp_path/'second.json', coverage_reports=synthetic_coverage_reports(spec))
     assert not (tmp_path/'second.json').exists()
 
 

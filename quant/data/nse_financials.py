@@ -46,7 +46,7 @@ def parse_financial_filings(payload, raw):
                    source_document=document, source_sha256=raw.sha256, source_url=raw.source_url,
                    metadata_raw_path=str(raw.path),
                    attachment_url=record.get('attchmntFile') or record.get('attachment') or record.get('attachmentUrl'),
-                   timing_status='VERIFIED' if pd.notna(disseminated) and not revision_uncertain else 'UNCERTAIN',
+                   timing_status='VERIFIED' if pd.notna(disseminated) and not revision_uncertain else 'UNVERIFIED',
                    source_payload=json.dumps(record, sort_keys=True))
         rows.append(row)
     frame = pd.DataFrame(rows)

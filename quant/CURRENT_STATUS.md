@@ -1,11 +1,12 @@
 # Current quant status
 
-Updated November 19, 2026, Asia/Kolkata. This is the canonical status.
+Updated November 21, 2026, Asia/Kolkata. This is the canonical status.
 Earlier phase files retain dated snapshots, not current certification claims.
 
-Epic: `quant-data-completion-and-historical-certification`. Full assessment of
-the 37-section specification is in
-[HISTORICAL_CERTIFICATION_STATUS.md](HISTORICAL_CERTIFICATION_STATUS.md).
+Epic: `quant-historical-evidence-and-forward-validation`. Assessment of all
+43 sections of the current specification is in
+[HISTORICAL_FORWARD_VALIDATION_STATUS.md](HISTORICAL_FORWARD_VALIDATION_STATUS.md).
+The previous phase is recorded in [HISTORICAL_CERTIFICATION_STATUS.md](HISTORICAL_CERTIFICATION_STATUS.md).
 Commands and artifact contracts are in [README.md](README.md).
 
 The previous coverage phase is retained in
@@ -28,7 +29,8 @@ are in [EVIDENCE_CLOSURE_STATUS.md](EVIDENCE_CLOSURE_STATUS.md) and
 - Capital-event candidates are archived separately from verified event terms.
   Share chains require starting and later reconciliation anchors, complete
   event evidence and arithmetic reconciliation. Broken/unknown chains disable
-  Value. Fundamental feature version is `fundamental_features_1.1.0`.
+  Value. Fundamental feature version is `fundamental_features_1.2.0`; share
+  chains use `reconciled_share_chains_1.1.0`.
 - Filing and share certification still require 80% overall, 90% top-100 ADV,
   twelve consecutive monthly cutoffs and all subsequent cutoffs passing.
 - V1 retains separate matched PRICE/TOTAL_RETURN seals and explicit research
@@ -50,6 +52,15 @@ Starting commit **5697196bade75fe6ff0caa5ac951d37c6c0141cd** was independently
 certified using successful exact-SHA public unit CI and 381-case local evidence.
 That certification does not authorize changed code. The new implementation
 must pass its own clean-SHA CI and certification.
+
+Commit **52e1775975d594cc23bf64324a5d8305844ab4b1** also has a clean exact-SHA
+certificate with **411 passing unit tests** and public successful unit CI at
+https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44496950926 . Its
+certificate and test digests are now archived in
+`quant/artifacts/historical-forward-validation/reports/`. Public main was
+verified as **710bc6145157f01acc6f1a77ace985d909e1fa8b** at the start of this
+work. Those are separately attributed prior-source facts; successor code
+requires its own exact-SHA certificate after publication.
 
 The actual discovery batch selected **100 cells / 25 instruments**, then
 stopped on the first NSE warm-up **HTTP 403**. It archived the failed response,
@@ -79,13 +90,26 @@ derived from the documented held-history boundary and 252 exchange sessions
 of warm-up. The window is not a completed backtest or baseline seal. Both
 real V1 runs and their decision remain outstanding under the new certified SHA.
 
+Independent human exhaustion confirmation and a separate immutable window
+admission are now enforced by the runner. A pending review form and source
+packet are available under this phase's `reports/security-transitions/`.
+All **3,602** capital events remain **NEEDS_REVIEW** after the new verifier.
+The required shared filing/share interval report is **BLOCKED**. V2 freeze
+requires both that certified interval and an immutable human approval tied to
+the exact specification, code and coverage. Promotion uses the same typed
+governance framework. Software implementation does not close these gates.
+
 The V2 specification remains **DRAFT**. Failing filing/share gates prevent
 real OOS execution, historical registration and real V1/V2 cohort launch.
 Forward observations remain absent. Elastic Net remains gated and unfitted;
 no tested rejection or nonzero ensemble weight is claimed.
 
-Fresh live smoke: **6 passed / 5 failed**, all failures NSE HTTP 403. Unit
-validation, dependency/compile checks and exact-SHA publication evidence are
-bound in `quant/artifacts/historical-certification/phase-summary.json` and
-local certification reports. Software tests do not substitute for historical
-coverage, investment evidence or elapsed forward observation.
+Final local validation: **437 unit tests passed**. The separately recorded
+live smoke has **6 passed / 5 failed**, all failures NSE HTTP 403. Dependency,
+compile and whitespace checks passed. Source hashes, JUnit digests and measured
+phase evidence are archived in `quant/artifacts/historical-forward-validation/reports/`.
+The committed status snapshot explicitly predates publication. The active
+clean exact-SHA certificate is generated after public CI in
+`data/historical-forward-validation/reports/implementation-certification.json`;
+its SHA must match the code used for research. Software tests do not substitute
+for historical coverage, investment evidence or elapsed forward observation.

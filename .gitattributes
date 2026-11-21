@@ -1,2 +1,4 @@
 # Archived financial fixtures must retain their exact source bytes for SHA-256 checks.
 quant/tests/fixtures/financials/*.xml -text
+# Archived JUnit evidence is bound by SHA-256, including its original line endings.
+quant/artifacts/historical-forward-validation/reports/*.xml binary

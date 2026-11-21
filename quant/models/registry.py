@@ -162,6 +162,11 @@ class ModelRegistry:
                 reviewed = pd.Timestamp(manual['reviewed_at'])
                 if reviewed.tzinfo is None or reviewed > pd.Timestamp.now(tz='UTC'):
                     raise ValueError('Manual promotion review requires a past timezone-aware timestamp')
+                from quant.governance.review import require_review
+                require_review(manual, review_type='MODEL_PROMOTION', subject_sha256=card['sha256'], decision='PROMOTE')
+                if manual['reviewer_name'] != reviewer:
+                    raise ValueError('Promotion human reviewer differs from the attributed registry reviewer')
+                append_record(self.root/'governance'/f'{manual["sha256"]}.json', manual)
                 evidence.update(forward_metrics=metrics, monitoring_sha256=digest_file(monitoring_report),
                                 incident_ledger_sha256=incident_report['ledger_sha256'],
                                 manual_record_sha256=digest_file(manual_record))

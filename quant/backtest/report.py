@@ -24,7 +24,9 @@ def v1_research_decision(evidence, metrics, baselines):
         and np.isfinite([strategy,momentum]).all() and strategy >= momentum)
     checks['cluster_exposure_understood'] = evidence.get('cluster_check') == 'ASSESSED'
     return dict(decision='GO_FURTHER_V1_RESEARCH' if all(checks.values()) else 'NO_GO_INVESTIGATE',
-        policy_version='v1_next_research_1.0.0', checks=checks,
+        research_outcome='PASS_RESEARCH' if all(checks.values()) else
+            'INCONCLUSIVE' if not checks['adequate_OOS_length'] or not checks['mature_label_coverage'] else 'NO_GO',
+        policy_version='v1_next_research_1.1.0', checks=checks,
         model_weights_changed=False, parameters_selected_on_test=False,
         production_validation_required_for_this_decision=False,
         ML_authorized=False, public_recommendations_allowed=False,

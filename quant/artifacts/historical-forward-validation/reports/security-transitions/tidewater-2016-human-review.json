@@ -1,0 +1,19 @@
+{
+  "status": "PENDING_HUMAN_REVIEW",
+  "review_type": "TRANSITION_EXHAUSTION",
+  "transition_id": "TIDEWATER-2016-03-17",
+  "automated_review_sha256": "b4819ee0de935f95a4d7c245cfc3a66ad0b2bb52440597bf960d2ce5105bed52",
+  "subject_sha256": "b4819ee0de935f95a4d7c245cfc3a66ad0b2bb52440597bf960d2ce5105bed52",
+  "sources_reviewed": [],
+  "facts_proven": [],
+  "facts_unproven": [],
+  "search_routes_attempted": [],
+  "reviewer_kind": "HUMAN",
+  "independent_review": null,
+  "reviewer_name": null,
+  "reviewer_role": null,
+  "reviewed_at": null,
+  "decision": null,
+  "performance_information_used": false,
+  "reason": null
+}

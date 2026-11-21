@@ -819,7 +819,7 @@ classification nor parser success establishes PIT universe coverage.
 Formal evidence-search audits can be preserved with
 `record_evidence_search --audit <audit.json> --output <new-record.json>`.
 Every referenced archive is checksum-verified. Exhaustion requires the full
-review record above. The fallback loader uses `validated_data_window_1.1.0`;
+review record above. The fallback loader uses `validated_data_window_1.2.0`;
 it never modifies an original blocked experiment.
 
 Freezing V2 now requires both certified reports:
@@ -980,3 +980,119 @@ Successful implementation certificates are archived as
 records absolute JUnit paths and hashes. Preserve those bytes for subsequent
 historical runner verification. A new SHA or changed source requires a new
 certificate and reviewed frozen research specification.
+
+## Historical evidence and forward validation
+
+The current 43-section implementation assessment and outstanding research gates
+are in [HISTORICAL_FORWARD_VALIDATION_STATUS.md](HISTORICAL_FORWARD_VALIDATION_STATUS.md).
+All commands below use an environment installed from
+`quant/requirements-research.txt`. In this checkout, `.venv/Scripts/python.exe`
+contains the complete research dependencies.
+
+An evidence-only evaluation declaration can be prepared automatically. It is
+**ineligible for final research** until an independent human confirms transition
+exhaustion and separately admits the exact declaration. The old 1.1 declaration
+must be regenerated with the same evidence/calendar under policy 1.2; it cannot
+be passed through as an approved window.
+
+The prepared forms and complete source packet are in
+`quant/artifacts/historical-forward-validation/reports/security-transitions/`.
+`tidewater-2016-human-review.json` is intentionally pending. A human completes
+the fields, sets `status` to `REVIEWED`, supplies a reason and chooses
+`CONFIRM_EVIDENCE_EXHAUSTED_UNRESOLVED` or `REOPEN_SEARCH` without using returns.
+The `automated_review_sha256` and `subject_sha256` bind the canonical audit body;
+the packet separately records the original audit-file digest. Save a completed
+input under a new filename, then publish a new immutable record:
+
+```powershell
+python -m quant.governance.review --review completed-human-review.json --output data/historical-forward-validation/reports/security-transitions/tidewater-2016-human-review-confirmed.json
+python -m quant.governance.review --review completed-window-review.json --output data/historical-forward-validation/reports/window-human-admission.json
+python -m quant.pipeline.admit_evaluation_window --declaration data/historical-forward-validation/reports/v1-evaluation-declaration.json --transition-review data/historical-forward-validation/reports/security-transitions/tidewater-2016-human-review-confirmed.json --window-review data/historical-forward-validation/reports/window-human-admission.json --output data/historical-forward-validation/reports/v1-evaluation-window-admitted.json
+```
+
+The window review type is `EVALUATION_WINDOW_ADMISSION`, decision `ADMIT` or
+`REJECT`, and its subject is supplied in `evaluation-window-admission-request.json`.
+Review timestamps must follow the declaration and exhaustion review. All typed
+reviews record human name/role, independent-review attestation, reason, explicit
+performance-information use and a past timezone-aware timestamp. Model promotion
+may consider performance; pre-OOS admission/approval may not. Checksums detect
+changes; they do not authenticate a person's real-world identity. Never fill a
+human's name or decision through automation.
+
+Use the existing V1 command with the admitted artifact, unchanged factor and
+portfolio settings, once exact-SHA certification and data readiness pass. Run
+both PRICE and TOTAL_RETURN over the same approved dates and certified end.
+The decision file retains its legacy `decision` field for registry compatibility
+and adds `research_outcome`: `PASS_RESEARCH`, `NO_GO` or `INCONCLUSIVE`. Failed
+prerequisites produce `BLOCKED` experiment outcomes. Research PASS permits
+further testing only.
+
+Capital-event verification is independent of event discovery:
+
+```powershell
+python -m quant.pipeline.verify_capital_events --data-dir data/historical-forward-validation --events reviewed-capital-events.parquet --output data/historical-forward-validation/reports/capital-events-verified.parquet
+python -m quant.research.data_interval --filings filing-coverage.json --shares share-history-coverage.json --output data/historical-forward-validation/reports/v2-data-interval.json
+```
+
+Each event carries `event_evidence`, a dictionary (or JSON string) keyed by
+`instrument_id`, `security_lineage_id`, `event_type`, `announced_at`,
+`effective_date`, applicable `record_date`, `credit_date`, `listing_date` and
+each supplied arithmetic term. Each fact proof contains its matching `value`,
+`raw_path`, `source_sha256`, official `source_url`/`source_type`/`source_exchange`,
+`reviewed_by` and `review_status=VERIFIED`. BSE/issuer proofs must meet the same
+official-source admission policy. The summary row also retains archived source
+bytes. A review flag without those bytes cannot yield `VERIFIED_COMPLETE`.
+
+Share interval proofs retain the existing `covered_from`, `covered_through`,
+`known_at`, source bytes and verification status, plus `interval_start`,
+`interval_end`, `source_coverage` (archived relative-path to SHA-256 mapping),
+`event_inventory_hash`, `unresolved_event_count=0`, `reconciled_start_anchor` and
+`reconciled_end_anchor`. Use `event_inventory_hash` and `anchor_hash` from
+`quant.data.capital_events` to bind the actual complete inventory and anchors.
+An inventory digest is a binding, not a proof that all material events were
+discovered; the reviewed source-coverage proof must establish that completeness.
+Only complete events may change share counts. The optimistic share planner uses
+temporary review assumptions solely for ceiling estimates and never saves them
+as verified data.
+
+The shared interval CLI exits nonzero and writes a `BLOCKED` report when coverage
+is insufficient. V2 freeze requires that certificate and a typed human review:
+
+```powershell
+python -m quant.pipeline.freeze_v2_specification --spec reviewed-spec.json --coverage filing-coverage.json --share-coverage share-history-coverage.json --data-interval data/historical-forward-validation/reports/v2-data-interval.json --governance-review sealed-v2-human-review.json --output data/historical-forward-validation/research/frozen-v2.json
+```
+
+Compute the human review's subject with
+`specification_subject(spec, coverage_reports, data_interval)` from
+`quant.research.specification`. It binds the exact code SHA/source hashes, full
+specification, both coverage hashes and shared interval. Review type is
+`V2_SPEC_APPROVAL`, decision `APPROVE` or `REJECT`. Draft free-text reviewer
+fields alone are insufficient. All seven blocks and the predeclared
+10L/25L/50L/1Cr scenarios remain mandatory.
+
+`discover_fundamentals_targeted` accepts reviewed official static/XBRL/direct
+NSE URLs in `--fallback-manifest`, followed by verified BSE and reviewed issuer
+sources. Every source needs a dated instrument identity and original period /
+statement metadata. Historical availability uses `exchange_disseminated_at`,
+`dissemination_evidence_path`, `dissemination_evidence_sha256` and
+`dissemination_reviewed_by`; missing proof is recorded as `UNVERIFIED` even when
+the bytes download successfully. For previously archived documents, retain
+`historical_document_sha256` to detect changed bytes. BSE mappings also need
+`identity_mapping` with instrument ID, BSE security code, archived path/digest,
+reviewer and verified status. Retrieval time and URL dates cannot replace
+exchange dissemination.
+
+Every batch rebuilds coverage, ceiling and missing cells and records all five
+productivity metrics per 100 queries, plus query/usable-filing counts by route.
+An unattempted route has no measured productivity. A zero-query rate is null.
+Returns never influence priority or route selection. Stop unproductive loops
+and review missing official routes before spending more queries.
+
+Use `quant.pipeline.report_historical_forward_phase` to measure the retained
+filing/share/queue/ceiling/verification reports. Then refresh canonical JSON with
+`quant.pipeline.write_current_status --data-dir data/historical-forward-validation`.
+The status writer separates public main, research-certified SHA and whether the
+certificate applies to the clean local implementation. Old evidence must retain
+its own SHA and timestamp. Final clean-SHA certification is generated after
+publication with `quant.pipeline.certify_implementation`; local test evidence
+and live results remain separate.

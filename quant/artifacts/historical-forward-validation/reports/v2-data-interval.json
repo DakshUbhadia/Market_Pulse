@@ -1,0 +1,16 @@
+{
+  "start": null,
+  "end": null,
+  "monthly_cutoffs": [],
+  "filing_coverage_hash": "4070454c4d4ae58da553e25b9f67c2d9eeca9bdc2aa30f18aae1b43589c74545",
+  "share_coverage_hash": "c72684c6a4cb3ad4c28b0de2948c00cfdf6ea5d1863ac9265625a581dc9ba45f",
+  "minimum_overall_filing": null,
+  "minimum_top100_filing": null,
+  "minimum_overall_shares": null,
+  "minimum_top100_shares": null,
+  "continuous": false,
+  "certified": false,
+  "minimum_months": 12,
+  "status": "BLOCKED",
+  "sha256": "8fe7cd1ff293f44ff9a4d255c085af9b93e0f01338d827d6cec27b3434a9b53a"
+}

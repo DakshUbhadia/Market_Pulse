@@ -3,7 +3,7 @@
   "review_status": "DRAFT",
   "reviewed_by": null,
   "model_version": "factor_v2_candidate_1.0.0",
-  "feature_version": "fundamental_features_1.1.0",
+  "feature_version": "fundamental_features_1.2.0",
   "cost_model_version": "india_delivery_1.1.0",
   "risk_policy_version": "portfolio_risk_1.1.0",
   "return_basis": "PRICE",

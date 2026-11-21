@@ -19,8 +19,9 @@ def candidate_evidence(frame):
     if not result.empty:
         url = result.get('source', pd.Series('', index=result.index)).astype('string')
         hashed = result.get('source_sha256', pd.Series('', index=result.index)).astype('string').str.fullmatch('[0-9a-f]{64}', na=False)
-        possible = result.verification_status.isin(['VERIFIED', 'NEEDS_REVIEW', 'CANDIDATE']) & (hashed | url.str.startswith('https://', na=False))
-        result.loc[possible, 'verification_status'] = 'VERIFIED'
+        possible = result.verification_status.isin(['VERIFIED', 'VERIFIED_COMPLETE', 'TERMS_VERIFIED',
+            'DATES_VERIFIED', 'NEEDS_REVIEW', 'CANDIDATE']) & (hashed | url.str.startswith('https://', na=False))
+        result.loc[possible, 'verification_status'] = 'VERIFIED_COMPLETE' if 'event_type' in result else 'VERIFIED'
         # Placeholder hashes exist only inside this optimistic calculation.
         result.loc[possible & ~hashed, 'source_sha256'] = '0'*64
     return result
@@ -30,6 +31,18 @@ def plan_share_evidence(universe, anchors, events, coverage, sessions, *, start,
     if universe.duplicated(['as_of', 'instrument_id']).any():
         raise ValueError('Duplicate dated share-coverage universe')
     possible = [candidate_evidence(f) for f in (anchors, events, coverage)]
+    # Bind the hypothetical in-memory inventory to the hypothetical review
+    # statuses. Missing completeness facts and unresolved events remain missing.
+    from quant.data.capital_events import anchor_hash, event_inventory_hash
+    for index, proof in possible[2].iterrows():
+        if not all(k in proof and pd.notna(proof[k]) for k in ('interval_start', 'interval_end', 'event_inventory_hash')):
+            continue
+        known = possible[0][possible[0].instrument_id.eq(proof.instrument_id)]
+        known = known[pd.to_datetime(known.effective_date).between(pd.Timestamp(proof.interval_start), pd.Timestamp(proof.interval_end))].sort_values('effective_date')
+        if known.effective_date.nunique() >= 2:
+            possible[2].loc[index, 'event_inventory_hash'] = event_inventory_hash(possible[1], proof.instrument_id, proof.interval_start, proof.interval_end)
+            possible[2].loc[index, 'reconciled_start_anchor'] = anchor_hash(known.iloc[0])
+            possible[2].loc[index, 'reconciled_end_anchor'] = anchor_hash(known.iloc[-1])
     periods, targets = [], []
     for day in coverage_dates(sessions, start, end, 'monthly'):
         cross = universe[pd.to_datetime(universe.as_of).eq(day) & universe.eligible.eq(True)]

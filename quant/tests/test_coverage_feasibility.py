@@ -155,7 +155,8 @@ def share_inputs():
              source_sha256='d'*64, verification_status='VERIFIED')])
     coverage = pd.DataFrame([dict(instrument_id='a', covered_from='2024-06-30', covered_through='2024-10-31',
         known_at='2024-08-01T16:00:00+05:30', source_sha256='b'*64, verification_status='VERIFIED')])
-    return anchors, pd.DataFrame(), coverage
+    from quant.tests.governance_fixtures import complete_interval
+    return anchors, pd.DataFrame(), complete_interval(anchors, pd.DataFrame(), coverage)
 
 
 def test_paid_up_capital_anchor_uses_dated_face_value_and_retains_provenance():
@@ -168,6 +169,8 @@ def test_paid_up_capital_anchor_uses_dated_face_value_and_retains_provenance():
     later = anchors.iloc[[0]].assign(effective_date='2024-07-31',
         exchange_disseminated_at='2024-08-02T16:00:00+05:30', known_at='2024-08-02T16:00:00+05:30', source_sha256='d'*64)
     anchors = pd.concat([anchors, later], ignore_index=True)
+    from quant.tests.governance_fixtures import complete_interval
+    coverage = complete_interval(anchors, events, coverage)
     keys = pd.DataFrame([dict(instrument_id='a', signal_timestamp='2024-08-30T15:30:00+05:30')])
     result = share_history(anchors, events, coverage, keys).iloc[0]
     assert result.value_feature_valid and result.shares_outstanding == 100
@@ -186,10 +189,12 @@ def test_share_history_replays_verified_capital_actions(event_type, fields, expe
     from quant.features.share_history import share_history
     anchors, _, coverage = share_inputs()
     events = pd.DataFrame([dict(instrument_id='a', effective_date='2024-08-10',
-        announced_at='2024-08-05T16:00:00+05:30', verification_status='VERIFIED',
+        announced_at='2024-08-05T16:00:00+05:30', verification_status='VERIFIED_COMPLETE',
         source_sha256='c'*64, event_type=event_type, **fields)])
     anchors = pd.concat([anchors, anchors.iloc[[-1]].assign(effective_date='2024-08-11',
         exchange_disseminated_at='2024-08-12T16:00:00+05:30', shares_outstanding=expected, source_sha256='e'*64)])
+    from quant.tests.governance_fixtures import complete_interval
+    coverage = complete_interval(anchors, events, coverage)
     keys = pd.DataFrame([dict(instrument_id='a', signal_timestamp='2024-08-30T15:30:00+05:30')])
     result = share_history(anchors, events, coverage, keys).iloc[0]
     assert result.shares_outstanding == expected and result.effective_date == '2024-08-11'

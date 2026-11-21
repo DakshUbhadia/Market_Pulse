@@ -1,0 +1,14 @@
+{
+  "status": "PENDING_HUMAN_REVIEW",
+  "review_type": "EVALUATION_WINDOW_ADMISSION",
+  "subject_sha256": "9487c340c48ffad30b673d1e76b37bbd4e21b7bee19f0d91ec021974c733c521",
+  "effective_start": "2017-03-28",
+  "reviewer_kind": "HUMAN",
+  "independent_review": null,
+  "reviewer_name": null,
+  "reviewer_role": null,
+  "reviewed_at": null,
+  "decision": null,
+  "reason": null,
+  "performance_information_used": false
+}

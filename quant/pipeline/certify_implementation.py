@@ -37,6 +37,7 @@ def local_checks():
         'dependency_check': [sys.executable, '-m', 'pip', 'check'],
         'compile_check': [sys.executable, '-m', 'compileall', '-q', 'quant'],
         'whitespace_check': ['git', 'diff', '--check'],
+        'committed_whitespace_check': ['git', 'show', '--format=', '--check', 'HEAD', '--', 'quant'],
     }
     results = {}
     for key, command in commands.items():
@@ -132,6 +133,7 @@ def certify_implementation(config, *, session=None, unit_results=None, live_resu
         sha=commit, working_tree_clean=not dirty, runs=exact, unit_ci_passed=passed,
         unit_ci_status='PASS' if passed else latest.get('conclusion') or latest.get('status') or 'UNASSESSED',
         unit_ci_run=latest.get('html_url'), unit_ci_run_url=latest.get('html_url'),
+        workflow_run_url=latest.get('html_url'),
         unit_test_count=unit['tests'], local_unit_test_status=unit['status'],
         **checks, live_test_status=live['status'], live_test_failures=live['failures'],
         live_passed=live['tests']-len(live['failures'])-live.get('skipped', 0) if live['tests'] is not None else None,

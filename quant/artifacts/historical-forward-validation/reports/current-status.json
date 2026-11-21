@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-11-21T06:32:12.296999+00:00",
+  "PUBLIC_MAIN_SHA": "710bc6145157f01acc6f1a77ace985d909e1fa8b",
+  "LOCAL_IMPLEMENTATION_SHA": "52e1775975d594cc23bf64324a5d8305844ab4b1",
+  "RESEARCH_CERTIFIED_SHA": "52e1775975d594cc23bf64324a5d8305844ab4b1",
+  "working_tree_clean": false,
+  "certificate_applies_to_local_implementation": false,
+  "latest_certified_market_session": "2026-11-17",
+  "latest_certified_market_session_provenance": {
+    "path": "data\\historical-certification\\reports\\historical-certification-phase.json",
+    "sha256": "9630d0855621fe4be580c32b477f7b94a7263f2f6616232ddabf47f4e96dcb3d",
+    "scope": "Retained prior-phase market certification; no claim of a newer market session"
+  },
+  "V1_BASELINE_STATE": {
+    "status": "BLOCKED",
+    "human_window_admitted": false,
+    "admission_error": null,
+    "decisions": []
+  },
+  "V2_STATE": {
+    "status": "BLOCKED",
+    "reason": "Certified shared data interval, human-approved frozen specification and sealed V1 prerequisites required",
+    "real_oos_evidence": false,
+    "decisions": [],
+    "value_required": true
+  },
+  "forward_cohort_state": {
+    "registered_cohorts": [],
+    "state": "NOT_LAUNCHED"
+  },
+  "versions": {
+    "CHAMPION_CHALLENGER_VERSION": "evidence_champion_challenger_1.0.0",
+    "COST_MODEL_VERSION": "india_delivery_1.1.0",
+    "EVIDENCE_CLOSURE_VERSION": "evidence_closure_1.0.0",
+    "EVIDENCE_POLICY_VERSION": "factor_v1_evidence_1.5.0",
+    "FACTOR_V2_VERSION": "factor_v2_candidate_1.0.0",
+    "FEATURE_VERSION": "factor_v1_features_1.0.5",
+    "FUNDAMENTAL_FEATURE_VERSION": "fundamental_features_1.2.0",
+    "FUNDAMENTAL_SNAPSHOT_VERSION": "pit_fundamentals_1.1.0",
+    "LIFECYCLE_POLICY_VERSION": "pit_lifecycle_1.2.0",
+    "MODEL_VERSION": "factor_v1_1.0.0",
+    "PORTFOLIO_ACCOUNTING_VERSION": "ex_date_cash_1.3.0",
+    "PORTFOLIO_RISK_VERSION": "portfolio_risk_1.1.0",
+    "SHARE_CHAIN_VERSION": "reconciled_share_chains_1.1.0"
+  },
+  "public_state": {
+    "status": "VERIFIED",
+    "PUBLIC_MAIN_SHA": "710bc6145157f01acc6f1a77ace985d909e1fa8b",
+    "verified_at": "2026-11-21T06:32:12.283374+00:00",
+    "source": "GitHub commits/main API"
+  },
+  "snapshot_scope": "Prepublication status; no successor exact-SHA certification is claimed by this snapshot",
+  "filing_coverage": {
+    "status": "NOT_READY",
+    "coverage_certified": false,
+    "report_sha256": "fa3f50f7b420ca7cd5746a12d4e30491237282b2b117ee7f84730311b384ba6a",
+    "monthly_cutoffs": 35,
+    "peak_overall": 43.442622950819676,
+    "peak_top100": 37.0
+  },
+  "share_coverage": {
+    "status": "NOT_READY",
+    "certified": false,
+    "report_sha256": "8f63efae99de9793553ecfc5d332603c8529090644908431615672377bf96b00",
+    "peak_overall": 0.0,
+    "peak_top100": 0.0
+  },
+  "tidewater_governance": {
+    "status": "PENDING_HUMAN_REVIEW",
+    "automated_exhaustion": "EVIDENCE_EXHAUSTED_UNRESOLVED",
+    "window_admitted": false,
+    "source_packet_sha256": "bd1ad1fa5d4368282875fff2768c4389511a6538aacb2ce66e79af077c7a2686"
+  },
+  "local_current_status_sha256": "8e5380b91e2a4f854903d851705623a868026610f0f312f40e76eb16cda7bc2c"
+}

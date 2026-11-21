@@ -13,6 +13,38 @@ from quant.storage.research_store import write_json
 NSE_HOSTS = {'www.nseindia.com', 'www.nseindia.in', 'nsearchives.nseindia.com',
              'nsearchives.nseindia.in', 'archives.nseindia.com'}
 BSE_HOSTS = {'www.bseindia.com', 'api.bseindia.com', 'api.bseindia.in'}
+DISCOVERY_ROUTES = ('NSE_STATIC_XBRL_ARCHIVE', 'NSE_DIRECT_DOCUMENT', 'BSE_OFFICIAL_ARCHIVE', 'REVIEWED_ISSUER_IR')
+
+
+def source_route(source):
+    kind = source.get('source_type')
+    if kind == 'NSE_OFFICIAL':
+        return 'NSE_STATIC_XBRL_ARCHIVE' if urlsplit(source['source_url']).hostname in {
+            'nsearchives.nseindia.com', 'nsearchives.nseindia.in', 'archives.nseindia.com'} else 'NSE_DIRECT_DOCUMENT'
+    return {'BSE_OFFICIAL': 'BSE_OFFICIAL_ARCHIVE', 'ISSUER_IR': 'REVIEWED_ISSUER_IR'}.get(kind)
+
+
+def historical_availability(source, data_dir):
+    """Retrieval dates and URL filenames never establish historical availability."""
+    import pandas as pd
+    from quant.storage.research_store import digest_file
+    value = source.get('exchange_disseminated_at')
+    base = Path(data_dir).resolve()
+    try:
+        stamp = pd.Timestamp(value)
+        proof = (base/source['dissemination_evidence_path']).resolve()
+        valid = (not pd.isna(stamp) and stamp.tzinfo is not None
+                 and stamp <= pd.Timestamp.now(tz='UTC')
+                 and bool(source.get('dissemination_reviewed_by'))
+                 and proof.is_relative_to(base) and proof.is_file()
+                 and digest_file(proof) == source.get('dissemination_evidence_sha256'))
+    except (ValueError, TypeError, KeyError, OSError):
+        valid = False
+    return dict(timing_status='VERIFIED' if valid else 'UNVERIFIED',
+        exchange_disseminated_at=value if valid else None,
+        historical_availability_evidence=dict(path=source.get('dissemination_evidence_path'),
+            sha256=source.get('dissemination_evidence_sha256'), reviewed_by=source.get('dissemination_reviewed_by')),
+        review_status='REVIEWED' if valid else 'NEEDS_REVIEW')
 
 
 def validate_official_source(row, *, issuer_hosts=()):

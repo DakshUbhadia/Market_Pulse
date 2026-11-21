@@ -1,0 +1,157 @@
+{
+  "status": "PENDING_INDEPENDENT_HUMAN_REVIEW",
+  "automated_audit_file_sha256": "601752a3424973dc99df491a79a417e22234026b3c040ea65d01c1de7c893152",
+  "canonical_automated_audit_sha256": "b4819ee0de935f95a4d7c245cfc3a66ad0b2bb52440597bf960d2ce5105bed52",
+  "human_review_subject_hash_convention": "SHA256 of canonical JSON audit body, excluding wrapper",
+  "automated_audit": {
+    "boundary_basis": "Dated original held economic-history failure; no return or performance comparison",
+    "boundary_date": "2016-03-17",
+    "boundary_source": "reports\\security-transitions\\original-held-blocker.json",
+    "conclusion": "Reasonable currently accessible public official routes exhausted without a certifiable transition. Keep original 2016 PRICE and TOTAL_RETURN experiments BLOCKED. Reopen only on new official evidence.",
+    "dates_checked": [
+      "2016-01-01/2016-08-31"
+    ],
+    "documents_checked": [
+      "raw\\security-transitions\\tidewater-2016\\original-listing-c5facf625bb9e19752ff9c0265a8c37462a84c8b134fd3c475a69926535935e2.html",
+      "raw\\security-transitions\\tidewater-2016\\postal-ballot.pdf",
+      "raw\\security-transitions\\tidewater-2016\\record-date.pdf",
+      "raw\\security-transitions\\issuer-disclosures-34651b403abb8499.bin",
+      "raw\\security-transitions\\issuer-annual-reports-f4a17a6c531965e7.bin",
+      "raw\\security-transitions\\issuer-board-january-fb2ed615c74834d6.bin",
+      "raw\\security-transitions\\issuer-board-may-1ff7af6541e5e3d6.bin",
+      "raw\\security-transitions\\issuer-board-august-439f6c71a945a2df.bin",
+      "raw\\security-transitions\\bse-announcements-5792a2a44a505cac.bin",
+      "reports\\security-transitions\\additional-source-search.json",
+      "reports\\security-transitions\\original-held-blocker.json"
+    ],
+    "event_id": "TIDEWATER-2016-03-17",
+    "evidence_hashes": {
+      "raw\\security-transitions\\bse-announcements-5792a2a44a505cac.bin": "5792a2a44a505cacb3d7cef9aa7a6536086a4aea8213585ccf2653394152a095",
+      "raw\\security-transitions\\issuer-annual-reports-f4a17a6c531965e7.bin": "f4a17a6c531965e7020285dcc697c812985500ed66dba2f9c3e5314a3143a89a",
+      "raw\\security-transitions\\issuer-board-august-439f6c71a945a2df.bin": "439f6c71a945a2df1f2bf8b7155793db932b8bd18c36e19eff697c28bd039fba",
+      "raw\\security-transitions\\issuer-board-january-fb2ed615c74834d6.bin": "fb2ed615c74834d60d8ad6df74135e3697dded04bd88a6a35f60bb034f60aed7",
+      "raw\\security-transitions\\issuer-board-may-1ff7af6541e5e3d6.bin": "1ff7af6541e5e3d69dfd0420ed5acd9e7f5b2d8c65cfbd196136aa98da514e14",
+      "raw\\security-transitions\\issuer-disclosures-34651b403abb8499.bin": "34651b403abb8499043da778dd349621e784d0432c3dea922b5028c868b72376",
+      "raw\\security-transitions\\tidewater-2016\\original-listing-c5facf625bb9e19752ff9c0265a8c37462a84c8b134fd3c475a69926535935e2.html": "c5facf625bb9e19752ff9c0265a8c37462a84c8b134fd3c475a69926535935e2",
+      "raw\\security-transitions\\tidewater-2016\\postal-ballot.pdf": "976e7e64a8ea414ff52231a97552bf8c477f7fe615e433011c93f5c6bad15597",
+      "raw\\security-transitions\\tidewater-2016\\record-date.pdf": "12ee71931a6470d08a827b550b0a1d55451a0f55ec582f3139e5efb30734b4f8",
+      "reports\\security-transitions\\additional-source-search.json": "605dc379e85eb4128d04384267ee083e938c857a486a547f8ec05e80046452b9",
+      "reports\\security-transitions\\original-held-blocker.json": "8b1dfd464d7926d141fdf2d1cfbcef62a94832d65859d5fbbc329ec5b6d4d64d"
+    },
+    "mandatory_held_event": true,
+    "missing_facts": [
+      "Actual credit date",
+      "Listing and first tradable date",
+      "Predecessor validity end",
+      "Successor validity start",
+      "Contemporaneously knowable valuation bridge",
+      "Exact historical exchange dissemination"
+    ],
+    "performance_used_to_choose_start": false,
+    "performance_used_to_decide_exhaustion": false,
+    "production_validated": false,
+    "reason_transition_cannot_be_certified": "Original proposal/record-date documents and three visually reviewed board outcomes do not establish actual credit, tradability, ISIN validity or historical availability; exchange/depository retrieval remains unavailable.",
+    "retrievals": [
+      {
+        "final_url": "https://www.veedolindia.com/investoir/disclosures-under-regulation-30",
+        "http_status": 200,
+        "raw_path": "raw\\security-transitions\\issuer-disclosures-34651b403abb8499.bin",
+        "retrieved_at": "2026-11-19T09:09:10.263006+00:00",
+        "route": "issuer-disclosures",
+        "sha256": "34651b403abb8499043da778dd349621e784d0432c3dea922b5028c868b72376",
+        "source_url": "https://www.veedolindia.com/investor/disclosures-under-regulation-30"
+      },
+      {
+        "final_url": "https://www.veedolindia.com/investor/annual-reports",
+        "http_status": 200,
+        "raw_path": "raw\\security-transitions\\issuer-annual-reports-f4a17a6c531965e7.bin",
+        "retrieved_at": "2026-11-19T09:09:10.263537+00:00",
+        "route": "issuer-annual-reports",
+        "sha256": "f4a17a6c531965e7020285dcc697c812985500ed66dba2f9c3e5314a3143a89a",
+        "source_url": "https://www.veedolindia.com/investor/annual-reports"
+      },
+      {
+        "extracted_text_path": "raw\\security-transitions\\issuer-board-january-fb2ed615c74834d6.txt",
+        "final_url": "https://www.veedolindia.com/sites/default/files/assets/pdf/disclosures-reg-30/Outcome-28.01.2016-2.pdf",
+        "http_status": 200,
+        "raw_path": "raw\\security-transitions\\issuer-board-january-fb2ed615c74834d6.bin",
+        "retrieved_at": "2026-11-19T09:09:10.264058+00:00",
+        "route": "issuer-board-january",
+        "sha256": "fb2ed615c74834d60d8ad6df74135e3697dded04bd88a6a35f60bb034f60aed7",
+        "source_url": "https://www.veedolindia.com/sites/default/files/assets/pdf/disclosures-reg-30/Outcome-28.01.2016-2.pdf"
+      },
+      {
+        "extracted_text_path": "raw\\security-transitions\\issuer-board-may-1ff7af6541e5e3d6.txt",
+        "final_url": "https://www.veedolindia.com/sites/default/files/assets/pdf/disclosures-reg-30/Outcome-30.05.2016.pdf",
+        "http_status": 200,
+        "raw_path": "raw\\security-transitions\\issuer-board-may-1ff7af6541e5e3d6.bin",
+        "retrieved_at": "2026-11-19T09:09:10.264473+00:00",
+        "route": "issuer-board-may",
+        "sha256": "1ff7af6541e5e3d69dfd0420ed5acd9e7f5b2d8c65cfbd196136aa98da514e14",
+        "source_url": "https://www.veedolindia.com/sites/default/files/assets/pdf/disclosures-reg-30/Outcome-30.05.2016.pdf"
+      },
+      {
+        "extracted_text_path": "raw\\security-transitions\\issuer-board-august-439f6c71a945a2df.txt",
+        "final_url": "https://www.veedolindia.com/sites/default/files/assets/pdf/disclosures-reg-30/Outcome-11.08.2016.pdf",
+        "http_status": 200,
+        "raw_path": "raw\\security-transitions\\issuer-board-august-439f6c71a945a2df.bin",
+        "retrieved_at": "2026-11-19T09:09:11.251276+00:00",
+        "route": "issuer-board-august",
+        "sha256": "439f6c71a945a2df1f2bf8b7155793db932b8bd18c36e19eff697c28bd039fba",
+        "source_url": "https://www.veedolindia.com/sites/default/files/assets/pdf/disclosures-reg-30/Outcome-11.08.2016.pdf"
+      },
+      {
+        "error": "('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))",
+        "retrieved_at": "2026-11-19T09:09:12.217367+00:00",
+        "route": "nsdl-isin-directory",
+        "source_url": "https://www.fpi.nsdl.co.in/web/StaticReports/APFIL_File/FILM_ALL_LIST_2020.pdf"
+      },
+      {
+        "error": "HTTPSConnectionPool(host='www.nseindia.in', port=443): Read timed out. (read timeout=15)",
+        "retrieved_at": "2026-11-19T09:09:12.453323+00:00",
+        "route": "nse-announcements",
+        "source_url": "https://www.nseindia.in/companies-listing/corporate-filings-announcements?symbol=VEEDOL"
+      },
+      {
+        "final_url": "https://www.bseindia.com/stock-share-price/veedol-corporation-ltd/veedol/590005/corp-announcements/",
+        "http_status": 403,
+        "raw_path": "raw\\security-transitions\\bse-announcements-5792a2a44a505cac.bin",
+        "retrieved_at": "2026-11-19T09:09:12.769998+00:00",
+        "route": "bse-announcements",
+        "sha256": "5792a2a44a505cacb3d7cef9aa7a6536086a4aea8213585ccf2653394152a095",
+        "source_url": "https://www.bseindia.com/stock-share-price/veedol-corporation-ltd/veedol/590005/corp-announcements/"
+      }
+    ],
+    "review_scope": "Available public official routes as of review; not an independent human attestation",
+    "reviewed_at": "2026-11-19T09:12:45.253246+00:00",
+    "reviewed_by": "Codex automated public-source evidence review",
+    "search_completed_at": "2026-11-19T09:12:45.253246+00:00",
+    "sources_checked": [
+      "https://nsearchives.nseindia.com/content/press/12012007.htm",
+      "https://www.veedolindia.com/sites/default/files/assets/pdf/pr-disclouser/PostalBallotNotice-Form28thJan2016.pdf",
+      "https://www.veedolindia.com/sites/default/files/assets/pdf/pr-disclouser/NoticeRecordSplit-Bonus.pdf",
+      "https://www.nseindia.in/companies-listing/corporate-filings-announcements?symbol=VEEDOL",
+      "https://www.veedolindia.com/investor/disclosures-under-regulation-30",
+      "https://www.veedolindia.com/investor/annual-reports",
+      "https://www.veedolindia.com/sites/default/files/assets/pdf/disclosures-reg-30/Outcome-28.01.2016-2.pdf",
+      "https://www.veedolindia.com/sites/default/files/assets/pdf/disclosures-reg-30/Outcome-30.05.2016.pdf",
+      "https://www.veedolindia.com/sites/default/files/assets/pdf/disclosures-reg-30/Outcome-11.08.2016.pdf",
+      "https://www.fpi.nsdl.co.in/web/StaticReports/APFIL_File/FILM_ALL_LIST_2020.pdf",
+      "https://www.nseindia.in/companies-listing/corporate-filings-announcements?symbol=VEEDOL",
+      "https://www.bseindia.com/stock-share-price/veedol-corporation-ltd/veedol/590005/corp-announcements/"
+    ],
+    "status": "EVIDENCE_EXHAUSTED_UNRESOLVED",
+    "synthetic_bridge_created": false,
+    "visual_review": {
+      "august": "Both pages: director/promoter changes, AGM and financial approvals; no conversion chronology.",
+      "january": "All three pages: proposed split and bonus with expected deadlines; no actual completion evidence.",
+      "may": "Both pages: financial approvals and dividend; no conversion chronology."
+    }
+  },
+  "original_audit_path": "data\\historical-certification\\reports\\security-transitions\\final-search-audit.json",
+  "permitted_decisions": [
+    "CONFIRM_EVIDENCE_EXHAUSTED_UNRESOLVED",
+    "REOPEN_SEARCH"
+  ],
+  "instructions": "Review archived sources, facts and attempted routes independently. Do not inspect model performance. Fill and seal a new human record; no decision has been granted."
+}
