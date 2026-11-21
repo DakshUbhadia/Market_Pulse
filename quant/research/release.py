@@ -31,6 +31,9 @@ def build_research_release(registry_root, model_id, output, *, specification=Non
     if state not in ('HISTORICALLY_VALIDATED', 'FORWARD_CHALLENGER', 'FORWARD_CHAMPION'):
         raise ValueError('Research release requires a historically validated candidate')
     card = registry.card(model_id)
+    from quant.governance.gates import GateRegistry, data_root_for
+    GateRegistry(data_root_for(registry_root)).require('V1_MODEL_REGISTRATION' if
+        str(card['model_version']).startswith('factor_v1') else 'V2_PROMOTION')
     registry._historical_evidence(card)
     source = Path(card['historical_experiment']).resolve()
     seal = verify_backtest_seal(source)
@@ -102,6 +105,8 @@ def build_research_release(registry_root, model_id, output, *, specification=Non
 def verify_research_release(root, *, data_dir=None):
     root = Path(root).resolve()
     record = _json(root/'checksums.json')
+    if record.get('version') != 'research_release_1.0.0':
+        raise ValueError('A DIAGNOSTIC_RELEASE cannot be verified as accepted research')
     files = record.get('files', {})
     actual = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() and p != root/'checksums.json'}
     if set(files) != actual or record.get('sha256') != content_hash(files):
@@ -139,3 +144,56 @@ def verify_research_release(root, *, data_dir=None):
                 raise ValueError('Immutable source dataset is missing or changed')
     return dict(status='VERIFIED', model_id=card['model_id'], files=len(files),
                 external_inputs_verified=data_dir is not None, automatic_promotion=False)
+
+
+def build_diagnostic_release(source, output):
+    """Portable diagnostic bytes; no model card, accepted seal or promotion path."""
+    from quant.backtest.artifacts import verify_diagnostic_completion
+    from quant.governance.gates import GATE_ID
+    source, output = Path(source).resolve(), Path(output).resolve()
+    completion = verify_diagnostic_completion(source)
+    if output.exists() or output.is_relative_to(source) or source.is_relative_to(output):
+        raise ValueError('Diagnostic release destination must be new and outside the source')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=output.name+'.pending-', dir=output.parent))
+    for path in sorted(source.rglob('*')):
+        if path.is_file():
+            _copy(path, staging/'source-experiment'/path.relative_to(source))
+    metadata = dict(release_type='DIAGNOSTIC_RELEASE', research_authority='DIAGNOSTIC_ONLY',
+        historical_validation=False, promotion_eligible=False, real_forward_evidence=False,
+        governance_block=GATE_ID, governance_status=completion['governance_status'],
+        diagnostic_completion_sha256=digest_file(source/'diagnostic-completion.json'))
+    write_json(staging/'diagnostic-release.json', metadata)
+    write_json(staging/'environment.json', dict(python=platform.python_version(), dependencies=sorted(
+        f'{d.metadata["Name"]}=={d.version}' for d in importlib.metadata.distributions())))
+    if verify_diagnostic_completion(source) != completion:
+        raise ValueError('Diagnostic inputs changed while packaging')
+    files = {p.relative_to(staging).as_posix(): digest_file(p) for p in sorted(staging.rglob('*')) if p.is_file()}
+    append_record(staging/'checksums.json', dict(version='diagnostic_release_1.0.0', files=files, sha256=content_hash(files)))
+    verify_diagnostic_release(staging)
+    os.rename(staging, output)
+    return output
+
+
+def verify_diagnostic_release(root):
+    from quant.backtest.artifacts import verify_diagnostic_completion
+    root = Path(root).resolve()
+    record = _json(root/'checksums.json')
+    files = record.get('files', {})
+    actual = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file() and p != root/'checksums.json'}
+    if (record.get('version') != 'diagnostic_release_1.0.0' or set(files) != actual
+            or record.get('sha256') != content_hash(files)):
+        raise ValueError('Diagnostic release inventory changed')
+    for name, expected in files.items():
+        path = (root/name).resolve()
+        if not path.is_relative_to(root) or path.is_symlink() or digest_file(path) != expected:
+            raise ValueError('Diagnostic release checksum changed')
+    metadata = _json(root/'diagnostic-release.json')
+    completion = verify_diagnostic_completion(root/'source-experiment')
+    if (metadata.get('release_type') != 'DIAGNOSTIC_RELEASE'
+            or any(metadata.get(k) is not False for k in ('historical_validation', 'promotion_eligible', 'real_forward_evidence'))
+            or metadata.get('diagnostic_completion_sha256') != digest_file(root/'source-experiment/diagnostic-completion.json')
+            or completion['governance_status'] != metadata.get('governance_status')
+            or (root/'model-card.json').exists()):
+        raise ValueError('Diagnostic release cannot claim historical validation or promotion eligibility')
+    return dict(status='VERIFIED_DIAGNOSTIC_RELEASE', **metadata, files=len(files))

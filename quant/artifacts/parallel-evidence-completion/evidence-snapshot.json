@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-11-21T20:45:57.390778+00:00",
+  "snapshot_prepared_at_commit": "460cb59427e0104b1037feb81536710777506ee8",
+  "successor_commit_requires_own_exact_sha_ci": true,
+  "human_review_status": "PENDING",
+  "historical_validation": false,
+  "promotion_eligible": false,
+  "real_forward_evidence": false,
+  "phase_complete": false,
+  "software_implementation_and_measured_data_evidence_only": true,
+  "files": {
+    "reports/focused-tests-final.xml": "5abf91db1b8bea7f8b72f4131e1122025ad9b3e19f5dcbcb7e4d283bc929c104",
+    "reports/governance-dependencies.json": "22bff17f65ff1eeb2ad202fc50ba9564c940c9190cd5625b2b5aea288d02e9da",
+    "reports/governance-gates.json": "c37e25f0101c41a28353d365f3e24cdbf8f83d721cb2be61546c56eb6b0195b3",
+    "reports/live-tests.xml": "03fbcc892d0c881cee6286e7813347fe6b7c8e03f75904f3a78fa035276b1b03",
+    "reports/official-alternate-probe.json": "5261e67c7d007ad9289c7d2867d45e2c63f95f229d80250aac474901df009e21",
+    "reports/parallel-evidence-initialization.json": "cf5efd11930c1376ba3c76a675df600492a197ddc432e673eeec780cc5dd2bdc",
+    "reports/release-retest.xml": "1ee824ed5e5e3ce24204409326e77c84bea387e1b574fee27e2c13e97dd39260",
+    "reports/security-transitions/tidewater-2016-human-review-pending.json": "1a113dd5333ee36470397741f5dcf078ed6228d79f5d1c1a48078cca3955ec90",
+    "reports/unit-test-retest-manifest.json": "2b245a4c6dc8e7a1c617d4c4402d5e2cc175528e0a812855b89369cf3386f0d0",
+    "reports/unit-tests-final.xml": "2e33bfaed355c348381af98098a951e871edae9a108cbca023bb619e4d5ef257",
+    "reports/unit-tests-initial.xml": "e182990f4b5b3b0ac0c27988403672429e5034078ff0489d60999f85fa23f3be",
+    "reports/v2-matrix-status.json": "8ddb34a5a1ea3ec03711ecd5ab7326c4bfe1fd8804dbb9681a665bd76bf8e99d"
+  }
+}

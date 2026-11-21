@@ -88,18 +88,23 @@ def window_subject(record):
     return content_hash({k: v for k, v in record.items() if k not in ('sha256', 'governance')})
 
 
+def window_subject_id(record):
+    return 'V1_FALLBACK_'+record['effective_start'].replace('-', '_')
+
+
 def require_window_admission(record):
-    from quant.governance.review import require_review
+    from quant.governance.review import require_review, transition_subject_id
     governance = record.get('governance', {})
     for event in record.get('blocking_events', []):
         review = governance.get('transition_reviews', {}).get(event['event_id'])
         require_review(review, review_type='TRANSITION_EXHAUSTION', subject_sha256=content_hash(event),
+                       subject_id=transition_subject_id(event['event_id']),
                        decision='CONFIRM_EVIDENCE_EXHAUSTED_UNRESOLVED')
         if review['transition_id'] != event['event_id'] or pd.Timestamp(review['reviewed_at']) < pd.Timestamp(event['reviewed_at']):
             raise ValueError('Human exhaustion review must follow and identify the automated audit')
     if record.get('blocking_events'):
         admission = require_review(governance.get('window_review'), review_type='EVALUATION_WINDOW_ADMISSION',
-            subject_sha256=window_subject(record), decision='ADMIT')
+            subject_sha256=window_subject(record), subject_id=window_subject_id(record), decision='ADMIT')
         if pd.Timestamp(admission['reviewed_at']) < pd.Timestamp(record['declared_at']):
             raise ValueError('Human window admission must follow the frozen declaration')
         if any(pd.Timestamp(r['reviewed_at']) > pd.Timestamp(admission['reviewed_at'])

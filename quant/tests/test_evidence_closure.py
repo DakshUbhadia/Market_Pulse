@@ -190,6 +190,8 @@ def test_release_is_portable_and_detects_changed_or_added_bytes(tmp_path):
     card = registry.card('factor-v2-test')
     card.update(model_id='complete-test', historical_completion_sha256=digest_file(experiment/'completion.json'))
     new = ModelRegistry(tmp_path/'complete-registry')
+    from quant.tests.governance_fixtures import approve_test_gate
+    approve_test_gate(tmp_path)
     new.register(card)
     new.transition('complete-test', 'RESEARCH_CANDIDATE', reason='synthetic')
     new.transition('complete-test', 'HISTORICALLY_VALIDATED', reason='synthetic')

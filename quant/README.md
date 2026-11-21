@@ -998,7 +998,8 @@ be passed through as an approved window.
 The prepared forms and complete source packet are in
 `quant/artifacts/historical-forward-validation/reports/security-transitions/`.
 `tidewater-2016-human-review.json` is intentionally pending. A human completes
-the fields, sets `status` to `REVIEWED`, supplies a reason and chooses
+the fields, sets `subject_id` to `TIDEWATER_2016`, sets `status` to `APPROVED`
+for confirmation or `REJECTED` for reopening, supplies a reason and chooses
 `CONFIRM_EVIDENCE_EXHAUSTED_UNRESOLVED` or `REOPEN_SEARCH` without using returns.
 The `automated_review_sha256` and `subject_sha256` bind the canonical audit body;
 the packet separately records the original audit-file digest. Save a completed
@@ -1012,6 +1013,12 @@ python -m quant.pipeline.admit_evaluation_window --declaration data/historical-f
 
 The window review type is `EVALUATION_WINDOW_ADMISSION`, decision `ADMIT` or
 `REJECT`, and its subject is supplied in `evaluation-window-admission-request.json`.
+Its `subject_id` is `V1_FALLBACK_2017_03_28`. Use `APPROVED` for admission or
+`REJECTED` for rejection. After recording an actual human transition decision,
+update the gate journal with `python -m quant.governance.gates --data-dir
+data/parallel-evidence-completion --review completed-immutable-human-review.json`.
+The separately admitted declaration must be saved as
+`reports/v1-evaluation-window-admitted.json` under that same data directory.
 Review timestamps must follow the declaration and exhaustion review. All typed
 reviews record human name/role, independent-review attestation, reason, explicit
 performance-information use and a past timezone-aware timestamp. Model promotion
@@ -1026,6 +1033,52 @@ The decision file retains its legacy `decision` field for registry compatibility
 and adds `research_outcome`: `PASS_RESEARCH`, `NO_GO` or `INCONCLUSIVE`. Failed
 prerequisites produce `BLOCKED` experiment outcomes. Research PASS permits
 further testing only.
+
+The current phase is `quant-parallel-evidence-completion`; see
+[PARALLEL_EVIDENCE_STATUS.md](PARALLEL_EVIDENCE_STATUS.md). TIDEWATER remains
+explicitly `PENDING`. The gate journal is hash chained and the prepared window
+remains inadmissible until both human decisions are present. Pending and
+rejected decisions have distinct metadata and never halt independent data work.
+
+Initialize an isolated output workspace without changing the retained corpus:
+
+```powershell
+python -m quant.pipeline.prepare_parallel_phase --data-dir data/parallel-evidence-completion --review-evidence-root data/historical-certification
+```
+
+After certifying the exact current clean SHA, execute diagnostic PRICE and
+TOTAL_RETURN runs using the original requested start and prepared declaration:
+
+```powershell
+python -m quant.pipeline.run_backtest --data-dir data/parallel-evidence-completion --corpus-data-dir D:/Market_Pulse_Quant_20261113/data --start 2016-01-01 --end 2026-11-17 --research-authority DIAGNOSTIC_ONLY --evaluation-window data/parallel-evidence-completion/reports/v1-evaluation-declaration.json --estimate-historical-costs
+```
+
+Repeat with `--total-return`. Diagnostic execution retains all source, lifecycle,
+cost, robustness and walk-forward checks. It writes a separate integrity inventory
+`diagnostic-completion.json`, never an accepted `completion.json`, historical
+decision, registry admission or forward entitlement. A data failure still blocks
+diagnostic completion. `outcome` separates governance, data, source and software
+blocks. The declaration never becomes admitted through diagnostic execution.
+
+Prepare draft seven-block inputs with `python -m quant.pipeline.prepare_v2_matrix
+--price-features ... --fundamental-features ... --output ...`; missing verified
+Value makes the full matrix `INCOMPLETE`. `quant.pipeline.run_v2_diagnostics`
+requires an explicitly DRAFT spec and declared synthetic/archived diagnostic
+scope. It exercises all four arms and capital scenarios without a real V2
+decision. Neither data preparation nor a diagnostic success freezes a spec.
+
+Build and verify portable diagnostic bundles with
+`python -m quant.pipeline.build_diagnostic_release --source ... --output ...`.
+The bundle is labelled `DIAGNOSTIC_RELEASE`, with historical validation,
+promotion eligibility and real forward evidence all false. Its verifier works
+after relocation. Research-release and registry verifiers reject it.
+
+`quant.pipeline.run_test_forward.run_test_forward` runs controlled after-close
+signal freezes, next-open shadow accounting and outcome tracking in
+`forward/test-only/<cohort>`. `TEST_ONLY` propagates into signals, policies,
+outcomes, monitoring and comparisons. Test and real cohorts cannot be mixed.
+Synthetic evidence is never a substitute for 126 real signal sessions, six
+rebalance cycles or 30 matured 63-session signals.
 
 Capital-event verification is independent of event discovery:
 

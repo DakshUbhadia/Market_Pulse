@@ -59,7 +59,7 @@ def verify_capital_events(events, data_dir, *, issuer_hosts=()):
         except (ValueError, TypeError, KeyError):
             terms = False
             missing.append('valid_share_arithmetic')
-        date_fields = ['announced_at', 'effective_date']
+        date_fields = ['announced_at', 'effective_date', 'known_at']
         if kind in {'SPLIT', 'BONUS', 'RIGHTS_ISSUE', 'BUYBACK', 'CAPITAL_REDUCTION', 'FACE_VALUE_CHANGE'}:
             date_fields.append('record_date')
         if kind in ISSUANCES:
@@ -71,6 +71,10 @@ def verify_capital_events(events, data_dir, *, issuer_hosts=()):
                 raise ValueError('Missing dated announcement availability')
             if stamps[0].tz_convert('Asia/Kolkata').date() > pd.Timestamp(row['effective_date']).date():
                 raise ValueError('Announcement follows effective date')
+            known = pd.Timestamp(row.get('known_at'))
+            if known.tzinfo is None or known < stamps[0] or known.tz_convert('Asia/Kolkata').date() < max(
+                    pd.Timestamp(row[k]).date() for k in date_fields if k not in ('announced_at', 'known_at')):
+                raise ValueError('Final event facts must have proven historical availability after the material dates')
             if kind in ISSUANCES:
                 credit, listing = pd.Timestamp(row['credit_date']), pd.Timestamp(row['listing_date'])
                 if listing < credit or (present(row.get('record_date')) and credit < pd.Timestamp(row['record_date'])):
@@ -78,7 +82,10 @@ def verify_capital_events(events, data_dir, *, issuer_hosts=()):
         except (ValueError, TypeError):
             dates = False
             missing.append('valid_dates')
-        lineage = all([proven('security_lineage_id'), proven('instrument_id')])
+        lineage_fields = ['security_lineage_id', 'instrument_id']
+        if kind in ('MERGER_CONVERSION', 'DEMERGER_ALLOCATION', 'SPLIT', 'FACE_VALUE_CHANGE'):
+            lineage_fields += ['predecessor_instrument_id', 'successor_instrument_id']
+        lineage = all([proven(k) for k in lineage_fields])
         # The source used by downstream archive checks must itself be verified.
         raw = (base/str(row.get('raw_path'))).resolve()
         archived = raw.is_relative_to(base) and raw.is_file() and digest_file(raw) == row.get('source_sha256')

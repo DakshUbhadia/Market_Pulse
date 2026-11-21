@@ -36,7 +36,7 @@ def test_governance_record_is_immutable_and_checksum_verified(tmp_path):
 
 def test_fallback_needs_both_human_exhaustion_and_window_admission(tmp_path):
     from quant.tests.test_evidence_champion_challenger import blocker
-    from quant.research.evaluation_window import select_evaluation_window, window_subject, freeze_evaluation_window, load_evaluation_window
+    from quant.research.evaluation_window import select_evaluation_window, window_subject, window_subject_id, freeze_evaluation_window, load_evaluation_window
     event = blocker()
     window = select_evaluation_window('2016-01-01', pd.bdate_range('2016-01-01', '2017-12-31'), [event], warmup_sessions=252)
     digest = content_hash(event)
@@ -45,7 +45,7 @@ def test_fallback_needs_both_human_exhaustion_and_window_admission(tmp_path):
         sources_reviewed=['Synthetic sources'], facts_proven=['Synthetic proposal'],
         facts_unproven=['Synthetic actual credit date'], search_routes_attempted=['Synthetic exchange route'])
     governance = dict(transition_reviews={event['event_id']: review},
-        window_review=human_review('EVALUATION_WINDOW_ADMISSION', window_subject(window), 'ADMIT'))
+        window_review=human_review('EVALUATION_WINDOW_ADMISSION', window_subject(window), 'ADMIT', subject_id=window_subject_id(window)))
     path = tmp_path/'admitted.json'
     freeze_evaluation_window(window, path, governance=governance)
     assert load_evaluation_window(path)['effective_start'] == window['effective_start']
@@ -122,13 +122,14 @@ def verified_event(tmp_path):
     path = tmp_path/'official.json'
     path.write_text('Synthetic official capital event source')
     row = dict(instrument_id='a', security_lineage_id='line-a', event_type='BONUS',
+        known_at='2024-04-12T16:00:00+05:30',
         announced_at='2024-04-01T16:00:00+05:30', record_date='2024-04-10', effective_date='2024-04-11',
         credit_date='2024-04-11', listing_date='2024-04-12', share_multiplier=2.,
         verification_status='CANDIDATE', raw_path=path.name, source_sha256=digest_file(path))
     row['event_evidence'] = {k:dict(raw_path=path.name, source_sha256=digest_file(path),
         source_url='https://nsearchives.nseindia.com/evidence', source_type='NSE_OFFICIAL', source_exchange='NSE',
         review_status='VERIFIED', reviewed_by='SYNTHETIC TEST ONLY', value=str(row[k])) for k in
-        ('instrument_id', 'event_type', 'security_lineage_id', 'announced_at', 'record_date', 'effective_date', 'credit_date', 'listing_date', 'share_multiplier')}
+        ('instrument_id', 'event_type', 'security_lineage_id', 'announced_at', 'known_at', 'record_date', 'effective_date', 'credit_date', 'listing_date', 'share_multiplier')}
     return row
 
 

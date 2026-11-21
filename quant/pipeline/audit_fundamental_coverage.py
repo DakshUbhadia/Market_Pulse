@@ -114,7 +114,8 @@ def audit_fundamental_coverage(universe, filings, sessions, *, start, end, frequ
         shares = (share_validity[pd.to_datetime(share_validity.as_of).eq(day)]
                   if share_validity is not None else None)
         row.update(coverage_deficits(cross, filings, usable, liquid, cutoff, attempts=attempts,
-            share_validity=shares, overall_threshold=universe_threshold, top_threshold=liquidity_threshold))
+            share_validity=shares, overall_threshold=universe_threshold, top_threshold=liquidity_threshold,
+            max_age_days=max_age_days, max_quarter_age_days=max_quarter_age_days))
         rows.append(row)
     from quant.research.coverage_policy import reliable_interval
     reliable = reliable_interval(rows) if frequency == 'monthly' else None

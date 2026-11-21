@@ -1,5 +1,6 @@
 """Measure verified share coverage and the optimistic ceiling of candidate evidence."""
 import json
+from collections import Counter
 from pathlib import Path
 
 import pandas as pd
@@ -27,7 +28,7 @@ def candidate_evidence(frame):
     return result
 
 
-def plan_share_evidence(universe, anchors, events, coverage, sessions, *, start, end):
+def plan_share_evidence(universe, anchors, events, coverage, sessions, *, start, end, filing_coverage=None):
     if universe.duplicated(['as_of', 'instrument_id']).any():
         raise ValueError('Duplicate dated share-coverage universe')
     possible = [candidate_evidence(f) for f in (anchors, events, coverage)]
@@ -44,6 +45,7 @@ def plan_share_evidence(universe, anchors, events, coverage, sessions, *, start,
             possible[2].loc[index, 'reconciled_start_anchor'] = anchor_hash(known.iloc[0])
             possible[2].loc[index, 'reconciled_end_anchor'] = anchor_hash(known.iloc[-1])
     periods, targets = [], []
+    filing_periods = {r['as_of']: r for r in (filing_coverage or {}).get('periods', [])}
     for day in coverage_dates(sessions, start, end, 'monthly'):
         cross = universe[pd.to_datetime(universe.as_of).eq(day) & universe.eligible.eq(True)]
         liquid = cross.dropna(subset=['adv60']).sort_values(['adv60', 'instrument_id'], ascending=[False, True]).head(100)
@@ -63,6 +65,8 @@ def plan_share_evidence(universe, anchors, events, coverage, sessions, *, start,
         else:
             anchor_names = set()
         missing = set(cross.instrument_id)-names
+        filing_period = filing_periods.get(str(day.date()))
+        filing_missing = {r['instrument_id'] for r in filing_period.get('missing_details', [])} if filing_period else None
         count, top = len(cross), len(liquid)
         pct = lambda n, d: 100*n/d if d else None
         current, ceiling = pct(len(names), count), pct(len(names | possible_names), count)
@@ -82,11 +86,18 @@ def plan_share_evidence(universe, anchors, events, coverage, sessions, *, start,
             if row['instrument_id'] in missing:
                 candidate = row['instrument_id'] in possible_names
                 targets.append(dict(as_of=str(day.date()), instrument_id=row['instrument_id'], top100=row['instrument_id'] in set(liquid.instrument_id),
+                    usable_pit_filings=row['instrument_id'] not in filing_missing if filing_missing is not None else None,
+                    likely_v2_covered_candidate=bool(filing_missing is not None and row['instrument_id'] not in filing_missing
+                        and row['instrument_id'] in anchor_names),
                     adv_rank=rank, candidate_chain_available=candidate, candidate_anchor_available=row['instrument_id'] in anchor_names,
                     required_action='VERIFY_ARCHIVED_ANCHOR_AND_EVENT_CHAIN' if candidate else
                         'CERTIFY_COMPLETE_CAPITAL_EVENT_INTERVAL' if row['instrument_id'] in anchor_names else
                         'DISCOVER_DATED_EQUITY_CAPITAL_FACE_VALUE_AND_COMPLETE_CAPITAL_EVENT_INTERVAL'))
-    targets.sort(key=lambda r: (-int(r['top100']), r['adv_rank'], r['as_of'], r['instrument_id']))
+    repairs = Counter(r['instrument_id'] for r in targets)
+    for row in targets:
+        row['monthly_repair_potential'] = repairs[row['instrument_id']]
+    targets.sort(key=lambda r: (-int(r['top100']), -int(r['usable_pit_filings'] is True),
+        -int(r['likely_v2_covered_candidate']), -r['monthly_repair_potential'], r['adv_rank'], r['as_of'], r['instrument_id']))
     return dict(status='PLANNED', periods=periods, targets=targets,
         theoretical_reliable_start=reliable_interval(periods), coverage_certified=False,
         value_research_enabled=False, current_shares_backfilled=False, performance_used_to_prioritize=False,
@@ -98,13 +109,17 @@ def main():
     parser, config = parser_config(__doc__)
     for name in ('universe', 'anchors', 'capital-events', 'share-coverage', 'output'):
         parser.add_argument('--'+name, type=Path, required=True)
+    parser.add_argument('--filing-coverage', type=Path)
     args = parser.parse_args()
     config = args.config(config)
     paths = (args.universe, args.anchors, args.capital_events, args.share_coverage, config.calendar_path)
     universe, *frames, calendar = [read_parquet_file(p) for p in paths]
     frames = [verify_share_archives(f, config.data_dir) for f in frames]
-    report = plan_share_evidence(universe, *frames, calendar.loc[calendar.is_trading_session, 'trade_date'], start=args.start, end=args.end)
+    report = plan_share_evidence(universe, *frames, calendar.loc[calendar.is_trading_session, 'trade_date'],
+        start=args.start, end=args.end, filing_coverage=json.loads(args.filing_coverage.read_text(encoding='utf-8')) if args.filing_coverage else None)
     report['input_sha256'] = {str(p): digest_file(p) for p in paths}
+    if args.filing_coverage:
+        report['input_sha256'][str(args.filing_coverage)] = digest_file(args.filing_coverage)
     write_json(args.output, report)
     print(json.dumps({k: v for k, v in report.items() if k not in ('periods', 'targets')}, indent=2))
 

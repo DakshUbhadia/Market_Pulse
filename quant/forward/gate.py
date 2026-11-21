@@ -13,6 +13,8 @@ from quant.version import (MODEL_VERSION, FEATURE_VERSION, EVIDENCE_POLICY_VERSI
 
 
 def require_completed_baselines(config, price_baseline, total_return_baseline):
+    from quant.governance.gates import require_action
+    require_action(config, 'V1_FORWARD')
     output = {}
     expected_costs = clean_json(vars(CostModel()))
     expected_costs.pop('allow_estimated_history')

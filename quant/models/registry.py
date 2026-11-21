@@ -62,6 +62,11 @@ class ModelRegistry:
         return record
 
     def register(self, value):
+        if value.get('research_authority') == 'DIAGNOSTIC_ONLY' or value.get('promotion_eligible') is False:
+            raise ValueError('Diagnostic candidates cannot enter the model registry')
+        if value.get('historical_experiment'):
+            from quant.research.authority import reject_diagnostic_artifacts
+            reject_diagnostic_artifacts(value['historical_experiment'])
         card = make_model_card(value)
         with state_lock(self.root/'registry.lock'):
             snapshot = self.snapshot()
@@ -118,6 +123,9 @@ class ModelRegistry:
             evidence = {}
             if state in ('HISTORICALLY_VALIDATED', 'FORWARD_CHALLENGER', 'FORWARD_CHAMPION'):
                 evidence.update(self._historical_evidence(card))
+                from quant.governance.gates import GateRegistry, data_root_for
+                GateRegistry(data_root_for(self.root)).require('V1_MODEL_REGISTRATION' if
+                    str(card['model_version']).startswith('factor_v1') else 'V2_PROMOTION')
             if state == 'FORWARD_CHAMPION':
                 if incident_root is None:
                     raise ValueError('Champion promotion requires manual review and an assessed incident ledger')
@@ -132,6 +140,8 @@ class ModelRegistry:
                 from quant.forward.metrics import forward_metrics
                 from quant.forward.signal_store import read_signals
                 batches, _ = read_signals(forward_root)
+                if any(b.get('cohort_type', 'REAL') == 'TEST_ONLY' for b in batches):
+                    raise ValueError('TEST_ONLY cohorts cannot authorize model promotion')
                 if not batches or any(b['settings'].get('model_card_sha256') != card['sha256'] for b in batches):
                     raise ValueError('Forward cohort is not bound to this immutable model card')
                 metrics = forward_metrics(forward_root)

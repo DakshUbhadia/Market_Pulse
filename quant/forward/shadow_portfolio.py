@@ -60,7 +60,10 @@ def update_shadow(root, prices, sessions, *, as_of, portfolio, cost_model, corpo
         holdings=result.holdings[result.holdings.trade_date.eq(day)].to_dict('records') if not result.holdings.empty else [],
         lifecycle=result.lifecycle[result.lifecycle.trade_date.eq(day)].to_dict('records') if not result.lifecycle.empty else [],
         dividends=result.dividends[result.dividends.trade_date.eq(day)].to_dict('records') if not result.dividends.empty else [],
-        validation_level='FORWARD_PAPER_ONLY')
+        cohort_type=settings[0].get('cohort_type', 'REAL'),
+        real_forward_evidence=settings[0].get('cohort_type', 'REAL') == 'REAL',
+        promotion_eligible=False,
+        validation_level='TEST_ONLY' if settings[0].get('cohort_type') == 'TEST_ONLY' else 'FORWARD_PAPER_ONLY')
     record['capacity_violations'] = None
     record['cluster_concentration'] = None
     if model_card is not None:

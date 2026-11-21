@@ -67,6 +67,8 @@ def test_incremental_action_rebases_older_prices_and_keeps_return_seam(tmp_path)
 
 
 def test_full_research_runner_writes_reproducible_artifact_contract(tmp_path, monkeypatch):
+    from quant.tests.governance_fixtures import approve_test_gate
+    approve_test_gate(tmp_path)
     prices, benchmark, sessions = market_fixture(stocks=35, days=440, start='2023-01-02')
     indices = pd.concat([benchmark.assign(index_name=name) for name in ('NIFTY 50','NIFTY 500')])
     monkeypatch.setattr(runner,'require_research_ready',lambda *args: {'status':'SYNTHETIC_TEST_ONLY'})
@@ -94,6 +96,8 @@ def test_full_research_runner_writes_reproducible_artifact_contract(tmp_path, mo
 
 
 def test_total_return_runner_records_tri_basis_clusters_and_production_gate(tmp_path, monkeypatch):
+    from quant.tests.governance_fixtures import approve_test_gate
+    approve_test_gate(tmp_path)
     prices,benchmark,sessions = market_fixture(stocks=12,days=300,start='2023-01-02')
     indices = pd.concat([benchmark.assign(index_name=name) for name in ('NIFTY 50','NIFTY 500')])
     tri = indices.assign(index_name=indices.index_name + ' TRI')
@@ -115,6 +119,8 @@ def test_total_return_runner_records_tri_basis_clusters_and_production_gate(tmp_
 
 
 def test_blocked_attempt_is_frozen_and_appended_before_gate_failure(tmp_path,monkeypatch):
+    from quant.tests.governance_fixtures import approve_test_gate
+    approve_test_gate(tmp_path)
     monkeypatch.setattr(runner,'require_research_ready',lambda *args: (_ for _ in ()).throw(ValueError('synthetic blocker')))
     with pytest.raises(ValueError,match='synthetic blocker'):
         runner.run_research(Config(data_dir=tmp_path),date(2016,1,1),date(2024,1,1))

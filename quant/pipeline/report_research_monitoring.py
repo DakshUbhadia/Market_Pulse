@@ -21,7 +21,9 @@ def research_monitoring(*, root, as_of, reference, current, features, reference_
     batches, signals = read_signals(root)
     batches = [b for b in batches if b['as_of'] <= str(as_of)]
     cards = {b['settings'].get('model_card_sha256') for b in batches}
-    if len(cards) != 1 or None in cards:
+    test_only = bool(batches) and all(b.get('cohort_type', 'REAL') == 'TEST_ONLY' for b in batches)
+    subjects = {b['settings'].get('diagnostic_subject_sha256') or b['settings'].get('model_card_sha256') for b in batches}
+    if len(cards) != 1 or (None in cards and not (test_only and len(subjects) == 1 and None not in subjects)):
         raise ValueError('Monitoring requires one immutable registered model card per cohort')
     for frame, column in ((reference, 'as_of'), (current, 'as_of'), (curve, 'trade_date')):
         if pd.to_datetime(frame[column]).gt(pd.Timestamp(as_of)).any():
@@ -75,6 +77,9 @@ def research_monitoring(*, root, as_of, reference, current, features, reference_
     turnover = rank_turnover(signals[signals.as_of.eq(dates[-2])], signals[signals.as_of.eq(dates[-1])]) if len(dates) >= 2 else None
     status = 'PASS' if integrity and statuses and all(s == 'PASS' for s in statuses) else 'REVIEW_REQUIRED'
     return dict(status=status, as_of=str(as_of), generated_at=datetime.now(timezone.utc).isoformat(),
+        research_authority='DIAGNOSTIC_ONLY' if test_only else 'RESEARCH',
+        cohort_type='TEST_ONLY' if test_only else 'REAL', real_forward_evidence=not test_only,
+        promotion_eligible=False,
         model_card_sha256=next(iter(cards)), cohort_root=str(Path(root).resolve()), panels=panels,
         incidents=incidents, unresolved_incidents=unresolved, operational_integrity=integrity,
         incident_ledger=ledger,

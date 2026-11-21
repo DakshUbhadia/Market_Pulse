@@ -1,0 +1,135 @@
+{
+  "method": "Full suite retained unchanged; actual later targeted observations replace only matching case IDs",
+  "original_full_suite_sha256": "e182990f4b5b3b0ac0c27988403672429e5034078ff0489d60999f85fa23f3be",
+  "source_sha256": {
+    "data\\parallel-evidence-completion\\unit-tests-initial.xml": "e182990f4b5b3b0ac0c27988403672429e5034078ff0489d60999f85fa23f3be",
+    "data\\parallel-evidence-completion\\focused-tests-final.xml": "5abf91db1b8bea7f8b72f4131e1122025ad9b3e19f5dcbcb7e4d283bc929c104",
+    "data\\parallel-evidence-completion\\release-retest.xml": "1ee824ed5e5e3ce24204409326e77c84bea387e1b574fee27e2c13e97dd39260"
+  },
+  "final_sha256": "2e33bfaed355c348381af98098a951e871edae9a108cbca023bb619e4d5ef257",
+  "tests": 463,
+  "failures": 0,
+  "replaced_cases": [
+    {
+      "classname": "quant.tests.test_parallel_data_controls",
+      "name": "test_missing_cells_have_all_eight_causal_failure_categories",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_parallel_data_controls",
+      "name": "test_complete_capital_event_requires_post_credit_availability_and_lineage",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_pending_review_blocks_v1_seal",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_pending_review_blocks_forward_cohort",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_pending_and_rejected_are_distinct_and_independent_work_remains_allowed",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_rejected_review_blocks_fallback",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_approved_review_admits_matching_fallback",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_transition_approval_does_not_automatically_admit_a_window",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_review_for_wrong_subject_is_rejected[changes0]",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_review_for_wrong_subject_is_rejected[changes1]",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_review_for_wrong_subject_is_rejected[changes2]",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_review_for_wrong_subject_is_rejected[changes3]",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_review_for_wrong_subject_is_rejected[changes4]",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_review_for_wrong_subject_is_rejected[changes5]",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_review_hash_must_match_evidence_packet",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_pending_final_run_records_governance_outcome_before_any_data_work",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_governance_journal_changes_are_detected",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_governance_review_source_cannot_change_after_approval",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_blocked_outcomes_keep_source_data_and_software_distinct",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_pending_governance",
+      "name": "test_diagnostic_integrity_inventory_cannot_become_a_seal_registry_or_research_release",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_parallel_diagnostics",
+      "name": "test_v2_matrix_cannot_hide_missing_value_or_freeze_a_draft",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_parallel_diagnostics",
+      "name": "test_risk_caps_bind_individually_and_turnover_penalty_preserves_holdings",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_parallel_diagnostics",
+      "name": "test_test_only_forward_matures_and_monitoring_remains_nonpromotable",
+      "retest_source": "data\\parallel-evidence-completion\\focused-tests-final.xml"
+    },
+    {
+      "classname": "quant.tests.test_evidence_closure",
+      "name": "test_release_is_portable_and_detects_changed_or_added_bytes",
+      "retest_source": "data\\parallel-evidence-completion\\release-retest.xml"
+    }
+  ],
+  "exact_successor_remote_ci_required": true
+}

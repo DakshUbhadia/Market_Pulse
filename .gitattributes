@@ -2,3 +2,7 @@
 quant/tests/fixtures/financials/*.xml -text
 # Archived JUnit evidence is bound by SHA-256, including its original line endings.
 quant/artifacts/historical-forward-validation/reports/*.xml binary
+quant/artifacts/parallel-evidence-completion/reports/*.xml binary
+# Governance packets and diagnostic inventories bind exact archived bytes.
+quant/artifacts/historical-forward-validation/reports/security-transitions/tidewater-2016-human-review-packet.json -text
+quant/artifacts/parallel-evidence-completion/** -text

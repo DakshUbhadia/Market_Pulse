@@ -165,6 +165,8 @@ def test_registry_code_existence_cannot_promote_and_card_tampering_is_detected(t
 
 
 def validated_registry(tmp_path):
+    from quant.tests.governance_fixtures import approve_test_gate
+    approve_test_gate(tmp_path)
     experiment = tmp_path/'experiment'
     values = card_values()
     spec = {k: values[k] for k in ('model_version', 'feature_version', 'cost_model_version', 'risk_policy_version', 'coverage_policy')}

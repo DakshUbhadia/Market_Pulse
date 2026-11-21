@@ -1,7 +1,37 @@
 # Current quant status
 
-Updated November 21, 2026, Asia/Kolkata. This is the canonical status.
-Earlier phase files retain dated snapshots, not current certification claims.
+Updated November 22, 2026, Asia/Kolkata. This is the canonical status.
+
+Epic: `quant-parallel-evidence-completion`. The complete assessment of the
+pending-review plan is [PARALLEL_EVIDENCE_STATUS.md](PARALLEL_EVIDENCE_STATUS.md).
+
+TIDEWATER human review is explicitly **PENDING**. Its automated audit remains
+`EVIDENCE_EXHAUSTED_UNRESOLVED`; the 2017-03-28 fallback remains
+`PREPARED_BUT_NOT_ADMITTED`. Final V1 seals, real V1/V2 forward, real V2 spec
+freeze/promotion and production publishing are `BLOCKED_BY_GOVERNANCE`.
+
+Diagnostic V1/V2 execution, portable `DIAGNOSTIC_RELEASE` bundles, TEST_ONLY
+forward, monitoring, acquisition, share-chain verification and software
+certification proceed independently. Diagnostic artifacts carry false historical
+validation, promotion and real-forward flags. Missing Value keeps full V2 inputs
+incomplete. No human approval or real cohort has been created.
+
+Current operational reports are in `data/parallel-evidence-completion/reports/`.
+Its `implementation-certification.json` is the authority for the exact clean
+successor SHA and public CI; a parent certificate never certifies changed code.
+The last published parent was `460cb59`, with 437 unit tests and successful CI
+at https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44876642507 .
+
+Starting data deficits remain material: 6,460 missing filing name/month cells,
+peak usable overall 43.44%, best theoretical overall 58.26%, independent best
+top-100 theoretical ceiling 51%, and no certified shared filing/share interval.
+The 3,602 event candidates and 74 anchors do not constitute verified share chains.
+The latest retained certified market session is 2026-11-17.
+
+The following content is a retained **November 21 phase snapshot**, including
+its parent-SHA facts; it does not certify this successor implementation.
+
+---
 
 Epic: `quant-historical-evidence-and-forward-validation`. Assessment of all
 43 sections of the current specification is in

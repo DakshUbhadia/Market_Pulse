@@ -1,5 +1,6 @@
 {
-  "status": "PENDING_HUMAN_REVIEW",
+  "status": "PENDING",
+  "subject_id": "TIDEWATER_2016",
   "review_type": "TRANSITION_EXHAUSTION",
   "transition_id": "TIDEWATER-2016-03-17",
   "automated_review_sha256": "b4819ee0de935f95a4d7c245cfc3a66ad0b2bb52440597bf960d2ce5105bed52",

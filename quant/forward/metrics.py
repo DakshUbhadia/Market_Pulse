@@ -13,6 +13,9 @@ def forward_metrics(root, *, as_of=None):
     for row in outcomes:
         if content_hash({k:v for k,v in row.items() if k != 'sha256'}) != row['sha256']:
             raise ValueError('Frozen forward outcome checksum changed')
+        kinds = {b.get('cohort_type', 'REAL') for b in batches}
+        if len(kinds) != 1 or row.get('cohort_type', 'REAL') not in kinds:
+            raise ValueError('TEST_ONLY outcomes cannot become real forward evidence')
     if as_of is not None:
         outcomes = [r for r in outcomes if pd.Timestamp(r['exit_date']) <= pd.Timestamp(as_of)]
         batches = [b for b in batches if pd.Timestamp(b['as_of']) <= pd.Timestamp(as_of)]
@@ -42,7 +45,10 @@ def forward_metrics(root, *, as_of=None):
         shadow = [r for r in shadow if pd.Timestamp(r['as_of']) <= pd.Timestamp(as_of)]
         shadow_days = {str(r['as_of']) for r in shadow}
     buys = {trade['instrument_id'] for row in shadow for trade in row['trades'] if trade['side'] == 'BUY'}
-    return dict(validation_level='FORWARD_PAPER_ONLY', production_validated=False,
+    test_only = bool(batches) and all(b.get('cohort_type', 'REAL') == 'TEST_ONLY' for b in batches)
+    return dict(validation_level='TEST_ONLY' if test_only else 'FORWARD_PAPER_ONLY', production_validated=False,
+        cohort_type='TEST_ONLY' if test_only else 'REAL', real_forward_evidence=not test_only and bool(batches),
+        promotion_eligible=False,
         signal_sessions=len(batches), distinct_recommendations=len(buys),
         distinct_ranked_instruments=signals.instrument_id.nunique() if len(signals) else 0,
         rebalance_cycles=sum(any(p > str(day.date()) for p in shadow_days) for day in rebalance_dates),

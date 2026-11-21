@@ -79,6 +79,34 @@ def write_current_status(config, *, public_state=None, evidence_dir=None):
     report['V2_STATE'] = phase.get('v2', dict(status='BLOCKED', reason='Certified interval and reviewed spec required'))
     report['forward_cohort_state'] = dict(registered_cohorts=report['registered_forward_cohorts'],
         state='COLLECTING' if report['registered_forward_cohorts'] else 'NOT_LAUNCHED')
+    from quant.governance.gates import GateRegistry, GATE_ID
+    gates = GateRegistry(root).snapshot()
+    report['governance_gates'] = gates
+    report['human_review_status'] = gates['human_review_status']
+    report['tidewater_human_review_state'] = 'HUMAN_REVIEW_PENDING' if gates['human_review_status'] == 'PENDING' else gates['human_review_status']
+    report['fallback_window_state'] = gates['fallback_window_state']
+    report['evaluation_window_admissible'] = gates['evaluation_window_admissible']
+    report['software_certification_scope'] = 'SOFTWARE_IMPLEMENTATION_ONLY_NOT_MODEL_HISTORICAL_VALIDATION'
+    if not gates['evaluation_window_admissible']:
+        report['V1_BASELINE_STATE'].update(status='BLOCKED', outcome='BLOCKED_BY_GOVERNANCE',
+            governance_gate=GATE_ID, governance_status=gates['human_review_status'],
+            PRICE='BLOCKED', TOTAL_RETURN='BLOCKED', human_window_admitted=False)
+        report['forward_cohort_state'].update(state='BLOCKED', outcome='BLOCKED_BY_GOVERNANCE',
+            governance_status=gates['human_review_status'], cohort_type='REAL')
+    report['diagnostic_runs'] = []
+    from quant.backtest.artifacts import verify_diagnostic_completion
+    for path in sorted((root/'artifacts/diagnostics').rglob('diagnostic-completion.json')):
+        report['diagnostic_runs'].append(dict(path=str(path.parent), report=verify_diagnostic_completion(path.parent)))
+    from quant.forward.signal_store import read_signals
+    report['test_only_cohorts'] = []
+    for path in sorted((root/'forward/test-only').rglob('cohort.json')):
+        batches, _ = read_signals(path.parent)
+        if batches and all(b.get('cohort_type') == 'TEST_ONLY' for b in batches):
+            report['test_only_cohorts'].append(dict(root=str(path.parent), real_forward_evidence=False,
+                                                   promotion_eligible=False, signal_sessions=len(batches)))
+    report['v2_matrix'] = evidence('v2-matrix-status.json')
+    report['parallel_evidence_phase'] = evidence('parallel-evidence-completion-phase.json')
+    report['production_recommendation_publishing'] = dict(status='BLOCKED', governance_status=gates['human_review_status'])
     write_json(root/'reports/current-status.json',report)
     return report
 

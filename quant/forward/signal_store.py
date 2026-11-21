@@ -44,7 +44,16 @@ def append_record(path, record):
 
 def freeze_signals(root, scores, *, as_of, generated_at, data_as_of, git_commit,
                    source_manifest_hash, next_open, settings, validation_level='FORWARD_PAPER_ONLY',
-                   next_session_evidence=None, model_card=None):
+                   next_session_evidence=None, model_card=None, cohort_type='REAL'):
+    if cohort_type not in ('REAL', 'TEST_ONLY'):
+        raise ValueError('Unknown forward cohort type')
+    if cohort_type == 'REAL':
+        from quant.governance.gates import GateRegistry, data_root_for
+        GateRegistry(data_root_for(root)).require('V1_FORWARD')
+    settings = dict(settings, cohort_type=cohort_type, real_forward_evidence=cohort_type == 'REAL')
+    if cohort_type == 'TEST_ONLY':
+        settings['promotion_eligible'] = False
+        validation_level = 'TEST_ONLY'
     model_version, feature_version = MODEL_VERSION, FEATURE_VERSION
     weights = WEIGHTS
     model_name = 'Factor V1'
@@ -94,9 +103,13 @@ def freeze_signals(root, scores, *, as_of, generated_at, data_as_of, git_commit,
             factor_contributions=contributions, percentile_score=row['percentile_score'], vol_63=row['vol_63'],
             data_as_of=str(day.date()), generated_at=generated.isoformat(), git_commit=git_commit,
             source_manifest_hash=source_manifest_hash, validation_level=validation_level))
+        records[-1].update(cohort_type=cohort_type, real_forward_evidence=cohort_type == 'REAL')
+        if cohort_type == 'TEST_ONLY':
+            records[-1]['promotion_eligible'] = False
         if model_card is not None and 'adv60' in row:
             records[-1]['adv60'] = float(row['adv60'])
     batch = dict(as_of=str(day.date()), settings=clean_json(settings), signals=records,
+                 cohort_type=cohort_type, real_forward_evidence=cohort_type == 'REAL',
                  next_session_open=opening.isoformat(),next_session_evidence=next_session_evidence)
     versions = dict(model_version=model_version,feature_version=feature_version,
         security_transition_version=TRANSITION_VERSION,portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION,cost_model_version=COST_MODEL_VERSION,
@@ -109,7 +122,8 @@ def freeze_signals(root, scores, *, as_of, generated_at, data_as_of, git_commit,
             raise ValueError('Cohort policy changed; start a new named cohort before appending signals')
     # Exclusive publication is also the admission lock for concurrent writers
     # attempting different policies. It happens before any new signal is stored.
-    policy = dict(versions=versions,settings=batch['settings'])
+    policy = dict(versions=versions,settings=batch['settings'], cohort_type=cohort_type,
+                  real_forward_evidence=cohort_type == 'REAL')
     policy['sha256'] = content_hash(policy)
     append_record(Path(root)/'cohort.json',policy)
     batch['sha256'] = content_hash(batch)
@@ -128,6 +142,17 @@ def read_signals(root):
         batch = json.loads(path.read_text(encoding='utf-8'))
         if content_hash({k:v for k,v in batch.items() if k != 'sha256'}) != batch['sha256']:
             raise ValueError(f'Forward batch checksum changed: {path.name}')
+        kind = batch.get('cohort_type', 'REAL')
+        if (kind not in ('REAL', 'TEST_ONLY') or batch['settings'].get('cohort_type', 'REAL') != kind
+                or batch['settings'].get('real_forward_evidence', kind == 'REAL') is not (kind == 'REAL')
+                or batch.get('real_forward_evidence', kind == 'REAL') is not (kind == 'REAL')
+                or (policy is not None and (policy.get('cohort_type', 'REAL') != kind
+                    or policy.get('real_forward_evidence', kind == 'REAL') is not (kind == 'REAL')))
+                or any(r.get('cohort_type', 'REAL') != kind
+                    or r.get('real_forward_evidence', kind == 'REAL') is not (kind == 'REAL')
+                    or (kind == 'TEST_ONLY' and r.get('promotion_eligible') is not False)
+                    for r in batch['signals'])):
+            raise ValueError('TEST_ONLY and real forward evidence cannot be mixed')
         if any(content_hash({k:row[k] for k in ('as_of','instrument_id','model_version')}) != row['signal_id']
                for row in batch['signals']):
             raise ValueError('Forward signal identity changed')

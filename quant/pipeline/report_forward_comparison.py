@@ -20,11 +20,16 @@ def shared_snapshot(root, batch):
 
 def report_forward_comparison(config, roots, *, as_of, output, incident_root=None):
     reports, dates, assumptions, snapshots = {}, None, None, None
+    comparison_type = None
     for name, root in roots.items():
         batches, signals = read_signals(root)
         batches = [b for b in batches if b['as_of'] <= str(as_of)]
         if not batches:
             raise ValueError('A real forward cohort is required for every comparison arm')
+        kinds = {b.get('cohort_type', 'REAL') for b in batches}
+        if len(kinds) != 1 or (comparison_type is not None and comparison_type not in kinds):
+            raise ValueError('TEST_ONLY cohorts cannot be compared with real forward evidence')
+        comparison_type = next(iter(kinds))
         observed = [b['as_of'] for b in batches]
         policies = [{k: b['settings'][k] for k in ('portfolio', 'costs', 'return_basis', 'security_transition_version', 'lifecycle_scenario')}
                     for b in batches]
@@ -39,6 +44,7 @@ def report_forward_comparison(config, roots, *, as_of, output, incident_root=Non
     if len(reports) < 2:
         raise ValueError('Champion/challenger comparison requires at least two real cohorts')
     report = dict(as_of=str(as_of), reports=reports, matched_signal_dates=dates, assumptions=assumptions,
+        cohort_type=comparison_type, real_forward_evidence=comparison_type == 'REAL', promotion_eligible=False,
         matched_snapshot_sha256=content_hash(snapshots),
         automatic_promotion=False, historical_backfill=False)
     write_json(output, report)

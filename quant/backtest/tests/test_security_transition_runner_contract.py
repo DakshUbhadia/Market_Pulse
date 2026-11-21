@@ -11,6 +11,8 @@ from quant.backtest.artifacts import verify_backtest_seal
 
 @pytest.mark.parametrize('total_return',[False,True])
 def test_verified_transition_runs_through_entire_research_tree(tmp_path,monkeypatch,total_return):
+    from quant.tests.governance_fixtures import approve_test_gate
+    approve_test_gate(tmp_path)
     from quant.pipeline import run_backtest as runner
     prices,benchmark,sessions=market_fixture(stocks=1,days=300,start='2023-01-02')
     day=sessions[-5]

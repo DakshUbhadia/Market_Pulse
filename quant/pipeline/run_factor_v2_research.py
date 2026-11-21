@@ -31,6 +31,8 @@ def run_factor_v2_research(config, *, spec_path, price_baseline, total_return_ba
     folder=Path(output_root)/f'{datetime.now(timezone.utc):%Y%m%dT%H%M%S%f}-{uuid4().hex[:8]}'
     folder.mkdir(parents=True,exist_ok=False)
     try:
+        from quant.governance.gates import require_action
+        require_action(config, 'V2_SPEC_FREEZE')
         spec=load_specification(spec_path)
         from quant.research.specification import verify_coverage_inputs
         verify_coverage_inputs(json.loads(Path(spec_path).read_text(encoding='utf-8')), config.data_dir)
@@ -159,7 +161,11 @@ def run_factor_v2_research(config, *, spec_path, price_baseline, total_return_ba
         seal_backtest(folder)
         return folder,decision
     except (ValueError,OSError,KeyError) as error:
-        write_json(folder/'outcome.json',dict(status='BLOCKED',reason=str(error),factor_v2_enabled=False))
+        from quant.research.authority import blocked_outcome
+        from quant.governance.gates import GateRegistry
+        write_json(folder/'outcome.json',dict(status='BLOCKED', outcome=blocked_outcome(error),
+            governance_status=GateRegistry(config.data_dir).snapshot()['human_review_status'],
+            reason=str(error),factor_v2_enabled=False))
         raise
 
 

@@ -6,10 +6,26 @@ prepare a packet but must never populate a human's identity or decision.
 import json
 from pathlib import Path
 import re
+from enum import Enum
 
 import pandas as pd
 
 from quant.forward.signal_store import append_record, content_hash
+
+
+class ReviewStatus(str, Enum):
+    NOT_REQUIRED = 'NOT_REQUIRED'
+    PENDING = 'PENDING'
+    APPROVED = 'APPROVED'
+    REJECTED = 'REJECTED'
+    SUPERSEDED = 'SUPERSEDED'
+
+
+POSITIVE_DECISIONS = {'CONFIRM_EVIDENCE_EXHAUSTED_UNRESOLVED', 'ADMIT', 'APPROVE', 'PROMOTE'}
+
+
+def transition_subject_id(transition_id):
+    return 'TIDEWATER_2016' if transition_id == 'TIDEWATER-2016-03-17' else transition_id
 
 DECISIONS = {
     'TRANSITION_EXHAUSTION': {'CONFIRM_EVIDENCE_EXHAUSTED_UNRESOLVED', 'REOPEN_SEARCH'},
@@ -20,15 +36,18 @@ DECISIONS = {
 }
 
 
-def validate_review(record, *, review_type, subject_sha256, decision=None):
+def validate_review(record, *, review_type, subject_sha256, decision=None, subject_id=None):
     if review_type not in DECISIONS:
         raise ValueError('Unknown governance review type')
     if (record.get('review_type') != review_type
             or record.get('subject_sha256') != subject_sha256
             or not re.fullmatch('[0-9a-f]{64}', str(subject_sha256))):
         raise ValueError('Human governance review does not bind this subject')
+    if not record.get('subject_id') or (subject_id is not None and record['subject_id'] != subject_id):
+        raise ValueError('Human governance review has the wrong subject ID')
+    expected_status = 'APPROVED' if record.get('decision') in POSITIVE_DECISIONS else 'REJECTED'
     if (record.get('reviewer_kind') != 'HUMAN' or record.get('independent_review') is not True
-            or record.get('status', 'REVIEWED') != 'REVIEWED'
+            or record.get('status') != expected_status
             or any(not isinstance(record.get(k), str) or not record[k].strip()
                    for k in ('reviewer_name', 'reviewer_role', 'reason', 'reviewed_at'))):
         raise ValueError('An attributed independent human governance review is required')
@@ -44,6 +63,7 @@ def validate_review(record, *, review_type, subject_sha256, decision=None):
             raise ValueError('This human review must be independent of performance')
     if review_type == 'TRANSITION_EXHAUSTION':
         if (not record.get('transition_id') or record.get('automated_review_sha256') != subject_sha256
+                or record['subject_id'] != transition_subject_id(record['transition_id'])
                 or any(not isinstance(record.get(k), list) or not record[k]
                        or any(not isinstance(v, str) or not v.strip() for v in record[k])
                        for k in ('sources_reviewed', 'facts_proven', 'facts_unproven', 'search_routes_attempted'))):
@@ -59,13 +79,25 @@ def seal_review(record, output):
     return sealed
 
 
-def require_review(record, *, review_type, subject_sha256, decision):
+def require_review(record, *, review_type, subject_sha256, decision, subject_id=None):
     if not isinstance(record, dict):
         raise ValueError('An immutable human governance review is required')
     body = {k: v for k, v in record.items() if k != 'sha256'}
     if record.get('sha256') != content_hash(body):
         raise ValueError('Human governance review checksum changed or is missing')
-    return validate_review(record, review_type=review_type, subject_sha256=subject_sha256, decision=decision)
+    return validate_review(record, review_type=review_type, subject_sha256=subject_sha256,
+                           decision=decision, subject_id=subject_id)
+
+
+def record_pending_review(*, review_type, subject_id, subject_sha256, automated_packet, output):
+    if review_type not in DECISIONS or not subject_id or not re.fullmatch('[0-9a-f]{64}', subject_sha256):
+        raise ValueError('A pending review requires its type, subject and evidence digest')
+    record = dict(review_type=review_type, subject_id=subject_id, subject_sha256=subject_sha256,
+        status=ReviewStatus.PENDING.value, automated_packet=str(automated_packet), reviewer=None,
+        reviewer_name=None, reviewed_at=None, decision=None, performance_information_used=False)
+    sealed = dict(record, sha256=content_hash(record))
+    append_record(Path(output), sealed)
+    return sealed
 
 
 def main():

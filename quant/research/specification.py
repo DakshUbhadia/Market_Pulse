@@ -123,7 +123,10 @@ def freeze_specification(spec, output, *, coverage_reports=None, governance_revi
     from quant.governance.review import require_review
     require_data_interval(data_interval or {}, coverage_reports['filings'], coverage_reports['shares'])
     require_review(governance_review, review_type='V2_SPEC_APPROVAL',
-                   subject_sha256=specification_subject(spec, coverage_reports, data_interval), decision='APPROVE')
+                   subject_sha256=specification_subject(spec, coverage_reports, data_interval),
+                   subject_id=spec['spec_version'], decision='APPROVE')
+    from quant.governance.gates import GateRegistry, data_root_for
+    gate_context = GateRegistry(data_root_for(output)).require('V2_SPEC_FREEZE')
     # One version has one policy in a specification store. Re-evaluation requires
     # the same frozen record; policy edits require a new spec_version.
     import re
@@ -135,7 +138,7 @@ def freeze_specification(spec, output, *, coverage_reports=None, governance_revi
     from quant.storage.research_store import git_commit
     body=dict(specification=spec,source_code_sha256=research_code_hashes(), git_commit=git_commit(),
               coverage_reports=coverage_reports,
-              data_interval=data_interval, governance_review=governance_review,
+              data_interval=data_interval, governance_review=governance_review, governance_gates=gate_context,
               coverage_report_sha256={k:content_hash(v) for k,v in coverage_reports.items()},
               frozen_at=datetime.now(timezone.utc).isoformat())
     append_record(output,dict(**body,sha256=content_hash(body)))
@@ -158,7 +161,11 @@ def load_specification(path):
     from quant.governance.review import require_review
     require_data_interval(record.get('data_interval', {}), reports['filings'], reports['shares'])
     require_review(record.get('governance_review'), review_type='V2_SPEC_APPROVAL',
-        subject_sha256=specification_subject(spec, reports, record['data_interval']), decision='APPROVE')
+        subject_sha256=specification_subject(spec, reports, record['data_interval']),
+        subject_id=spec['spec_version'], decision='APPROVE')
+    from quant.governance.gates import GateRegistry, data_root_for
+    if record.get('governance_gates') != GateRegistry(data_root_for(path)).require('V2_SPEC_FREEZE'):
+        raise ValueError('Governance approval changed after V2 specification freeze')
     return spec
 
 
