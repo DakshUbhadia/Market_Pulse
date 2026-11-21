@@ -23,6 +23,18 @@ def verify_share_archives(frame, data_dir):
                           and path.is_file() and digest_file(path) == expected)
         if not cache[key]:
             result.loc[i, 'verification_status'] = 'NEEDS_REVIEW'
+        if 'source_coverage' in result:
+            sources = row.get('source_coverage')
+            if not isinstance(sources, dict) or not sources:
+                result.loc[i, 'verification_status'] = 'NEEDS_REVIEW'
+            else:
+                for name, expected_hash in sources.items():
+                    source = (data_dir/str(name)).resolve()
+                    if not source.is_relative_to(data_dir.resolve()) or not source.is_file() or digest_file(source) != expected_hash:
+                        result.loc[i, 'verification_status'] = 'NEEDS_REVIEW'
+    if 'event_type' in result:
+        from quant.pipeline.verify_capital_events import verify_capital_events
+        result = verify_capital_events(result, data_dir)
     return result
 
 
@@ -53,7 +65,7 @@ def audit_share_history_coverage(universe, anchors, events, coverage, sessions, 
     return dict(status='COVERAGE_ESTABLISHED' if reliable else 'NOT_READY', periods=rows,
         first_reliable_share_signal_date=reliable, reliable_window_established=reliable is not None,
         minimum_consecutive_monthly_cutoffs=12, coverage_units='PERCENT',
-        share_chain_policy='START_ANCHOR_ALL_MATERIAL_EVENTS_LATER_RECONCILIATION_ANCHOR',
+        share_chain_policy='VERIFIED_COMPLETE_EVENTS_INVENTORY_BOUND_INTERVAL_AND_RECONCILED_ANCHORS',
         value_feature_policy='MISSING_UNLESS_VALUE_FEATURE_VALID_TRUE', current_shares_backfilled=False)
 
 

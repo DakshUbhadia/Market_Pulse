@@ -163,7 +163,8 @@ def test_specification_rejects_draft_and_detects_tampering(tmp_path):
     with pytest.raises(ValueError,match='review'):
         freeze_specification(dict(spec,review_status='DRAFT'),tmp_path/'draft.json')
     path=tmp_path/'frozen.json'
-    freeze_specification(spec,path,coverage_reports=synthetic_coverage_reports(spec))
+    from quant.tests.governance_fixtures import freeze_test_specification
+    freeze_test_specification(spec,path,coverage_reports=synthetic_coverage_reports(spec))
     assert load_specification(path)==spec
     record=json.loads(path.read_text())
     record['specification']['min_group_size']=2
@@ -178,7 +179,8 @@ def test_v2_research_block_retains_outcome_without_completion(tmp_path, monkeypa
     from quant.pipeline.run_factor_v2_research import run_factor_v2_research
     monkeypatch.setattr('quant.pipeline.run_factor_v2_research.require_certified_implementation', lambda *a: {'scope': 'SYNTHETIC_ONLY'})
     spec=tmp_path/'spec.json'
-    freeze_specification(reviewed_spec(),spec,coverage_reports=synthetic_coverage_reports(reviewed_spec()))
+    from quant.tests.governance_fixtures import freeze_test_specification
+    freeze_test_specification(reviewed_spec(),spec,coverage_reports=synthetic_coverage_reports(reviewed_spec()))
     with pytest.raises(FileNotFoundError):
         run_factor_v2_research(Config(data_dir=tmp_path),spec_path=spec,
             price_baseline=tmp_path/'no-price-baseline',total_return_baseline=tmp_path/'no-tr-baseline',
@@ -358,13 +360,17 @@ def test_complete_v2_runner_seals_synthetic_comparison_without_promotion(tmp_pat
         exchange_disseminated_at='2023-10-01T16:00:00+05:30')], ignore_index=True)
     coverage=pd.DataFrame([dict(instrument_id=n,covered_from='2023-09-30',covered_through='2025-02-07',
         known_at='2023-12-31T16:00:00+05:30',verification_status='VERIFIED',source_sha256=digest,raw_path=str(raw)) for n in identities])
+    from quant.tests.governance_fixtures import complete_interval
+    coverage = complete_interval(anchors, pd.DataFrame(), coverage)
+    coverage['source_coverage'] = [{str(raw): digest} for _ in range(len(coverage))]
     inputs=[tmp_path/n for n in ('filings.parquet','anchors.parquet','events.parquet','coverage.parquet')]
     for path,frame in zip(inputs,[pd.DataFrame(rows),anchors,pd.DataFrame(),coverage]):
         write_parquet(frame,path)
     spec=reviewed_spec()
     spec['evaluation_windows']=[dict(**{'from':'2025-01-01','to':'2025-02-07'})]
     spec_path=tmp_path/'frozen-spec.json'
-    freeze_specification(spec,spec_path,coverage_reports=synthetic_coverage_reports(spec))
+    from quant.tests.governance_fixtures import freeze_test_specification
+    freeze_test_specification(spec,spec_path,coverage_reports=synthetic_coverage_reports(spec))
     # Only the external V1/data foundation is isolated. Feature construction,
     # PIT selection, coverage, all accounting comparisons and seals remain real.
     monkeypatch.setattr(runner,'require_completed_baselines',lambda *a:{'scope':'SYNTHETIC_TEST_ONLY'})

@@ -1,0 +1,84 @@
+{
+  "LOCAL_IMPLEMENTATION_SHA": "52e1775975d594cc23bf64324a5d8305844ab4b1",
+  "PUBLIC_MAIN_SHA": "710bc6145157f01acc6f1a77ace985d909e1fa8b",
+  "RESEARCH_CERTIFIED_SHA": "52e1775975d594cc23bf64324a5d8305844ab4b1",
+  "branch": "feat/quant-evidence-champion-challenger",
+  "certified_at": "2026-11-19T09:35:07.416593+00:00",
+  "compile_check": {
+    "output": "",
+    "status": "PASS"
+  },
+  "compile_status": "PASS",
+  "dependency_check": {
+    "output": "No broken requirements found.",
+    "status": "PASS"
+  },
+  "dependency_status": "PASS",
+  "git_commit": "52e1775975d594cc23bf64324a5d8305844ab4b1",
+  "junit_sha256": "95a0556521e279600423bcccff327579815bbf3efd3f811436a6f6bad4c01469",
+  "live_ci_required_for_historical_research": false,
+  "live_failed": 5,
+  "live_failure_classes": [
+    "HTTP_403_ACCESS_DENIED"
+  ],
+  "live_passed": 6,
+  "live_results_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\historical-certification\\reports\\live-tests.xml",
+  "live_test_failures": [
+    {
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403",
+      "test": "quant.tests.integration.test_nse_bhavcopy_live.test_live_bhavcopy[None]"
+    },
+    {
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403",
+      "test": "quant.tests.integration.test_nse_calendar_live.test_live_calendar"
+    },
+    {
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403",
+      "test": "quant.tests.integration.test_nse_calendar_live.test_live_independent_special_session_evidence"
+    },
+    {
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403",
+      "test": "quant.tests.integration.test_nse_market_live.test_known_reliance_bonus_reconciles"
+    },
+    {
+      "message": "quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403",
+      "test": "quant.tests.test_calendar.test_live_calendar"
+    }
+  ],
+  "live_test_status": "FAIL",
+  "local_test_evidence": {
+    "data\\historical-certification\\reports\\live-tests.xml": "9a156b7d4c25202eb1f97681e9ac4e038ae6a9dfd32d6cbbc82aa78899011d0e",
+    "data\\historical-certification\\reports\\unit-tests-complete.xml": "95a0556521e279600423bcccff327579815bbf3efd3f811436a6f6bad4c01469"
+  },
+  "local_unit_test_status": "PASS",
+  "public_main_error": null,
+  "remote_error": "403 Client Error: rate limit exceeded for url: https://api.github.com/repos/DakshUbhadia/Market_Pulse/actions/runs?head_sha=52e1775975d594cc23bf64324a5d8305844ab4b1&per_page=100&verification_nonce=1795080904985412400",
+  "remote_run_url": "https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44496950926",
+  "remote_unit_ci_status": "PASS",
+  "runs": [
+    {
+      "conclusion": "success",
+      "head_sha": "52e1775975d594cc23bf64324a5d8305844ab4b1",
+      "html_url": "https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44496950926",
+      "name": "Quant unit tests",
+      "status": "completed"
+    }
+  ],
+  "sha": "52e1775975d594cc23bf64324a5d8305844ab4b1",
+  "status": "CERTIFIED",
+  "unit_ci_page_sha256": "415deca647a0caaa3f32f46465c4ba0405343d49ae131119ce832bf4c31d1866",
+  "unit_ci_passed": true,
+  "unit_ci_run": "https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44496950926",
+  "unit_ci_run_url": "https://github.com/DakshUbhadia/Market_Pulse/actions/runs/44496950926",
+  "unit_ci_status": "PASS",
+  "unit_ci_verification_source": "PUBLIC_GITHUB_RUN_PAGE",
+  "unit_results_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\historical-certification\\reports\\unit-tests-complete.xml",
+  "unit_test_count": 411,
+  "verified_at": "2026-11-19T09:35:07.416593+00:00",
+  "whitespace_check": {
+    "output": "",
+    "status": "PASS"
+  },
+  "whitespace_status": "PASS",
+  "working_tree_clean": true
+}

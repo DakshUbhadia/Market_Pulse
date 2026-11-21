@@ -12,5 +12,9 @@ def test_next_research_gate_is_separate_from_production_and_has_no_cluster_cap()
     baselines = dict(momentum_12_1_top25=dict(annualized_excess_return=.04))
     decision = v1_research_decision(evidence,metrics,baselines)
     assert decision['decision'] == 'GO_FURTHER_V1_RESEARCH' and not decision['ML_authorized']
+    assert decision['research_outcome'] == 'PASS_RESEARCH'
     baselines['momentum_12_1_top25']['annualized_excess_return'] = .06
     assert v1_research_decision(evidence,metrics,baselines)['decision'] == 'NO_GO_INVESTIGATE'
+    assert v1_research_decision(evidence,metrics,baselines)['research_outcome'] == 'NO_GO'
+    evidence['checks']['adequate_OOS_length'] = False
+    assert v1_research_decision(evidence,metrics,baselines)['research_outcome'] == 'INCONCLUSIVE'

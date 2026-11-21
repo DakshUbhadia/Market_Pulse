@@ -1,0 +1,75 @@
+{
+  "status": "SOURCE_BLOCKED",
+  "requests": 1,
+  "completed_queries_skipped": 0,
+  "documents_attempted": 0,
+  "new_observations": 0,
+  "selected_cells": 100,
+  "selected_instruments": 25,
+  "responses": [],
+  "errors": [
+    {
+      "instrument_id": "1625521c-e72f-58bc-9924-4dad0fd81f5c",
+      "symbol": "AUBANK",
+      "reason": "NSE session warm-up failed with HTTP 403",
+      "http_status": 403,
+      "raw_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\historical-forward-validation\\raw\\nse\\session\\2026-11-20\\165010457893-ed3d54d7e427532d-65aa9446.html",
+      "sha256": "ed3d54d7e427532dfd7dcf82359a34dbfc61184bd1f23ac711e730be0ce7c749"
+    }
+  ],
+  "review": [],
+  "missing_cells_before": 6460,
+  "missing_cells_after": 6460,
+  "requires_replanning_before_next_batch": true,
+  "coverage_certified": false,
+  "performance_used_to_prioritize": false,
+  "output": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\historical-forward-validation\\research\\discovery-batches\\3125d39178594f30926757f9b6eab65b",
+  "productivity": {
+    "documents_discovered_per_100_queries": 0.0,
+    "usable_filings_per_100_queries": 0,
+    "name_month_repairs_per_100_queries": 0.0,
+    "top100_repairs_per_100_queries": 0.0,
+    "coverage_gain_per_100_queries": 0.0,
+    "coverage_gain_units": "MEAN_MONTHLY_PERCENTAGE_POINTS",
+    "performance_information_used": false
+  },
+  "official_route_attempts": [],
+  "supported_official_routes": [
+    "NSE_STATIC_XBRL_ARCHIVE",
+    "NSE_DIRECT_DOCUMENT",
+    "BSE_OFFICIAL_ARCHIVE",
+    "REVIEWED_ISSUER_IR"
+  ],
+  "route_productivity": {
+    "NSE_STATIC_XBRL_ARCHIVE": {
+      "queries": 0,
+      "usable_filings": 0
+    },
+    "NSE_DIRECT_DOCUMENT": {
+      "queries": 0,
+      "usable_filings": 0
+    },
+    "BSE_OFFICIAL_ARCHIVE": {
+      "queries": 0,
+      "usable_filings": 0
+    },
+    "REVIEWED_ISSUER_IR": {
+      "queries": 0,
+      "usable_filings": 0
+    },
+    "NSE_FINANCIAL_METADATA_API": {
+      "queries": 1
+    }
+  },
+  "output_sha256": {
+    "acquisition-plan.json": "22e4c007e57c4bf751be12fda683e6ee5ae7d0dbee1908937ae39879b491b36a",
+    "attempts.json": "b68554b9bae3b50df877eff2c22ca8c2e34cdfed0f4e23767fa1d6297bf9d5a7",
+    "coverage-ceiling.json": "0053e39b8d86de526a7a119785663c8e49e5f15d03affeed1c8cec225073b202",
+    "coverage.json": "a11a0cbf920a0c30563b33f850f7f6408abe2199c2e0574b25526f14a119e190",
+    "discovery-gap.json": "9a8afd45c962747bbb58373057fe34ffc0a130b8dbcecd0b84ccdc198899e51f",
+    "filings.parquet": "b136cb314af31d01f79be95e5b8f2e6e20f8ca33259d196cdcd031ac335d9326",
+    "input-ledger.json": "cf268f69a083123f7b947720272c5660a4134239dfc6b6455d26d0a902bca875",
+    "new-filings.parquet": "5b9ec578c7648bfc4673d5628b77f00ed74f7a1427f2bd31579477dd605cdc92",
+    "selected-cells.json": "df07e2ee30d3c945f96046a5d67854ee2e34a381d69fade925c762bfc2467884"
+  }
+}

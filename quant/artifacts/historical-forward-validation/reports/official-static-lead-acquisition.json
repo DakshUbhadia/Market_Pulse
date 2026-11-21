@@ -1,0 +1,95 @@
+{
+  "status": "SOURCE_BLOCKED",
+  "query_count": 3,
+  "document_attempts": 3,
+  "documents_acquired": 0,
+  "attempts": [
+    {
+      "primary_route": "NSE_FINANCIAL_METADATA_API",
+      "primary_failure": "Archived NSE warmup HTTP 403",
+      "fallback_route": "NSE_DIRECT_DOCUMENT",
+      "identity_mapping": {
+        "symbol": "DIXON",
+        "instrument_id": "eea86882-5d0b-5cab-b525-5956d3f7d155",
+        "source": "DATED_MISSING_CELL_QUEUE",
+        "review_status": "CANDIDATE"
+      },
+      "historical_availability_evidence": null,
+      "source_hash": null,
+      "review_status": "NEEDS_REVIEW",
+      "source_url": "https://nsearchives.nseindia.com/corporate/DIXON_15052024162429_OutcomeWithPresentation15052024.pdf",
+      "findings": [
+        {
+          "filing_id": "39c41ac3326cbb3188415536a63fcac00cdb5f74fe341c387e229f384c628cc2",
+          "reason": "HTTPSConnectionPool(host='nsearchives.nseindia.com', port=443): Read timed out. (read timeout=20)",
+          "source_status": null,
+          "http_status": null,
+          "failure_class": "NETWORK_FAILURE"
+        }
+      ],
+      "parser_status": "NEEDS_REVIEW",
+      "timing_status": "UNVERIFIED"
+    },
+    {
+      "primary_route": "NSE_FINANCIAL_METADATA_API",
+      "primary_failure": "Archived NSE warmup HTTP 403",
+      "fallback_route": "NSE_DIRECT_DOCUMENT",
+      "identity_mapping": {
+        "symbol": "TATASTEEL",
+        "instrument_id": "159875f1-dbbe-5ccc-8929-e021a0c09d44",
+        "source": "DATED_MISSING_CELL_QUEUE",
+        "review_status": "CANDIDATE"
+      },
+      "historical_availability_evidence": null,
+      "source_hash": null,
+      "review_status": "NEEDS_REVIEW",
+      "source_url": "https://nsearchives.nseindia.com/corporate/TATASTEEL_31052024155645_NSE.pdf",
+      "findings": [
+        {
+          "filing_id": "c7f01c17331a6a795c21a779c872a6fe7054a4448b88da9980b5a801c806a28d",
+          "reason": "HTTPSConnectionPool(host='nsearchives.nseindia.com', port=443): Read timed out. (read timeout=20)",
+          "source_status": null,
+          "http_status": null,
+          "failure_class": "NETWORK_FAILURE"
+        }
+      ],
+      "parser_status": "NEEDS_REVIEW",
+      "timing_status": "UNVERIFIED"
+    },
+    {
+      "primary_route": "NSE_FINANCIAL_METADATA_API",
+      "primary_failure": "Archived NSE warmup HTTP 403",
+      "fallback_route": "NSE_STATIC_XBRL_ARCHIVE",
+      "identity_mapping": {
+        "symbol": "TATASTEEL",
+        "instrument_id": "159875f1-dbbe-5ccc-8929-e021a0c09d44",
+        "source": "DATED_MISSING_CELL_QUEUE",
+        "review_status": "CANDIDATE"
+      },
+      "historical_availability_evidence": null,
+      "source_hash": null,
+      "review_status": "NEEDS_REVIEW",
+      "source_url": "https://nsearchives.nseindia.com/corporate/ixbrl/INTEGRATED_FILING_INDAS_140974_06022026200314_iXBRL_WEB.html",
+      "findings": [
+        {
+          "filing_id": "1f71e64dbf02b39c8241cb834edceb240dc0f614c3e70b32bd1d3bf17b5bdf4b",
+          "reason": "HTTPSConnectionPool(host='nsearchives.nseindia.com', port=443): Read timed out. (read timeout=20)",
+          "source_status": null,
+          "http_status": null,
+          "failure_class": "NETWORK_FAILURE"
+        }
+      ],
+      "parser_status": "NEEDS_REVIEW",
+      "timing_status": "UNVERIFIED"
+    }
+  ],
+  "usable_filings": 0,
+  "repaired_name_month_cells": 0,
+  "coverage_gain_percentage_points": 0,
+  "historical_availability_proven": false,
+  "filename_dates_used_as_availability": false,
+  "performance_used_to_prioritize": false,
+  "production_publishing": false,
+  "candidate_filings_sha256": "9dad6cca34f8e49979d6bcfd2a513e0ade42ded397804dc6ec33b5f5b68ee3de",
+  "stop_reason": "All three downloads timed out. Historical dissemination is also unproven; no document or filename date is admitted as PIT evidence."
+}

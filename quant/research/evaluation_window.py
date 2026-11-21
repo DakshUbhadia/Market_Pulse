@@ -7,7 +7,7 @@ import pandas as pd
 
 from quant.forward.signal_store import append_record, content_hash
 
-EVALUATION_WINDOW_VERSION = 'validated_data_window_1.1.0'
+EVALUATION_WINDOW_VERSION = 'validated_data_window_1.2.0'
 SEARCH_STATES = {'EVIDENCE_SEARCH_ACTIVE', 'EVIDENCE_COMPLETE', 'EVIDENCE_EXHAUSTED_UNRESOLVED'}
 
 
@@ -84,11 +84,39 @@ def select_evaluation_window(requested_start, sessions, blocking_events, *, warm
         calendar_sha256=content_hash([d.isoformat() for d in dates]))
 
 
-def freeze_evaluation_window(record, output):
-    append_record(Path(output), dict(**record, sha256=content_hash(record)))
+def window_subject(record):
+    return content_hash({k: v for k, v in record.items() if k not in ('sha256', 'governance')})
 
 
-def load_evaluation_window(path):
+def require_window_admission(record):
+    from quant.governance.review import require_review
+    governance = record.get('governance', {})
+    for event in record.get('blocking_events', []):
+        review = governance.get('transition_reviews', {}).get(event['event_id'])
+        require_review(review, review_type='TRANSITION_EXHAUSTION', subject_sha256=content_hash(event),
+                       decision='CONFIRM_EVIDENCE_EXHAUSTED_UNRESOLVED')
+        if review['transition_id'] != event['event_id'] or pd.Timestamp(review['reviewed_at']) < pd.Timestamp(event['reviewed_at']):
+            raise ValueError('Human exhaustion review must follow and identify the automated audit')
+    if record.get('blocking_events'):
+        admission = require_review(governance.get('window_review'), review_type='EVALUATION_WINDOW_ADMISSION',
+            subject_sha256=window_subject(record), decision='ADMIT')
+        if pd.Timestamp(admission['reviewed_at']) < pd.Timestamp(record['declared_at']):
+            raise ValueError('Human window admission must follow the frozen declaration')
+        if any(pd.Timestamp(r['reviewed_at']) > pd.Timestamp(admission['reviewed_at'])
+               for r in governance.get('transition_reviews', {}).values()):
+            raise ValueError('Window admission must follow transition exhaustion review')
+    return record
+
+
+def freeze_evaluation_window(record, output, *, governance=None):
+    body = dict(record)
+    if governance is not None:
+        body['governance'] = governance
+        require_window_admission(body)
+    append_record(Path(output), dict(**body, sha256=content_hash(body)))
+
+
+def load_evaluation_window(path, *, require_admission=True):
     record = json.loads(Path(path).read_text(encoding='utf-8'))
     body = {k: v for k, v in record.items() if k != 'sha256'}
     if record.get('sha256') != content_hash(body):
@@ -106,6 +134,8 @@ def load_evaluation_window(path):
     declared = pd.Timestamp(record['declared_at'])
     if declared.tzinfo is None or declared > pd.Timestamp.now(tz='UTC'):
         raise ValueError('Evaluation window declaration requires a past timezone-aware timestamp')
+    if require_admission:
+        require_window_admission(record)
     return record
 
 

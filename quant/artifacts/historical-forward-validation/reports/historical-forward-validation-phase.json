@@ -1,0 +1,104 @@
+{
+  "epic": "quant-historical-evidence-and-forward-validation",
+  "assessed_at": "2026-11-21T06:32:10.104347+00:00",
+  "git_head_sha": "52e1775975d594cc23bf64324a5d8305844ab4b1",
+  "working_tree_clean": false,
+  "phase_status": "IN_PROGRESS_EXTERNAL_EVIDENCE_REQUIRED",
+  "latest_certified_market_session": "2026-11-17",
+  "market_session_evidence": {
+    "path": "data\\historical-certification\\reports\\historical-certification-phase.json",
+    "sha256": "9630d0855621fe4be580c32b477f7b94a7263f2f6616232ddabf47f4e96dcb3d",
+    "scope": "Retained prior-phase market certification; no claim of a newer market session"
+  },
+  "filing_discovery": {
+    "missing_cells": 6460,
+    "distinct_instruments": 509,
+    "best_theoretical_overall": 58.26086956521739,
+    "best_theoretical_top100": 51.0,
+    "top100_at_best_overall_cutoff": 50.0,
+    "best_overall_cutoff": "2025-02-28",
+    "discovery_targets": {
+      "overall": 85,
+      "top100": 95
+    },
+    "target_interval_available": false
+  },
+  "capital_events": {
+    "rows": 3602,
+    "status_counts": {
+      "NEEDS_REVIEW": 3602
+    },
+    "input_sha256": "78fb7d08af815bc216e7597f8c773a9bf2d8d76b2cd5633ef73005461d654232",
+    "output_sha256": "0287b7682a35bcef7144268b6f2125b5d4f155e5a323b304678fdc106afc9e76",
+    "complete_chains_certified": false
+  },
+  "shared_data_interval": {
+    "start": null,
+    "end": null,
+    "monthly_cutoffs": [],
+    "filing_coverage_hash": "4070454c4d4ae58da553e25b9f67c2d9eeca9bdc2aa30f18aae1b43589c74545",
+    "share_coverage_hash": "c72684c6a4cb3ad4c28b0de2948c00cfdf6ea5d1863ac9265625a581dc9ba45f",
+    "minimum_overall_filing": null,
+    "minimum_top100_filing": null,
+    "minimum_overall_shares": null,
+    "minimum_top100_shares": null,
+    "continuous": false,
+    "certified": false,
+    "minimum_months": 12,
+    "status": "BLOCKED",
+    "sha256": "8fe7cd1ff293f44ff9a4d255c085af9b93e0f01338d827d6cec27b3434a9b53a"
+  },
+  "v1": {
+    "status": "BLOCKED",
+    "human_window_admitted": false,
+    "admission_error": null,
+    "decisions": []
+  },
+  "v2": {
+    "status": "BLOCKED",
+    "reason": "Certified shared data interval, human-approved frozen specification and sealed V1 prerequisites required",
+    "real_oos_evidence": false,
+    "decisions": [],
+    "value_required": true
+  },
+  "forward": {
+    "state": "NOT_LAUNCHED",
+    "cohorts": [],
+    "minimum_signal_sessions": 126,
+    "minimum_rebalance_cycles": 6,
+    "minimum_matured_63_session_signals": 30,
+    "automatic_promotion": false
+  },
+  "elastic_net": {
+    "status": "GATED_NOT_FITTED",
+    "ensemble_weight": 0,
+    "reason": "Requires V2 GO_FURTHER_V2_RESEARCH and stable multi-year PIT coverage"
+  },
+  "input_reports": {
+    "filing_coverage": {
+      "path": "data\\evidence-closure\\reports\\fundamental-universe-coverage.json",
+      "sha256": "fa3f50f7b420ca7cd5746a12d4e30491237282b2b117ee7f84730311b384ba6a"
+    },
+    "share_coverage": {
+      "path": "data\\historical-certification\\reports\\share-history-coverage.json",
+      "sha256": "8f63efae99de9793553ecfc5d332603c8529090644908431615672377bf96b00"
+    },
+    "discovery_gap": {
+      "path": "data\\historical-certification\\reports\\fundamental-discovery-gap.json",
+      "sha256": "96164c355f8e03c4119425957d242220a5bb31d4c89cad6a63c027df755e556d"
+    },
+    "ceiling": {
+      "path": "data\\historical-certification\\reports\\fundamental-coverage-ceiling.json",
+      "sha256": "7612a4a9aa107b367d74fe16a9af4382362d4fdb6f74f48e41736779740888af"
+    },
+    "capital_verification": {
+      "path": "data\\historical-forward-validation\\reports\\capital-event-verification.json",
+      "sha256": "9a17e3389711474f5521c6a7999483384367f42ca16ab604094ba48261b5ba02"
+    },
+    "market_session_evidence": {
+      "path": "data\\historical-certification\\reports\\historical-certification-phase.json",
+      "sha256": "9630d0855621fe4be580c32b477f7b94a7263f2f6616232ddabf47f4e96dcb3d"
+    }
+  },
+  "production_publishing": false
+}

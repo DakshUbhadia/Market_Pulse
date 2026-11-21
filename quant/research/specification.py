@@ -76,8 +76,8 @@ def validate_specification(spec):
         raise ValueError('Frozen feature policy must describe the implemented V2 formulas and PIT rules')
     if not 0 < criteria['min_robustness_survival'] <= 1:
         raise ValueError('Declare a valid robustness survival fraction')
-    if not spec['capacity_scenarios'] or any(not isinstance(v, (int, float)) or not 0 < v < float('inf') for v in spec['capacity_scenarios']):
-        raise ValueError('Declare positive capital research scenarios')
+    if spec['capacity_scenarios'] != [1_000_000, 2_500_000, 5_000_000, 10_000_000]:
+        raise ValueError('V2 requires the predeclared 10L, 25L, 50L and 1Cr capital scenarios')
     if not spec['normalization'] or not spec['missing_data_rules'] or not spec['feature_definitions']:
         raise ValueError('Feature definitions and missing-data/normalization rules cannot be empty')
     return spec
@@ -116,9 +116,14 @@ def verify_coverage_inputs(record, data_dir):
                 raise ValueError('Frozen coverage source is missing or changed')
 
 
-def freeze_specification(spec, output, *, coverage_reports=None):
+def freeze_specification(spec, output, *, coverage_reports=None, governance_review=None, data_interval=None):
     validate_specification(spec)
     validate_coverage_reports(spec, coverage_reports)
+    from quant.research.data_interval import require_data_interval
+    from quant.governance.review import require_review
+    require_data_interval(data_interval or {}, coverage_reports['filings'], coverage_reports['shares'])
+    require_review(governance_review, review_type='V2_SPEC_APPROVAL',
+                   subject_sha256=specification_subject(spec, coverage_reports, data_interval), decision='APPROVE')
     # One version has one policy in a specification store. Re-evaluation requires
     # the same frozen record; policy edits require a new spec_version.
     import re
@@ -130,6 +135,7 @@ def freeze_specification(spec, output, *, coverage_reports=None):
     from quant.storage.research_store import git_commit
     body=dict(specification=spec,source_code_sha256=research_code_hashes(), git_commit=git_commit(),
               coverage_reports=coverage_reports,
+              data_interval=data_interval, governance_review=governance_review,
               coverage_report_sha256={k:content_hash(v) for k,v in coverage_reports.items()},
               frozen_at=datetime.now(timezone.utc).isoformat())
     append_record(output,dict(**body,sha256=content_hash(body)))
@@ -148,4 +154,17 @@ def load_specification(path):
     reports = validate_coverage_reports(spec, record.get('coverage_reports'))
     if record.get('coverage_report_sha256') != {k:content_hash(v) for k,v in reports.items()}:
         raise ValueError('Frozen coverage evidence changed')
+    from quant.research.data_interval import require_data_interval
+    from quant.governance.review import require_review
+    require_data_interval(record.get('data_interval', {}), reports['filings'], reports['shares'])
+    require_review(record.get('governance_review'), review_type='V2_SPEC_APPROVAL',
+        subject_sha256=specification_subject(spec, reports, record['data_interval']), decision='APPROVE')
     return spec
+
+
+def specification_subject(spec, reports, interval):
+    from quant.storage.research_store import git_commit
+    return content_hash(dict(specification=spec, git_commit=git_commit(),
+        source_code_sha256=research_code_hashes(),
+        coverage_report_sha256={k: content_hash(v) for k, v in reports.items()},
+        data_interval_sha256=interval['sha256']))

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="11" time="85.425" timestamp="2026-11-19T14:31:20.360043+05:30" hostname="DESKTOP-D9ACJ2I"><testcase classname="quant.tests.integration.test_dhan_instruments_live" name="test_live_dhan" time="59.613" /><testcase classname="quant.tests.integration.test_nse_bhavcopy_live" name="test_live_bhavcopy[day0]" time="1.154" /><testcase classname="quant.tests.integration.test_nse_bhavcopy_live" name="test_live_bhavcopy[day1]" time="0.748" /><testcase classname="quant.tests.integration.test_nse_bhavcopy_live" name="test_live_bhavcopy[None]" time="3.457"><failure message="quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/historical-certification/test-live/test_live_bhavcopy_None_0')
+day = None
+
+    @pytest.mark.parametrize('day', [date(2024, 7, 5), date(2024, 7, 8), None])
+    def test_live_bhavcopy(tmp_path, day):
+        config = Config(data_dir=tmp_path, retries=0, timeout=20)
+        if day is None:
+            from quant.pipeline.cli import completed_day
+            from quant.pipeline.update_calendar import refresh_calendar
+            target = completed_day(config)
+&gt;           calendar, _ = refresh_calendar(config, target - timedelta(days=14), target)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+quant\tests\integration\test_nse_bhavcopy_live.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\pipeline\update_calendar.py:77: in refresh_calendar
+    payload = client.get_json(HOLIDAY_PATH, params={'type': 'trading', 'year': year},
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x000002454B12C1A0&gt;
+
+    def _warm(self):
+        response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+        if response.status_code in (401, 403):
+&gt;           raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
+E           quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403
+
+quant\data\nse_client.py:168: _SessionBlocked</failure></testcase><testcase classname="quant.tests.integration.test_nse_calendar_live" name="test_live_calendar" time="3.312"><failure message="quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/historical-certification/test-live/test_live_calendar0')
+
+    def test_live_calendar(tmp_path):
+        config = Config(data_dir=tmp_path, retries=0, timeout=20)
+        year = datetime.now(ZoneInfo(config.timezone)).year
+        with NseClient(config) as client:
+&gt;           payload = client.get_json('/api/holiday-master', params={'type': 'trading', 'year': year},
+                                      dataset='calendar')
+
+quant\tests\integration\test_nse_calendar_live.py:19: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x000002454B0D16D0&gt;
+
+    def _warm(self):
+        response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+        if response.status_code in (401, 403):
+&gt;           raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
+E           quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403
+
+quant\data\nse_client.py:168: _SessionBlocked</failure></testcase><testcase classname="quant.tests.integration.test_nse_calendar_live" name="test_live_independent_special_session_evidence" time="4.983"><failure message="quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/historical-certification/test-live/test_live_independent_special_0')
+
+    def test_live_independent_special_session_evidence(tmp_path):
+        config = Config(data_dir=tmp_path, retries=0, timeout=20)
+        with NseClient(config) as client:
+&gt;           payload = client.get_json(PATH, params={'indexType': 'NIFTY 50', 'from': '01-02-2010',
+                                                    'to': '28-02-2010'}, dataset='calendar')
+
+quant\tests\integration\test_nse_calendar_live.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x000002454B0D1950&gt;
+
+    def _warm(self):
+        response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+        if response.status_code in (401, 403):
+&gt;           raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
+E           quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403
+
+quant\data\nse_client.py:168: _SessionBlocked</failure></testcase><testcase classname="quant.tests.integration.test_nse_market_live" name="test_live_market_reports" time="3.457" /><testcase classname="quant.tests.integration.test_nse_market_live" name="test_known_reliance_bonus_reconciles" time="3.670"><failure message="quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/historical-certification/test-live/test_known_reliance_bonus_reco0')
+
+    def test_known_reliance_bonus_reconciles(tmp_path):
+        config = Config(data_dir=tmp_path, retries=0, timeout=20)
+        with NseClient(config) as client:
+&gt;           payload = client.get_json('/api/corporates-corporateActions',
+                params={'index': 'equities', 'symbol': 'RELIANCE', 'from_date': '25-10-2024',
+                        'to_date': '29-10-2024'}, dataset='corporate_actions')
+
+quant\tests\integration\test_nse_market_live.py:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x000002454B15DF30&gt;
+
+    def _warm(self):
+        response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+        if response.status_code in (401, 403):
+&gt;           raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
+E           quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403
+
+quant\data\nse_client.py:168: _SessionBlocked</failure></testcase><testcase classname="quant.tests.integration.test_tri_live" name="test_official_tri_live_source[NIFTY 50]" time="0.582" /><testcase classname="quant.tests.integration.test_tri_live" name="test_official_tri_live_source[NIFTY 500]" time="0.487" /><testcase classname="quant.tests.test_calendar" name="test_live_calendar" time="3.001"><failure message="quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/historical-certification/test-live/test_live_calendar1')
+
+    @pytest.mark.integration
+    def test_live_calendar(tmp_path):
+        config = Config(data_dir=tmp_path)
+        with NseClient(config) as client:
+            for year in (2018, 2024, 2026):
+&gt;               data = client.get_json('/api/holiday-master', params={'type': 'trading', 'year': year}, dataset='calendar')
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+quant\tests\test_calendar.py:244: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x000002454B15E520&gt;
+
+    def _warm(self):
+        response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+        if response.status_code in (401, 403):
+&gt;           raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
+E           quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403
+
+quant\data\nse_client.py:168: _SessionBlocked</failure></testcase></testsuite></testsuites>

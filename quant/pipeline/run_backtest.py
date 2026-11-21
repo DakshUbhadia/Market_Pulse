@@ -40,6 +40,12 @@ def run_research(config, start, end, *, estimate_historical_costs=False, full_ro
     if evaluation_window is not None:
         from quant.research.evaluation_window import load_evaluation_window
         window = load_evaluation_window(evaluation_window)
+        from quant.storage.research_store import digest_file
+        for event in window.get('blocking_events', []):
+            for name, expected in event.get('evidence_hashes', {}).items():
+                source = (config.data_dir/name).resolve()
+                if not source.is_relative_to(config.data_dir.resolve()) or not source.is_file() or digest_file(source) != expected:
+                    raise ValueError('Reviewed transition evidence is missing or changed')
         if window['requested_start'] != str(start):
             raise ValueError('Evaluation window must match the originally requested baseline start')
         start = date.fromisoformat(window['effective_start'])
@@ -68,6 +74,9 @@ def run_research(config, start, end, *, estimate_historical_costs=False, full_ro
 
 def _run_research(config, start, end, *, estimate_historical_costs=False, full_robustness=True, total_return=False,
                   lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,prepared_root=None, evaluation_window=None):
+    if evaluation_window is not None:
+        from quant.research.evaluation_window import require_window_admission
+        require_window_admission(evaluation_window)
     readiness = require_research_ready(config, end, start)
     implementation = require_certified_implementation(config)
     manifest = input_manifest(config, end)

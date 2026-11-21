@@ -1,6 +1,7 @@
 """Auditable capital changes and reconciliation of historical share intervals."""
 import math
 import re
+from numbers import Real
 
 import pandas as pd
 
@@ -131,6 +132,19 @@ def capital_candidates_from_actions(actions):
     return pd.DataFrame(rows)
 
 
+def event_inventory_hash(events, instrument_id, start, end):
+    if events.empty:
+        return content_hash([])
+    frame = events[events.instrument_id.eq(instrument_id)]
+    dates = pd.to_datetime(frame.effective_date)
+    frame = frame[dates.isna() | (dates.gt(pd.Timestamp(start)) & dates.le(pd.Timestamp(end)))]
+    return content_hash(sorted(content_hash(r) for r in frame.to_dict('records')))
+
+
+def anchor_hash(anchor):
+    return content_hash(dict(anchor))
+
+
 def reconcile_share_chain(anchors, events, coverage, instrument_id, cutoff):
     """Require two known anchors, complete event coverage and exact replay.
 
@@ -174,6 +188,18 @@ def reconcile_share_chain(anchors, events, coverage, instrument_id, cutoff):
     if proofs.empty:
         return dict(invalid, reason='COMPLETE_CAPITAL_EVENT_INTERVAL_REQUIRED')
     proof = proofs.sort_values('known_at').iloc[-1]
+    required = ('interval_start', 'interval_end', 'source_coverage', 'event_inventory_hash',
+                'unresolved_event_count', 'reconciled_start_anchor', 'reconciled_end_anchor')
+    if (any(not present(proof.get(k)) for k in required if k != 'source_coverage')
+            or not isinstance(proof.get('source_coverage'), (dict, list)) or not proof.source_coverage
+            or isinstance(proof.unresolved_event_count, bool)
+            or not isinstance(proof.unresolved_event_count, Real) or proof.unresolved_event_count != 0
+            or pd.Timestamp(proof.interval_start) != pd.Timestamp(first.effective_date)
+            or pd.Timestamp(proof.interval_end) < day
+            or proof.reconciled_start_anchor != anchor_hash(first)
+            or proof.reconciled_end_anchor != anchor_hash(last)
+            or proof.event_inventory_hash != event_inventory_hash(events, instrument_id, proof.interval_start, proof.interval_end)):
+        return dict(invalid, reason='SHARE_INTERVAL_COMPLETENESS_NOT_PROVEN')
     sources = list(known.source_sha256)+[proof.source_sha256]
     knowledge = list(evidence_known_times(known, 'exchange_disseminated_at'))+[pd.Timestamp(proof.known_at)]
     changes = events
@@ -183,7 +209,7 @@ def reconcile_share_chain(anchors, events, coverage, instrument_id, cutoff):
         changes = events[events.instrument_id.eq(instrument_id)
             & pd.to_datetime(events.effective_date).gt(pd.Timestamp(first.effective_date))
             & pd.to_datetime(events.effective_date).le(day)].sort_values('effective_date')
-        if (not changes.verification_status.eq('VERIFIED').all()
+        if (not changes.verification_status.eq('VERIFIED_COMPLETE').all()
                 or changes.duplicated('effective_date').any()
                 or evidence_known_times(changes, 'announced_at').isna().any()
                 or not evidence_known_times(changes, 'announced_at').le(cutoff).all()

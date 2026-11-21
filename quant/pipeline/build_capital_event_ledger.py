@@ -45,7 +45,7 @@ def main():
     ledger = verify_share_archives(ledger, args.config(config).data_dir)
     write_parquet(ledger, args.output)
     report = dict(status='POPULATED' if len(ledger) else 'NO_CAPITAL_EVENT_EVIDENCE', rows=len(ledger),
-        verified_events=int(ledger.verification_status.eq('VERIFIED').sum()), event_types=EVENT_TYPES,
+        verified_events=int(ledger.verification_status.eq('VERIFIED_COMPLETE').sum()), event_types=EVENT_TYPES,
         input_sha256={str(p): digest_file(p) for p in inputs}, output_sha256=digest_file(args.output),
         complete_chains_certified=False)
     write_json(args.output.with_suffix('.json'), report)
