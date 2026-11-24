@@ -8,7 +8,7 @@ retain the prior execution evidence.
 
 | November 25 work package | State | Acceptance evidence or blocker |
 | --- | --- | --- |
-| Exact implementation | `BLOCKED` | Base SHA `9ec2abd909bd665dcbb0cef0f8d5973a3c1962fd` has successful exact-SHA CI and an archived software certificate. Checkout changes require their own clean SHA, CI and certificate. GitHub push authentication is unavailable in this session. |
+| Exact implementation | `VERIFY_PER_REVISION` | The preceding console revision `6e230ad213aff987a865245a697d9b6c81ca7deb` passed [GitHub unit CI](https://github.com/DakshUbhadia/Market_Pulse/actions/runs/45468765675). The signed projection reports certification for the exact source revision when its matching certificate is available. |
 | Market refresh | `BLOCKED` | NSE calendar refresh returned HTTP 403 through the November 24 cutoff. A fresh read-only archive audit passed through November 17. The retained corporate-action digest matches across pandas 2.2 and 3.0 with canonical null encoding. |
 | Filings | `BLOCKED` | Bounded 25-instrument, 100-cell pilot and official route checks added zero usable observations. The discovery deficit remains 6,460 cells. Archived evidence leads need dated consolidated exchange dissemination proofs. |
 | Capital shares and joint coverage | `BLOCKED` | The verifier returned 3,602 candidates needing review. The November 17 archived V2 cross-section has zero complete joint rows across 339 names, including zero in the historical top 100. |

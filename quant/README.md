@@ -1097,6 +1097,27 @@ Use Better Auth's account ID in `QUANT_STATUS_OWNER_ID`. Generate a 32-byte
 random key as 64 lowercase hexadecimal characters and set it as
 `QUANT_STATUS_SIGNING_KEY` for both the Python runner and Next.js. Set the
 server-only `QUANT_STATUS_FILE` to the output path before opening `/quant`.
+The app checks the Better Auth account ID for the navigation link, direct pages
+and the status API. The overview links to data readiness, evidence queues,
+research run provenance, models, risk, forward cohorts and operations. The
+rankings and portfolio pages display their current access requirements.
+
+The exporter writes version 2 with a digest of the configured owner ID and the
+signing key identifier. Version 1 remains readable as a legacy status snapshot.
+The projection includes dates and evidence classes, and queue pagination applies
+to the bounded exported sample. Missing original evidence leaves fields
+unavailable. Keep the output, its `.latest` checkpoint and its sibling
+`.history` directory outside `public`. Publication under the writer lock preserves signed history and
+refuses conflicting or older snapshots. If publication is interrupted, the
+console can show the latest verified history entry as archived. Re-export the
+same source to repair its pointer. After key rotation, set
+`QUANT_STATUS_PREVIOUS_SIGNING_KEY` on the reader for retained entries and
+publish a new source snapshot with the active key.
+
+For local preview, configure the signing key, owner ID and projection path in
+the environment, start Next.js with `npm run dev`, sign in with the configured
+account, and open `/quant`. Use `--test-only` with separate output and keys for
+an isolated demo. Hosted sync remains opt-in and rejects demo snapshots.
 `--evidence-dir` reads archived reports where the writable workspace has no
 fresh equivalent.
 

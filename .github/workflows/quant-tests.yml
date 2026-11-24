@@ -2,9 +2,9 @@ name: Quant unit tests
 
 on:
   pull_request:
-    paths: ['quant/**', 'scripts/*quant*.ps1', '.env.example', 'pytest.ini', '.github/workflows/quant-tests.yml']
+    paths: ['quant/**', 'src/**', 'scripts/*quant*', 'package*.json', 'tsconfig.json', '.env.example', 'pytest.ini', '.github/workflows/quant-tests.yml']
   push:
-    paths: ['quant/**', 'scripts/*quant*.ps1', '.env.example', 'pytest.ini', '.github/workflows/quant-tests.yml']
+    paths: ['quant/**', 'src/**', 'scripts/*quant*', 'package*.json', 'tsconfig.json', '.env.example', 'pytest.ini', '.github/workflows/quant-tests.yml']
   workflow_dispatch:
 
 permissions:
@@ -36,3 +36,17 @@ jobs:
         with:
           name: quant-unit-evidence
           path: reports/unit-tests.xml
+
+  console:
+    name: Quant console
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: node --experimental-strip-types --test scripts/test-quant-status.mjs
+      - run: npm run build

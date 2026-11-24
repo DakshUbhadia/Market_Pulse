@@ -25,7 +25,8 @@ export async function POST(request: Request) {
       }
       parts.push(value);
     }
-    next = verifyEnvelope(JSON.parse(Buffer.concat(parts).toString("utf8")), process.env.QUANT_STATUS_SIGNING_KEY);
+    next = verifyEnvelope(JSON.parse(Buffer.concat(parts).toString("utf8")), process.env.QUANT_STATUS_SIGNING_KEY,
+      Date.now(), process.env.QUANT_STATUS_OWNER_ID);
   } catch {
     return reply("INVALID", 400);
   } finally {
