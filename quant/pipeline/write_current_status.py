@@ -3,14 +3,22 @@ from datetime import datetime, timezone
 import json
 import subprocess
 from pathlib import Path
-from quant.storage.research_store import write_json, git_commit, digest_file
+from quant.storage.research_store import write_json, git_commit
+from quant.data.http import sha256
 from quant import version
 
 
 def read_report(path):
     if not path.exists():
         return dict(status='UNASSESSED',path=str(path))
-    return dict(path=str(path),sha256=digest_file(path),report=json.loads(path.read_text(encoding='utf-8')))
+    try:
+        payload = path.read_bytes()
+        value = json.loads(payload)
+        if not isinstance(value, dict):
+            raise ValueError('Report must be a JSON object')
+        return dict(path=str(path), sha256=sha256(payload), report=value)
+    except (OSError, ValueError):
+        return dict(status='INVALID', path=str(path))
 
 
 def write_current_status(config, *, public_state=None, evidence_dir=None):
@@ -55,10 +63,10 @@ def write_current_status(config, *, public_state=None, evidence_dir=None):
     certificate = report['implementation_certification'].get('report', {})
     report.update(PUBLIC_MAIN_SHA=(public_state or {}).get('PUBLIC_MAIN_SHA') or certificate.get('PUBLIC_MAIN_SHA'),
         LOCAL_IMPLEMENTATION_SHA=git_commit(), RESEARCH_CERTIFIED_SHA=certificate.get('RESEARCH_CERTIFIED_SHA'))
-    report['fundamental_coverage_ceiling'] = read_report(root/'reports/fundamental-coverage-ceiling.json')
+    report['fundamental_coverage_ceiling'] = evidence('fundamental-coverage-ceiling.json')
     report['fundamental_discovery_expansion'] = read_report(root/'reports/fundamental-discovery-expansion.json')
     report['share_evidence_plan'] = read_report(root/'reports/share-evidence-plan.json')
-    report['fundamental_discovery_gap'] = read_report(root/'reports/fundamental-discovery-gap.json')
+    report['fundamental_discovery_gap'] = evidence('fundamental-discovery-gap.json')
     report['capital_event_ledger'] = read_report(root/'reports/capital-event-candidates.json')
     report['historical_certification_phase'] = read_report(root/'reports/historical-certification-phase.json')
     report['filing_coverage'] = evidence('fundamental-universe-coverage.json')
@@ -79,6 +87,37 @@ def write_current_status(config, *, public_state=None, evidence_dir=None):
     report['V2_STATE'] = phase.get('v2', dict(status='BLOCKED', reason='Certified interval and reviewed spec required'))
     report['forward_cohort_state'] = dict(registered_cohorts=report['registered_forward_cohorts'],
         state='COLLECTING' if report['registered_forward_cohorts'] else 'NOT_LAUNCHED')
+    from quant.governance.gates import GateRegistry, GATE_ID
+    gates = GateRegistry(root).snapshot()
+    report['governance_gates'] = gates
+    report['human_review_status'] = gates['human_review_status']
+    report['tidewater_human_review_state'] = 'HUMAN_REVIEW_PENDING' if gates['human_review_status'] == 'PENDING' else gates['human_review_status']
+    report['fallback_window_state'] = gates['fallback_window_state']
+    report['evaluation_window_admissible'] = gates['evaluation_window_admissible']
+    report['software_certification_scope'] = 'SOFTWARE_IMPLEMENTATION_ONLY_NOT_MODEL_HISTORICAL_VALIDATION'
+    if not gates['evaluation_window_admissible']:
+        report['V1_BASELINE_STATE'].update(status='BLOCKED', outcome='BLOCKED_BY_GOVERNANCE',
+            governance_gate=GATE_ID, governance_status=gates['human_review_status'],
+            PRICE='BLOCKED', TOTAL_RETURN='BLOCKED', human_window_admitted=False)
+        report['forward_cohort_state'].update(state='BLOCKED', outcome='BLOCKED_BY_GOVERNANCE',
+            governance_status=gates['human_review_status'], cohort_type='REAL')
+    report['diagnostic_runs'] = []
+    from quant.backtest.artifacts import verify_diagnostic_completion
+    for path in sorted((root/'artifacts/diagnostics').rglob('diagnostic-completion.json')):
+        report['diagnostic_runs'].append(dict(path=str(path.parent), report=verify_diagnostic_completion(path.parent)))
+    from quant.forward.signal_store import read_signals
+    report['test_only_cohorts'] = []
+    for path in sorted((root/'forward/test-only').rglob('cohort.json')):
+        batches, _ = read_signals(path.parent)
+        if batches and all(b.get('cohort_type') == 'TEST_ONLY' for b in batches):
+            report['test_only_cohorts'].append(dict(root=str(path.parent), real_forward_evidence=False,
+                                                   promotion_eligible=False, signal_sessions=len(batches)))
+    report['v2_matrix'] = evidence('v2-matrix-status.json')
+    report['capital_event_verification'] = evidence('capital-events-reviewed.json')
+    report['market_input_manifest'] = evidence('market-input-manifest.json')
+    report['completion_source_pilot'] = evidence('official-source-pilot.json')
+    report['parallel_evidence_phase'] = evidence('parallel-evidence-completion-phase.json')
+    report['production_recommendation_publishing'] = dict(status='BLOCKED', governance_status=gates['human_review_status'])
     write_json(root/'reports/current-status.json',report)
     return report
 

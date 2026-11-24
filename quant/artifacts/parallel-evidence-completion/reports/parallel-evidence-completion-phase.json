@@ -1,0 +1,503 @@
+{
+  "epic": "quant-parallel-evidence-completion",
+  "governance": {
+    "gates": {
+      "TIDEWATER_2016_HUMAN_REVIEW": {
+        "blocking_reason": "HUMAN_REVIEW_PENDING",
+        "created_at": "2026-11-21T00:00:00+00:00",
+        "decision_source": "USER_INSTRUCTION_LEAVE_HUMAN_REVIEW_PENDING",
+        "evidence_artifact": "quant/artifacts/historical-forward-validation/reports/security-transitions/tidewater-2016-human-review-packet.json",
+        "evidence_sha256": "bd1ad1fa5d4368282875fff2768c4389511a6538aacb2ce66e79af077c7a2686",
+        "gate_id": "TIDEWATER_2016_HUMAN_REVIEW",
+        "gate_type": "TRANSITION_EXHAUSTION",
+        "required_for": [
+          "V1_SEAL",
+          "V1_MODEL_REGISTRATION",
+          "V1_FORWARD",
+          "V2_SPEC_FREEZE",
+          "V2_PROMOTION",
+          "V2_REAL_FORWARD",
+          "PRODUCTION_PUBLISHING"
+        ],
+        "review_artifact": null,
+        "status": "PENDING",
+        "subject_id": "TIDEWATER_2016",
+        "subject_sha256": "b4819ee0de935f95a4d7c245cfc3a66ad0b2bb52440597bf960d2ce5105bed52",
+        "updated_at": "2026-11-21T00:00:00+00:00"
+      },
+      "V1_EVALUATION_WINDOW_ADMISSION": {
+        "gate_id": "V1_EVALUATION_WINDOW_ADMISSION",
+        "gate_type": "EVALUATION_WINDOW_ADMISSION",
+        "subject_id": "V1_FALLBACK_2017_03_28",
+        "status": "PENDING",
+        "required_for": [
+          "V1_SEAL",
+          "V2_SPEC_FREEZE"
+        ],
+        "blocking_reason": "EVALUATION_WINDOW_ADMISSION_PENDING",
+        "evidence_artifact": "quant/artifacts/historical-forward-validation/reports/v1-evaluation-declaration.json",
+        "review_artifact": null,
+        "created_at": "2026-11-21T00:00:00+00:00",
+        "updated_at": "2026-11-21T00:00:00+00:00"
+      }
+    },
+    "dependencies": {
+      "V1_HISTORICAL_SEAL": [
+        "TIDEWATER_2016_HUMAN_REVIEW",
+        "V1_EVALUATION_WINDOW_ADMISSION"
+      ],
+      "V1_MODEL_REGISTRATION": [
+        "V1_HISTORICAL_SEAL"
+      ],
+      "V1_REAL_FORWARD": [
+        "V1_MODEL_REGISTRATION"
+      ],
+      "V2_SPEC_FREEZE": [
+        "V1_HISTORICAL_SEAL"
+      ],
+      "V2_PROMOTION": [
+        "V1_HISTORICAL_SEAL"
+      ],
+      "V2_REAL_FORWARD": [
+        "V2_PROMOTION"
+      ],
+      "PRODUCTION_PUBLISHING": [
+        "V1_REAL_FORWARD"
+      ],
+      "FILING_DISCOVERY": [],
+      "CAPITAL_EVENT_VERIFICATION": [],
+      "SHARE_CHAINS": [],
+      "V2_DATA_MATRIX": [],
+      "DIAGNOSTIC_V1": [],
+      "DIAGNOSTIC_V2": [],
+      "DIAGNOSTIC_RELEASE": [],
+      "TEST_FORWARD": [],
+      "MONITORING_DRY_RUN": []
+    },
+    "human_review_status": "PENDING",
+    "evaluation_window_admissible": false,
+    "fallback_window_state": "PREPARED_BUT_NOT_ADMITTED"
+  },
+  "assessed_at": "2026-11-22T09:18:13.870956+00:00",
+  "git_head_sha": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+  "working_tree_clean": true,
+  "phase_status": "IN_PROGRESS_EXTERNAL_EVIDENCE_REQUIRED",
+  "latest_certified_market_session": null,
+  "market_session_evidence": {
+    "path": "quant\\artifacts\\historical-forward-validation\\reports\\historical-forward-validation-phase.json",
+    "sha256": "44494d61ffa9cbfe1625ada1882ebcc10d17baaba052a4b10beeb5f184782fbe",
+    "scope": "Retained prior-phase market certification; no claim of a newer market session"
+  },
+  "filing_discovery": {
+    "missing_cells": 6460,
+    "distinct_instruments": 509,
+    "best_theoretical_overall": 58.26086956521739,
+    "best_theoretical_top100": 51.0,
+    "top100_at_best_overall_cutoff": 50.0,
+    "best_overall_cutoff": "2025-02-28",
+    "discovery_targets": {
+      "overall": 85,
+      "top100": 95
+    },
+    "target_interval_available": false
+  },
+  "capital_events": {
+    "rows": 3602,
+    "status_counts": {
+      "NEEDS_REVIEW": 3602
+    },
+    "input_sha256": "78fb7d08af815bc216e7597f8c773a9bf2d8d76b2cd5633ef73005461d654232",
+    "output_sha256": "ba5a1d0e5e72c5cc3ca39fce3ec9535ed4332963781e86eebe3f5380e8c4d64f",
+    "complete_chains_certified": false
+  },
+  "shared_data_interval": {
+    "start": null,
+    "end": null,
+    "monthly_cutoffs": [],
+    "filing_coverage_hash": "a5b4176676af647db0c3b4090a5968cc3b038b28a1a972af8f454f96204cb50c",
+    "share_coverage_hash": "e351ecc465da015007f94713020a735dc14c8314a542948028403eb9fa16107e",
+    "minimum_overall_filing": null,
+    "minimum_top100_filing": null,
+    "minimum_overall_shares": null,
+    "minimum_top100_shares": null,
+    "continuous": false,
+    "certified": false,
+    "minimum_months": 12,
+    "status": "BLOCKED",
+    "sha256": "05be5c788e3b16b7432cc239aad6454a43099447a3a745cf1f40b71f1b3d9b45"
+  },
+  "v1": {
+    "status": "BLOCKED",
+    "outcome": "BLOCKED_BY_GOVERNANCE",
+    "governance_status": "PENDING",
+    "PRICE": "BLOCKED",
+    "TOTAL_RETURN": "BLOCKED",
+    "human_window_admitted": false,
+    "admission_error": null,
+    "decisions": []
+  },
+  "v2": {
+    "status": "BLOCKED",
+    "reason": "Certified shared data interval, human-approved frozen specification and sealed V1 prerequisites required",
+    "real_oos_evidence": false,
+    "decisions": [],
+    "value_required": true
+  },
+  "forward": {
+    "state": "NOT_LAUNCHED",
+    "cohorts": [],
+    "real_collection_blocked_by_governance": true,
+    "minimum_signal_sessions": 126,
+    "minimum_rebalance_cycles": 6,
+    "minimum_matured_63_session_signals": 30,
+    "automatic_promotion": false
+  },
+  "elastic_net": {
+    "status": "GATED_NOT_FITTED",
+    "ensemble_weight": 0,
+    "reason": "Requires V2 GO_FURTHER_V2_RESEARCH and stable multi-year PIT coverage"
+  },
+  "input_reports": {
+    "filing_coverage": {
+      "path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\reports\\fundamental-universe-coverage.json",
+      "sha256": "fe38d1319102b5b8a9e1263c29325073df6f3a75635e737516133c78f68c5a28"
+    },
+    "share_coverage": {
+      "path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\reports\\share-history-coverage.json",
+      "sha256": "a86c8c7c62de4806228c3c75ef6c87422618d3dbc25442726692cc4edf1f8f08"
+    },
+    "discovery_gap": {
+      "path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\reports\\fundamental-discovery-gap.json",
+      "sha256": "fe1764a3682449ac6024fcf9aebe58263ab08c1f7a21bf5de1814aa416004d8a"
+    },
+    "ceiling": {
+      "path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\reports\\fundamental-coverage-ceiling.json",
+      "sha256": "d64b18a3335a1942c61baeb08394a58cbc64b1a70867f2509afa764b9a68d5fb"
+    },
+    "capital_verification": {
+      "path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\reports\\capital-event-verification.json",
+      "sha256": "9a982249976f0bda6de5628e1bd29667864952f59adfa0642894d769998f52e8"
+    },
+    "market_session_evidence": {
+      "path": "quant\\artifacts\\historical-forward-validation\\reports\\historical-forward-validation-phase.json",
+      "sha256": "44494d61ffa9cbfe1625ada1882ebcc10d17baaba052a4b10beeb5f184782fbe"
+    }
+  },
+  "production_publishing": false,
+  "completion_criteria": {
+    "exact_implementation_sha_ci_certified": true,
+    "governance_pending_explicit_and_enforced": true,
+    "diagnostic_fallback_end_to_end": false,
+    "theoretical_filing_discovery_85_overall": false,
+    "theoretical_filing_discovery_95_top100": false,
+    "usable_filing_80_90_continuous_interval": false,
+    "capital_event_verification_pipeline_operational": true,
+    "verified_share_80_90_continuous_interval": false,
+    "full_v2_matrix_complete_for_certified_interval": false,
+    "four_arm_v2_exercised_diagnostically": true,
+    "risk_contract_tests_passed": true,
+    "registry_and_release_dry_runs_passed": true,
+    "test_only_forward_dry_run_passed": true
+  },
+  "phase_complete": false,
+  "diagnostic_v1_summary": {
+    "generated_at": "2026-11-24T11:41:30.776874+00:00",
+    "authority": "DIAGNOSTIC_ONLY",
+    "requested_window_unchanged": true,
+    "prepared_window_admitted": false,
+    "all_real_replays_completed": false,
+    "accepted_seals_created": false,
+    "real_decisions_created": false,
+    "attempts": [
+      {
+        "return_basis": "PRICE",
+        "experiment_id": "20261122T091230-7b3bddc4",
+        "implementation_sha": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+        "research_authority": "DIAGNOSTIC_ONLY",
+        "outcome": "BLOCKED_BY_DATA",
+        "decision": "BLOCKED",
+        "reason": "UnvaluedHolding: Unvalued holding a4d2246c-e16f-54c3-a1d0-14c307f6ba60 on 2017-04-26; verified delisting/settlement evidence required",
+        "governance_status": "PENDING",
+        "seal_eligible": false,
+        "historical_validation": false,
+        "promotion_eligible": false,
+        "real_forward_evidence": false,
+        "requested_start": "2016-01-01",
+        "requested_end": "2026-11-17",
+        "effective_start": "2017-03-28",
+        "blocked_holding": {
+          "instrument_id": "a4d2246c-e16f-54c3-a1d0-14c307f6ba60",
+          "trade_date": "2017-04-26",
+          "lifecycle_scenario": "MANDATORY_ECONOMIC_EVENTS_ONLY"
+        },
+        "experiment_outcome_sha256": "15741530011332e4e75ede440ec419f708cc2d88811e626f6b62213ec0a60c1a",
+        "prepared_input_sha256": {
+          "prepared-inputs.json": "d8ea6fc7f26fb1495949a51c01537b75bf56c2cbfd219d7715499617a97042ef",
+          "prepared-scores.parquet": "2f7179ebbe8162da6babd99aa169a52a1fd70d70670ad03ffedae9ba937f1ba2",
+          "prepared-universe.parquet": "b0f8d3d9ff28e2c5d67178c07db276577d83fdcd9481b664067e7badcf10eeab"
+        },
+        "full_robustness_requested": true,
+        "full_replay_completed": false,
+        "prepared_manifest_input_sha256": "b1dda1d759e2af99327ac4a224736fd4c2962b7a2854815f78e140735c94db4d",
+        "prepared_source_code_sha256": "acfcc5fdc2075802ba949d3a5e111a37b0da64fd1e50d41b7df242c7b8d75399"
+      },
+      {
+        "return_basis": "TOTAL_RETURN",
+        "experiment_id": "20261124T111156-b9d35d7d",
+        "implementation_sha": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+        "research_authority": "DIAGNOSTIC_ONLY",
+        "outcome": "BLOCKED_BY_DATA",
+        "decision": "BLOCKED",
+        "reason": "UnvaluedHolding: Unvalued holding a4d2246c-e16f-54c3-a1d0-14c307f6ba60 on 2017-04-26; verified delisting/settlement evidence required",
+        "governance_status": "PENDING",
+        "seal_eligible": false,
+        "historical_validation": false,
+        "promotion_eligible": false,
+        "real_forward_evidence": false,
+        "requested_start": "2016-01-01",
+        "requested_end": "2026-11-17",
+        "effective_start": "2017-03-28",
+        "blocked_holding": {
+          "instrument_id": "a4d2246c-e16f-54c3-a1d0-14c307f6ba60",
+          "trade_date": "2017-04-26",
+          "lifecycle_scenario": "MANDATORY_ECONOMIC_EVENTS_ONLY"
+        },
+        "experiment_outcome_sha256": "f717be8d16ec845efb486a8fbf4e3e4445ce13a259a939f9bb36bf769f3f4146",
+        "prepared_input_sha256": {
+          "prepared-inputs.json": "d8ea6fc7f26fb1495949a51c01537b75bf56c2cbfd219d7715499617a97042ef",
+          "prepared-scores.parquet": "2f7179ebbe8162da6babd99aa169a52a1fd70d70670ad03ffedae9ba937f1ba2",
+          "prepared-universe.parquet": "b0f8d3d9ff28e2c5d67178c07db276577d83fdcd9481b664067e7badcf10eeab"
+        },
+        "full_robustness_requested": true,
+        "full_replay_completed": false,
+        "prepared_manifest_input_sha256": "b1dda1d759e2af99327ac4a224736fd4c2962b7a2854815f78e140735c94db4d",
+        "prepared_source_code_sha256": "acfcc5fdc2075802ba949d3a5e111a37b0da64fd1e50d41b7df242c7b8d75399"
+      }
+    ],
+    "real_robustness_and_walkforward_completion_proven": false,
+    "controlled_robustness_and_walkforward_tests_passed": true,
+    "same_prepared_source_inputs": true,
+    "same_prepared_source_code": true,
+    "same_prepared_scores": true,
+    "additional_blocker_packet": {
+      "path": "reports/security-transitions/cairn-2017-evidence-gap.json",
+      "sha256": "c9898fd0aad5744f3db0628c8736ac8ee358d13c4b65b707560cd8a513fcc00b",
+      "status": "NEEDS_EVIDENCE_AND_ACCOUNTING_REVIEW"
+    },
+    "next_data_requirement": "Review and complete the CAIRN equity/preference/cash consideration history and contemporaneous availability; preserve all existing gates."
+  },
+  "controlled_diagnostics": {
+    "input_scope": "SYNTHETIC_CONTROLLED_INPUTS",
+    "v2_diagnostic_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\artifacts\\diagnostics\\factor_v2\\20261122T091200-ef1755ea",
+    "diagnostic_completion_sha256": "68c28b4562c453416a32fa916ff2f7ca96a36180d2010204e0d1635e81adac58",
+    "four_arms_exercised": true,
+    "capital_scenarios": [
+      1000000,
+      2500000,
+      5000000,
+      10000000
+    ],
+    "diagnostic_release": {
+      "status": "VERIFIED_DIAGNOSTIC_RELEASE",
+      "release_type": "DIAGNOSTIC_RELEASE",
+      "research_authority": "DIAGNOSTIC_ONLY",
+      "historical_validation": false,
+      "promotion_eligible": false,
+      "real_forward_evidence": false,
+      "governance_block": "TIDEWATER_2016_HUMAN_REVIEW",
+      "governance_status": "PENDING",
+      "diagnostic_completion_sha256": "68c28b4562c453416a32fa916ff2f7ca96a36180d2010204e0d1635e81adac58",
+      "files": 73
+    },
+    "relocation_verified": true,
+    "TEST_ONLY_forward": true,
+    "monitoring_alerts_and_incidents_exercised": true,
+    "human_review_status": "PENDING",
+    "seal_eligible": false,
+    "historical_validation": false,
+    "promotion_eligible": false,
+    "real_forward_evidence": false,
+    "no_real_v2_decision": true,
+    "test_only_forward_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\forward\\test-only\\controlled",
+    "synthetic_incident_ledger_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\incidents",
+    "real_incident_ledger_used": false
+  },
+  "test_only_forward": {
+    "validation_level": "TEST_ONLY",
+    "production_validated": false,
+    "cohort_type": "TEST_ONLY",
+    "real_forward_evidence": false,
+    "promotion_eligible": false,
+    "signal_sessions": 4,
+    "distinct_recommendations": 1,
+    "distinct_ranked_instruments": 1,
+    "rebalance_cycles": 3,
+    "outcomes": {
+      "21": {
+        "matured_outcomes": 3,
+        "distinct_signals": 3,
+        "mean_cost_adjusted_excess": 0.0004071399008619414,
+        "rank_IC": null
+      },
+      "63": {
+        "matured_outcomes": 1,
+        "distinct_signals": 1,
+        "mean_cost_adjusted_excess": -0.007085920414999336,
+        "rank_IC": null
+      }
+    },
+    "reason": "Overlapping 63-session observations are not independent; manual multi-cycle review required"
+  },
+  "monitoring_dry_run": {
+    "status": "REVIEW_REQUIRED",
+    "as_of": "2025-02-17",
+    "generated_at": "2026-11-22T09:21:50.931599+00:00",
+    "research_authority": "DIAGNOSTIC_ONLY",
+    "cohort_type": "TEST_ONLY",
+    "real_forward_evidence": false,
+    "promotion_eligible": false,
+    "model_card_sha256": null,
+    "cohort_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\forward\\test-only\\controlled",
+    "panels": {
+      "feature_drift": {
+        "status": "ALERT",
+        "features": [
+          {
+            "feature": "feature",
+            "status": "ALERT",
+            "psi": 3.9753898760836814
+          }
+        ],
+        "threshold": 0.2,
+        "action": "REVIEW_ONLY",
+        "automatic_retraining": false
+      },
+      "factor_ic": {
+        "factors": [
+          {
+            "block": "momentum",
+            "observations": 12,
+            "mean_ic_change": -0.20000000000000004,
+            "status": "ALERT"
+          }
+        ],
+        "action": "REVIEW_ONLY",
+        "automatic_retraining": false
+      },
+      "coverage": {
+        "status": "ALERT",
+        "overall_coverage": 0.7,
+        "top100_coverage": 0.8,
+        "parser_failure_rate": 0.5,
+        "action": "REVIEW_ONLY"
+      },
+      "portfolio_risk": {
+        "status": "ALERT",
+        "realized_volatility": 0.0,
+        "target_volatility": 0.15,
+        "max_cluster_concentration": 1.0,
+        "cash_weight": 9.313225746154785e-16,
+        "action": "REVIEW_ONLY"
+      },
+      "freshness": {
+        "status": "ALERT",
+        "sources": [
+          {
+            "source_id": "test",
+            "last_verified_session": "2024-10-31",
+            "status": "ALERT"
+          }
+        ],
+        "required_session": "2025-02-17",
+        "action": "REVIEW_ONLY"
+      }
+    },
+    "incidents": {
+      "data": 1,
+      "lifecycle": 0,
+      "transition": 0,
+      "accounting": 0,
+      "model": 0,
+      "risk": 0
+    },
+    "unresolved_incidents": 1,
+    "operational_integrity": false,
+    "incident_ledger": {
+      "ledger_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\incidents",
+      "ledger_sha256": "94da3e0019b5db72d2722a14abd1ad1b20c575600df933dc75f8e47559b0ee06",
+      "unresolved_incidents": 1,
+      "counts": {
+        "data": 1,
+        "lifecycle": 0,
+        "transition": 0,
+        "accounting": 0,
+        "model": 0,
+        "risk": 0
+      },
+      "incidents": [
+        {
+          "affected_cohorts": [
+            "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\forward\\test-only\\controlled"
+          ],
+          "affected_dates": [
+            "2025-02-17"
+          ],
+          "affected_models": [],
+          "evidence": {
+            "scope": "SYNTHETIC_TEST_ONLY"
+          },
+          "incident_class": "PARSER_REGRESSION",
+          "incident_id": "da1400ec6d66486e9874e0962943cf00",
+          "opened_at": "2026-11-22T09:13:52.560780+00:00",
+          "resolution": null,
+          "resolved_at": null,
+          "severity": "HIGH",
+          "status": "OPEN"
+        }
+      ]
+    },
+    "rank_turnover": 0.0,
+    "automatic_retraining": false,
+    "automatic_promotion": false,
+    "cohort_evidence_sha256": "c7eb9a2ba9dfc75bd7340b06baf1cec7a3a7cbe36370b9403dfe5154f5a849bc"
+  },
+  "latest_source_health_refresh": {
+    "checked_at": "2026-11-24T11:14:51.624406+00:00",
+    "sources": [
+      {
+        "base_url": "https://www.nseindia.com",
+        "checked_at": "2026-11-24T11:14:45.062783+00:00",
+        "scope": "SOURCE_HEALTH_ONLY",
+        "status": "SOURCE_BLOCKED",
+        "reason": "NSE session warm-up failed with HTTP 403",
+        "http_status": 403,
+        "source_sha256": "e44bcda523e0ff36c7cd9f06e680f0c8573285f0c12e3e98beb9bcae8451f39c",
+        "raw_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\raw\\nse\\session\\2026-11-24\\164448404527-e44bcda523e0ff36-11b8c160.html"
+      },
+      {
+        "base_url": "https://www.nseindia.in",
+        "checked_at": "2026-11-24T11:14:48.408433+00:00",
+        "scope": "SOURCE_HEALTH_ONLY",
+        "status": "SOURCE_BLOCKED",
+        "reason": "NSE session warm-up failed with HTTP 403",
+        "http_status": 403,
+        "source_sha256": "3a345d2bef4a7660dedcddcc5457b4acac6e4db636b718ff0a3e3bc7e64439c4",
+        "raw_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\raw\\nse\\session\\2026-11-24\\164451619933-3a345d2bef4a7660-410d8a1b.html"
+      }
+    ],
+    "historical_filings_admitted": 0,
+    "source_market_corpus_modified": false,
+    "retrieved_at_used_as_historical_availability": false
+  },
+  "source_implementation_sha": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+  "human_review_status": "PENDING",
+  "intentionally_blocked": [
+    "V1_ACCEPTED_SEALS",
+    "V1_HISTORICAL_DECISIONS",
+    "REAL_V1_FORWARD",
+    "REAL_V2_SPEC_FREEZE",
+    "REAL_V2_HISTORICAL_DECISION",
+    "REAL_V2_FORWARD",
+    "PRODUCTION_PUBLISHING"
+  ]
+}

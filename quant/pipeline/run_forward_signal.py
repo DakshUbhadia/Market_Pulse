@@ -29,6 +29,8 @@ from quant.boundaries import RAW_PRICE_START
 
 
 def run_forward_signal(config, as_of, *, price_baseline, total_return_baseline, refresh=True, now=None, cohort=None):
+    from quant.governance.gates import require_action
+    require_action(config, 'V1_FORWARD')
     root = cohort_root(config,cohort)
     supplied_time = now is not None
     now = pd.Timestamp(now or datetime.now(timezone.utc))
@@ -50,6 +52,7 @@ def run_forward_signal(config, as_of, *, price_baseline, total_return_baseline, 
     require_research_ready(config,as_of)
     portfolio, costs = PortfolioConfig(), CostModel()
     settings = dict(security_transition_version=TRANSITION_VERSION,portfolio=asdict(portfolio), costs=asdict(costs), cost_model_version=COST_MODEL_VERSION,
+        cohort_type='REAL', real_forward_evidence=True,
         evidence_policy_version=EVIDENCE_POLICY_VERSION, lifecycle_scenario=DEFAULT_LIFECYCLE_SCENARIO,
         return_basis='TOTAL_RETURN', baselines=baselines)
     signal_path = root/'signals'/f'{as_of}.json'

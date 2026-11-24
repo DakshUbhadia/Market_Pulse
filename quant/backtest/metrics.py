@@ -78,4 +78,7 @@ def diagnostics(scores, labels):
             if joined.exit_date.notna().any() else 0,
         censored_tail_rows=int(joined.exit_date.isna().sum()),
         unresolved_mature_labels=int((joined.exit_date.notna() & ~joined.label_available.fillna(False)).sum()))
+    if 'maturity_status' in joined:
+        summary['label_population'] = len(joined)
+        summary['label_maturity_counts'] = joined.maturity_status.fillna('MISSING_LABEL_RECORD').value_counts().to_dict()
     return table, pd.DataFrame(deciles), summary

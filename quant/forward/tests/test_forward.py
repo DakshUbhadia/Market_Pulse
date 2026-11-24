@@ -35,6 +35,7 @@ def fixture():
 
 def freeze(root,scores,**kwargs):
     defaults = dict(as_of='2024-10-31',generated_at='2024-10-31T19:00:00+05:30',
+        cohort_type='TEST_ONLY',
         next_open='2024-11-01T09:15:00+05:30',data_as_of='2024-10-31',git_commit='test-commit',
         source_manifest_hash='a'*64,settings=dict(portfolio=asdict(PortfolioConfig(holdings=1,max_weight=1)),
             costs=asdict(zero_cost()),lifecycle_scenario='MANDATORY_ECONOMIC_EVENTS_ONLY'))
@@ -51,7 +52,7 @@ def test_signal_batch_is_immutable_and_contains_versioned_contributions(tmp_path
         freeze(tmp_path,scores,generated_at='2024-10-31T20:00:00+05:30')
     assert path.read_bytes() == original
     batches,rows = read_signals(tmp_path)
-    assert len(rows)==1 and rows.validation_level.iloc[0] == 'FORWARD_PAPER_ONLY'
+    assert len(rows)==1 and rows.validation_level.iloc[0] == 'TEST_ONLY'
     assert set(rows.factor_contributions.iloc[0]) == {'momentum','relative_strength','low_risk','liquidity'}
     assert batches[0]['sha256'] == content_hash({k:v for k,v in batches[0].items() if k!='sha256'})
 
@@ -153,6 +154,8 @@ def test_backtest_completion_seal_detects_partial_and_modified_artifacts(tmp_pat
 
 
 def test_forward_pipeline_refuses_a_past_session_before_building_signals(tmp_path,monkeypatch):
+    from quant.tests.governance_fixtures import approve_test_gate
+    approve_test_gate(tmp_path)
     from quant.pipeline import run_forward_signal as module
     days = pd.bdate_range('2024-10-01',periods=40)
     monkeypatch.setattr(module,'read_calendar',lambda *a:pd.DataFrame(dict(trade_date=days,is_trading_session=True)))
@@ -162,10 +165,12 @@ def test_forward_pipeline_refuses_a_past_session_before_building_signals(tmp_pat
         run_forward_signal(Config(data_dir=tmp_path),pd.Timestamp('2024-10-31').date(),
             price_baseline=tmp_path/'missing',total_return_baseline=tmp_path/'missing',
             now='2024-11-02T19:00:00+05:30',refresh=False)
-    assert not list(tmp_path.rglob('*.json'))
+    assert not list((tmp_path/'forward').rglob('*.json'))
 
 
 def test_forward_daily_pipeline_freezes_then_updates_same_engine_shadow(tmp_path,monkeypatch):
+    from quant.tests.governance_fixtures import approve_test_gate
+    approve_test_gate(tmp_path)
     from quant.pipeline import run_forward_signal as module
     from quant.pipeline import update_forward_outcomes as updater
     from quant.storage.parquet_store import write_parquet
@@ -212,6 +217,8 @@ def test_next_open_uses_official_calendar_and_rejects_ambiguous_special_hours(tm
 
 
 def test_paper_gate_checks_completed_baseline_policy_and_cost_parity(tmp_path):
+    from quant.tests.governance_fixtures import approve_test_gate
+    approve_test_gate(tmp_path)
     from quant.forward.gate import require_completed_baselines
     from quant.backtest.costs import CostModel
     from quant.storage.research_store import write_json, clean_json

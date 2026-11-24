@@ -185,7 +185,7 @@ def pit_shares_outstanding(anchors, events, instrument_id, signal_timestamp, *, 
                          & (announced.le(cutoff) | announced.isna())
                          & pd.to_datetime(events.effective_date).gt(pd.Timestamp(anchor.effective_date))
                          & pd.to_datetime(events.effective_date).le(day)]
-        if (not changes.verification_status.eq('VERIFIED').all()
+        if (not changes.verification_status.eq('VERIFIED_COMPLETE').all()
                 or evidence_known_times(changes, 'announced_at').isna().any()
                 or not evidence_known_times(changes, 'announced_at').le(cutoff).all()
                 or changes.duplicated('effective_date').any()):

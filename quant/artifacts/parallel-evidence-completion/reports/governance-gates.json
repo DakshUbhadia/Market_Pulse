@@ -1,0 +1,78 @@
+{
+  "gates": {
+    "TIDEWATER_2016_HUMAN_REVIEW": {
+      "blocking_reason": "HUMAN_REVIEW_PENDING",
+      "created_at": "2026-11-21T00:00:00+00:00",
+      "decision_source": "USER_INSTRUCTION_LEAVE_HUMAN_REVIEW_PENDING",
+      "evidence_artifact": "quant/artifacts/historical-forward-validation/reports/security-transitions/tidewater-2016-human-review-packet.json",
+      "evidence_sha256": "bd1ad1fa5d4368282875fff2768c4389511a6538aacb2ce66e79af077c7a2686",
+      "gate_id": "TIDEWATER_2016_HUMAN_REVIEW",
+      "gate_type": "TRANSITION_EXHAUSTION",
+      "required_for": [
+        "V1_SEAL",
+        "V1_MODEL_REGISTRATION",
+        "V1_FORWARD",
+        "V2_SPEC_FREEZE",
+        "V2_PROMOTION",
+        "V2_REAL_FORWARD",
+        "PRODUCTION_PUBLISHING"
+      ],
+      "review_artifact": null,
+      "status": "PENDING",
+      "subject_id": "TIDEWATER_2016",
+      "subject_sha256": "b4819ee0de935f95a4d7c245cfc3a66ad0b2bb52440597bf960d2ce5105bed52",
+      "updated_at": "2026-11-21T00:00:00+00:00"
+    },
+    "V1_EVALUATION_WINDOW_ADMISSION": {
+      "gate_id": "V1_EVALUATION_WINDOW_ADMISSION",
+      "gate_type": "EVALUATION_WINDOW_ADMISSION",
+      "subject_id": "V1_FALLBACK_2017_03_28",
+      "status": "PENDING",
+      "required_for": [
+        "V1_SEAL",
+        "V2_SPEC_FREEZE"
+      ],
+      "blocking_reason": "EVALUATION_WINDOW_ADMISSION_PENDING",
+      "evidence_artifact": "quant/artifacts/historical-forward-validation/reports/v1-evaluation-declaration.json",
+      "review_artifact": null,
+      "created_at": "2026-11-21T00:00:00+00:00",
+      "updated_at": "2026-11-21T00:00:00+00:00"
+    }
+  },
+  "dependencies": {
+    "V1_HISTORICAL_SEAL": [
+      "TIDEWATER_2016_HUMAN_REVIEW",
+      "V1_EVALUATION_WINDOW_ADMISSION"
+    ],
+    "V1_MODEL_REGISTRATION": [
+      "V1_HISTORICAL_SEAL"
+    ],
+    "V1_REAL_FORWARD": [
+      "V1_MODEL_REGISTRATION"
+    ],
+    "V2_SPEC_FREEZE": [
+      "V1_HISTORICAL_SEAL"
+    ],
+    "V2_PROMOTION": [
+      "V1_HISTORICAL_SEAL"
+    ],
+    "V2_REAL_FORWARD": [
+      "V2_PROMOTION"
+    ],
+    "PRODUCTION_PUBLISHING": [
+      "V1_REAL_FORWARD"
+    ],
+    "FILING_DISCOVERY": [],
+    "CAPITAL_EVENT_VERIFICATION": [],
+    "SHARE_CHAINS": [],
+    "V2_DATA_MATRIX": [],
+    "DIAGNOSTIC_V1": [],
+    "DIAGNOSTIC_V2": [],
+    "DIAGNOSTIC_RELEASE": [],
+    "TEST_FORWARD": [],
+    "MONITORING_DRY_RUN": []
+  },
+  "human_review_status": "PENDING",
+  "evaluation_window_admissible": false,
+  "fallback_window_state": "PREPARED_BUT_NOT_ADMITTED"
+}

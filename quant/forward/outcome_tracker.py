@@ -110,7 +110,10 @@ def track_outcomes(root, prices, benchmark, tri, sessions, *, as_of, cost_model,
                     lifecycle_policy_version=signal['lifecycle_policy_version'],
                     security_transition_version=signal['security_transition_version'],portfolio_accounting_version=signal['portfolio_accounting_version'],
                     evidence_policy_version=signal['evidence_policy_version'],
-                    validation_level='FORWARD_PAPER_ONLY')
+                    cohort_type=signal.get('cohort_type', 'REAL'),
+                    real_forward_evidence=signal.get('cohort_type', 'REAL') == 'REAL',
+                    promotion_eligible=False,
+                    validation_level='TEST_ONLY' if signal.get('cohort_type') == 'TEST_ONLY' else 'FORWARD_PAPER_ONLY')
                 record['sha256'] = content_hash(record)
                 append_record(target,record)
                 reports['written'] += 1

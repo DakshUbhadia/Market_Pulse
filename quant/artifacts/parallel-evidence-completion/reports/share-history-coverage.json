@@ -1,0 +1,572 @@
+{
+  "status": "NOT_READY",
+  "periods": [
+    {
+      "as_of": "2024-01-31",
+      "eligible_count": 251,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 251
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-02-29",
+      "eligible_count": 263,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 263
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-03-28",
+      "eligible_count": 259,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 259
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-04-30",
+      "eligible_count": 244,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 244
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-05-31",
+      "eligible_count": 234,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 234
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-06-28",
+      "eligible_count": 242,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 242
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-07-31",
+      "eligible_count": 246,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 246
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-08-30",
+      "eligible_count": 260,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 260
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-09-30",
+      "eligible_count": 251,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 251
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-10-31",
+      "eligible_count": 245,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 245
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-11-29",
+      "eligible_count": 240,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 240
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2024-12-31",
+      "eligible_count": 231,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 231
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-01-31",
+      "eligible_count": 236,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 236
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-02-28",
+      "eligible_count": 230,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 230
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-03-28",
+      "eligible_count": 230,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 230
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-04-30",
+      "eligible_count": 231,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 231
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-05-30",
+      "eligible_count": 238,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 238
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-06-30",
+      "eligible_count": 238,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 238
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-07-31",
+      "eligible_count": 245,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 245
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-08-29",
+      "eligible_count": 244,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 244
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-09-30",
+      "eligible_count": 248,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 248
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-10-31",
+      "eligible_count": 249,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 249
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-11-28",
+      "eligible_count": 257,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 257
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2025-12-31",
+      "eligible_count": 256,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 256
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-01-30",
+      "eligible_count": 252,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 252
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-02-27",
+      "eligible_count": 258,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 258
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-03-30",
+      "eligible_count": 277,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 277
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-04-30",
+      "eligible_count": 287,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 287
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-05-29",
+      "eligible_count": 291,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 291
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-06-30",
+      "eligible_count": 306,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 306
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-07-31",
+      "eligible_count": 312,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 312
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-08-31",
+      "eligible_count": 308,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 308
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-09-30",
+      "eligible_count": 316,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 316
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-10-30",
+      "eligible_count": 329,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 329
+      },
+      "thresholds_met": false
+    },
+    {
+      "as_of": "2026-11-17",
+      "eligible_count": 339,
+      "eligible_with_verified_shares": 0,
+      "verified_share_coverage": 0.0,
+      "overall_share_coverage": 0.0,
+      "top100_share_coverage": 0.0,
+      "top100_adv_count": 100,
+      "top100_with_verified_shares": 0,
+      "top100_verified_share_coverage": 0.0,
+      "broken_share_chains": 0,
+      "share_chain_failure_reasons": {
+        "START_AND_LATER_RECONCILIATION_ANCHORS_REQUIRED": 339
+      },
+      "thresholds_met": false
+    }
+  ],
+  "first_reliable_share_signal_date": null,
+  "reliable_window_established": false,
+  "minimum_consecutive_monthly_cutoffs": 12,
+  "coverage_units": "PERCENT",
+  "share_chain_policy": "VERIFIED_COMPLETE_EVENTS_INVENTORY_BOUND_INTERVAL_AND_RECONCILED_ANCHORS",
+  "value_feature_policy": "MISSING_UNLESS_VALUE_FEATURE_VALID_TRUE",
+  "current_shares_backfilled": false
+}

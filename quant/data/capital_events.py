@@ -12,7 +12,8 @@ from quant.version import SHARE_CHAIN_VERSION
 EVENT_TYPES = ('SPLIT', 'BONUS', 'BUYBACK', 'RIGHTS_ISSUE', 'PUBLIC_ISSUE',
     'PRIVATE_PLACEMENT', 'ESOP_ISSUANCE', 'MERGER_CONVERSION', 'DEMERGER_ALLOCATION',
     'CAPITAL_REDUCTION', 'FACE_VALUE_CHANGE', 'OTHER')
-EVENT_FIELDS = ('instrument_id', 'security_lineage_id', 'event_type', 'announced_at',
+EVENT_FIELDS = ('instrument_id', 'security_lineage_id', 'event_type', 'announced_at', 'known_at',
+    'predecessor_instrument_id', 'successor_instrument_id',
     'record_date', 'effective_date', 'share_multiplier', 'shares_added', 'shares_removed',
     'paid_up_capital_before', 'paid_up_capital_after', 'face_value_before', 'face_value_after',
     'source_url', 'source_sha256', 'verification_status')

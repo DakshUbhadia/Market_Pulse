@@ -77,7 +77,7 @@ def test_shares_never_backfill_current_anchors_and_require_complete_capital_evid
     anchors = pd.DataFrame([dict(instrument_id='a', effective_date='2024-06-30', shares_outstanding=100,
         exchange_disseminated_at='2024-08-01T16:00:00+05:30', verification_status='VERIFIED',source_sha256='a'*64)])
     events = pd.DataFrame([dict(instrument_id='a', effective_date='2024-09-01', event_type='SPLIT',
-        share_multiplier=2., announced_at='2024-08-20T16:00:00+05:30', verification_status='VERIFIED',source_sha256='b'*64)])
+        share_multiplier=2., announced_at='2024-08-20T16:00:00+05:30', verification_status='VERIFIED_COMPLETE',source_sha256='b'*64)])
     assert not pit_shares_outstanding(anchors,events,'a','2024-07-01T16:00:00+05:30', evidence_complete=True)['value_feature_valid']
     assert not pit_shares_outstanding(anchors,events,'a','2024-09-02T16:00:00+05:30')['value_feature_valid']
     result = pit_shares_outstanding(anchors,events,'a','2024-09-02T16:00:00+05:30',evidence_complete=True)
@@ -93,7 +93,7 @@ def test_future_share_evidence_cannot_change_earlier_share_snapshot():
     anchors = pd.DataFrame([dict(instrument_id='a',effective_date='2024-06-30',shares_outstanding=100,
         exchange_disseminated_at='2024-08-01T16:00:00+05:30',verification_status='VERIFIED',source_sha256='a'*64)])
     future = pd.DataFrame([dict(instrument_id='a',effective_date='2024-08-15',event_type='ISSUANCE',
-        shares_after=150,announced_at='2024-09-01T16:00:00+05:30',verification_status='VERIFIED',source_sha256='b'*64)])
+        shares_after=150,announced_at='2024-09-01T16:00:00+05:30',verification_status='VERIFIED_COMPLETE',source_sha256='b'*64)])
     before = pit_shares_outstanding(anchors,pd.DataFrame(),'a','2024-08-20T16:00:00+05:30',evidence_complete=True)
     assert before == pit_shares_outstanding(anchors,future,'a','2024-08-20T16:00:00+05:30',evidence_complete=True)
     after = pit_shares_outstanding(anchors,future,'a','2024-09-02T16:00:00+05:30',evidence_complete=True)

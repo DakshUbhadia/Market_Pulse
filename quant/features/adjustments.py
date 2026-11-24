@@ -13,7 +13,11 @@ from quant.data.security_history import attach_identities
 def action_version(actions):
     columns = [name for name in ('event_id', 'instrument_id', 'symbol', 'ex_date', 'action_type',
                                  'parse_status', 'ratio_numerator', 'ratio_denominator', 'cash_amount') if name in actions]
-    payload = actions[columns].astype(str).sort_values(columns).to_json(orient='records') if columns else '[]'
+    values = actions[columns]
+    # pandas 2 stringifies missing values while pandas 3 preserves them.
+    # Encode null event fields consistently so the same archive has one digest.
+    canonical = values.astype(str).astype(object).where(values.notna(), None)
+    payload = canonical.sort_values(columns).to_json(orient='records') if columns else '[]'
     return hashlib.sha256(payload.encode()).hexdigest()
 
 

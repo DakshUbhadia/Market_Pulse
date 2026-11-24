@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-11-24T11:14:51.624406+00:00",
+  "sources": [
+    {
+      "base_url": "https://www.nseindia.com",
+      "checked_at": "2026-11-24T11:14:45.062783+00:00",
+      "scope": "SOURCE_HEALTH_ONLY",
+      "status": "SOURCE_BLOCKED",
+      "reason": "NSE session warm-up failed with HTTP 403",
+      "http_status": 403,
+      "source_sha256": "e44bcda523e0ff36c7cd9f06e680f0c8573285f0c12e3e98beb9bcae8451f39c",
+      "raw_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\raw\\nse\\session\\2026-11-24\\164448404527-e44bcda523e0ff36-11b8c160.html"
+    },
+    {
+      "base_url": "https://www.nseindia.in",
+      "checked_at": "2026-11-24T11:14:48.408433+00:00",
+      "scope": "SOURCE_HEALTH_ONLY",
+      "status": "SOURCE_BLOCKED",
+      "reason": "NSE session warm-up failed with HTTP 403",
+      "http_status": 403,
+      "source_sha256": "3a345d2bef4a7660dedcddcc5457b4acac6e4db636b718ff0a3e3bc7e64439c4",
+      "raw_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\raw\\nse\\session\\2026-11-24\\164451619933-3a345d2bef4a7660-410d8a1b.html"
+    }
+  ],
+  "historical_filings_admitted": 0,
+  "source_market_corpus_modified": false,
+  "retrieved_at_used_as_historical_availability": false
+}

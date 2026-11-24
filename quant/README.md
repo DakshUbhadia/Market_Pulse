@@ -17,7 +17,7 @@ From the repository root in PowerShell:
 
 ```powershell
 python -m venv quant/.venv
-quant/.venv/Scripts/python.exe -m pip install -r quant/requirements.txt
+quant/.venv/Scripts/python.exe -m pip install -r quant/requirements-research.txt
 quant/.venv/Scripts/python.exe -c "from quant.config import Config; print(Config())"
 quant/.venv/Scripts/python.exe -m pytest quant -m "not integration" -q
 ```
@@ -998,7 +998,8 @@ be passed through as an approved window.
 The prepared forms and complete source packet are in
 `quant/artifacts/historical-forward-validation/reports/security-transitions/`.
 `tidewater-2016-human-review.json` is intentionally pending. A human completes
-the fields, sets `status` to `REVIEWED`, supplies a reason and chooses
+the fields, sets `subject_id` to `TIDEWATER_2016`, sets `status` to `APPROVED`
+for confirmation or `REJECTED` for reopening, supplies a reason and chooses
 `CONFIRM_EVIDENCE_EXHAUSTED_UNRESOLVED` or `REOPEN_SEARCH` without using returns.
 The `automated_review_sha256` and `subject_sha256` bind the canonical audit body;
 the packet separately records the original audit-file digest. Save a completed
@@ -1012,6 +1013,12 @@ python -m quant.pipeline.admit_evaluation_window --declaration data/historical-f
 
 The window review type is `EVALUATION_WINDOW_ADMISSION`, decision `ADMIT` or
 `REJECT`, and its subject is supplied in `evaluation-window-admission-request.json`.
+Its `subject_id` is `V1_FALLBACK_2017_03_28`. Use `APPROVED` for admission or
+`REJECTED` for rejection. After recording an actual human transition decision,
+update the gate journal with `python -m quant.governance.gates --data-dir
+data/parallel-evidence-completion --review completed-immutable-human-review.json`.
+The separately admitted declaration must be saved as
+`reports/v1-evaluation-window-admitted.json` under that same data directory.
 Review timestamps must follow the declaration and exhaustion review. All typed
 reviews record human name/role, independent-review attestation, reason, explicit
 performance-information use and a past timezone-aware timestamp. Model promotion
@@ -1026,6 +1033,105 @@ The decision file retains its legacy `decision` field for registry compatibility
 and adds `research_outcome`: `PASS_RESEARCH`, `NO_GO` or `INCONCLUSIVE`. Failed
 prerequisites produce `BLOCKED` experiment outcomes. Research PASS permits
 further testing only.
+
+The current phase is `quant-parallel-evidence-completion`; see
+[PARALLEL_EVIDENCE_STATUS.md](PARALLEL_EVIDENCE_STATUS.md). TIDEWATER remains
+explicitly `PENDING`. The gate journal is hash chained and the prepared window
+remains inadmissible until both human decisions are present. Pending and
+rejected decisions have distinct metadata and never halt independent data work.
+
+Initialize an isolated output workspace without changing the retained corpus:
+
+```powershell
+python -m quant.pipeline.prepare_parallel_phase --data-dir data/parallel-evidence-completion --review-evidence-root data/historical-certification
+```
+
+After certifying the exact current clean SHA, execute diagnostic PRICE and
+TOTAL_RETURN runs using the original requested start and prepared declaration:
+
+```powershell
+python -m quant.pipeline.run_backtest --data-dir data/parallel-evidence-completion --corpus-data-dir D:/Market_Pulse_Quant_20261113/data --from 2016-01-01 --to 2026-11-17 --research-authority DIAGNOSTIC_ONLY --evaluation-window data/parallel-evidence-completion/reports/v1-evaluation-declaration.json --estimate-historical-costs
+```
+
+Repeat with `--total-return`. The archived V1 diagnostic validates source bytes,
+calendar, execution and held lifecycle accounting. It writes a structural
+summary and an integrity inventory. The archived path omits prepared rankings,
+cash and holdings histories, labels, robustness results and performance metrics.
+A data failure still blocks diagnostic completion. The declaration requires
+independent human admission.
+
+Prepare draft seven-block inputs with `python -m quant.pipeline.prepare_v2_matrix
+--price-features ... --fundamental-features ... --output ...`; missing verified
+Value makes the full matrix `INCOMPLETE`. `quant.pipeline.run_v2_diagnostics`
+requires an explicitly DRAFT spec and declared synthetic or archived diagnostic
+scope. Synthetic inputs exercise all four arms and capital scenarios. Archived
+inputs emit matrix readiness only. Both paths run outside the specification
+freeze and research decision workflows.
+
+For joint coverage, supply `--archive-root`, `--filings`, `--anchors`,
+`--capital-events` and `--share-coverage` to `prepare_v2_matrix`. Use one
+historical month-end feature cross-section per cutoff with the full eligible
+denominator. The report counts usable filings, verified shares, complete V2
+blocks and their intersection, including historical top-100 and entity slices.
+Pass its `matrix-status.json` to `quant.research.data_interval --matrix`.
+An optional V2 freeze with `--joint-matrix-coverage` binds the joint report to
+the reviewed specification. The report must then pass the same monthly
+continuity and evaluation-window requirements.
+
+Build and verify portable diagnostic bundles with
+`python -m quant.pipeline.build_diagnostic_release --source ... --output ...`.
+The bundle is labelled `DIAGNOSTIC_RELEASE`, with historical validation,
+promotion eligibility and real forward evidence all false. Its verifier works
+after relocation. Research-release and registry verifiers reject it.
+
+`quant.pipeline.run_test_forward.run_test_forward` runs controlled after-close
+signal freezes, next-open shadow accounting and outcome tracking in
+`forward/test-only/<cohort>`. `TEST_ONLY` propagates into signals, policies,
+outcomes, monitoring and comparisons. Test and real cohorts cannot be mixed.
+Synthetic evidence is never a substitute for 126 real signal sessions, six
+rebalance cycles or 30 matured 63-session signals.
+
+## Private status console and recovery
+
+Use Better Auth's account ID in `QUANT_STATUS_OWNER_ID`. Generate a 32-byte
+random key as 64 lowercase hexadecimal characters and set it as
+`QUANT_STATUS_SIGNING_KEY` for both the Python runner and Next.js. Set the
+server-only `QUANT_STATUS_FILE` to the output path before opening `/quant`.
+`--evidence-dir` reads archived reports where the writable workspace has no
+fresh equivalent.
+
+```powershell
+.venv/Scripts/python.exe -m quant.pipeline.write_current_status --data-dir data/completion-enhancement --evidence-dir quant/artifacts/parallel-evidence-completion
+.venv/Scripts/python.exe -m quant.pipeline.export_quant_status --current-status data/completion-enhancement/reports/current-status.json --output data/completion-enhancement/status-envelope.json
+node --experimental-strip-types --test scripts/test-quant-status.mjs
+```
+
+Hosted status sync uses `QUANT_STATUS_SYNC=true`, a separate random 32-byte
+`QUANT_STATUS_SYNC_TOKEN`, and a MongoDB account scoped to the `quant_status`
+collection in `QUANT_STATUS_MONGODB_DB`. Set its connection string as
+`QUANT_STATUS_MONGODB_URI`. Invoke the exporter with `--sync-url` and the exact
+HTTPS `/api/quant/status/sync` URL. The server verifies the signature, body size,
+schema and timestamp and accepts a duplicate of the current snapshot idempotently.
+Older payloads and changed payloads at the same timestamp are rejected. An
+unverified, missing or stale file has a separate display state. Recommendation
+publication uses its existing disabled switch.
+
+Daily and weekly EOD commands share the lock in `state/market-writer.lock`.
+The OS releases it if a job exits. Use `scripts/run_quant_eod.ps1 -DataDir
+<writable-corpus>` for the daily task and append `-FullAudit` for a separate
+weekly task. Keep the retained corpus outside both writable targets.
+
+After an interrupted acquisition, verify the prior batch's output hashes and
+resume using the combined filings, updated coverage and ceiling, and
+`--previous-batch`. Preserve raw responses and the last valid evidence
+snapshot. For an unreadable status report, retain the bad bytes and regenerate
+from the underlying reports. For a checksum mismatch in a release, quarantine
+the changed copy and verify a relocated copy from backup before reusing it.
+Keep original JUnit and input bytes with their manifests. For stale EOD or a
+source outage, inspect calendar health, state and incident reports before
+resuming. For a parser regression, rebuild affected partitions from archived
+source bytes at a new revision. A failed risk allocation, registry check or
+release check requires operator review and a fresh verified run.
 
 Capital-event verification is independent of event discovery:
 

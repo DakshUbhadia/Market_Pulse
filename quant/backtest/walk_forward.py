@@ -2,6 +2,7 @@ from quant.lifecycle.policy import DEFAULT_LIFECYCLE_SCENARIO
 from datetime import date
 
 import pandas as pd
+from quant.universe.eligible import session_index
 
 
 def rolling_windows(*, first_test_year=2016, last_test_year=2026, training_years=6):
@@ -11,14 +12,20 @@ def rolling_windows(*, first_test_year=2016, last_test_year=2026, training_years
 
 
 def purged_training_labels(labels, window, sessions, *, embargo_sessions=63):
-    calendar = pd.DatetimeIndex(pd.to_datetime(sessions))
-    before = calendar[calendar < pd.Timestamp(window['test_start'])]
+    if type(embargo_sessions) is not int or embargo_sessions < 0:
+        raise ValueError('Embargo must be a nonnegative number of exchange sessions')
+    calendar = session_index(sessions)
+    test_start = pd.Timestamp(window['test_start'])
+    before = calendar[calendar < test_start]
     if len(before) <= embargo_sessions:
         return labels.iloc[:0].copy()
     cutoff = before[-embargo_sessions-1]
-    return labels[(labels.as_of >= pd.Timestamp(window['train_start']))
-                  & (labels.as_of <= pd.Timestamp(window['train_end']))
-                  & labels.label_available & (labels.exit_date <= cutoff)].copy()
+    signal = pd.to_datetime(labels.as_of)
+    end = pd.to_datetime(labels.exit_date)
+    available = pd.to_datetime(labels.get('label_available_at', labels.exit_date))
+    return labels[signal.between(pd.Timestamp(window['train_start']), pd.Timestamp(window['train_end']))
+                  & signal.lt(test_start) & labels.label_available.eq(True)
+                  & end.ge(signal) & available.ge(end) & available.le(cutoff)].copy()
 
 
 def walk_forward(prices, scores, labels, sessions, *, windows=None, portfolio=None, cost_model=None,

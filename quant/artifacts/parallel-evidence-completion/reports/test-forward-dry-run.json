@@ -1,0 +1,29 @@
+{
+  "input_scope": "SYNTHETIC_CONTROLLED_INPUTS",
+  "shadow_sessions": 78,
+  "as_of": "2025-02-17",
+  "validation_level": "TEST_ONLY",
+  "production_validated": false,
+  "cohort_type": "TEST_ONLY",
+  "real_forward_evidence": false,
+  "promotion_eligible": false,
+  "signal_sessions": 4,
+  "distinct_recommendations": 1,
+  "distinct_ranked_instruments": 1,
+  "rebalance_cycles": 3,
+  "outcomes": {
+    "21": {
+      "matured_outcomes": 3,
+      "distinct_signals": 3,
+      "mean_cost_adjusted_excess": 0.0004071399008619414,
+      "rank_IC": null
+    },
+    "63": {
+      "matured_outcomes": 1,
+      "distinct_signals": 1,
+      "mean_cost_adjusted_excess": -0.007085920414999336,
+      "rank_IC": null
+    }
+  },
+  "reason": "Overlapping 63-session observations are not independent; manual multi-cycle review required"
+}

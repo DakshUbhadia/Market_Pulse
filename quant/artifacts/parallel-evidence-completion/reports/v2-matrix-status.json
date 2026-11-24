@@ -1,0 +1,44 @@
+{
+  "status": "INCOMPLETE",
+  "required_blocks": [
+    "momentum",
+    "relative_strength",
+    "quality",
+    "growth",
+    "value",
+    "low_risk",
+    "liquidity"
+  ],
+  "periods": [
+    {
+      "as_of": "2026-11-17",
+      "eligible": 339,
+      "top100_count": 100,
+      "complete_seven_block_rows": 0,
+      "verified_value_missing": 339,
+      "overall_coverage": 0.0,
+      "top100_coverage": 0.0
+    }
+  ],
+  "value_required": true,
+  "full_v2_enabled": false,
+  "specification_status": "DRAFT",
+  "frozen": false,
+  "historical_validation": false,
+  "promotion_eligible": false,
+  "authority": "DATA_PREPARATION_ONLY",
+  "covered_keys_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "input_scope": "ARCHIVED_DIAGNOSTIC_INPUTS",
+  "archived_price_feature_implementation_sha": "088a020ff5fed186d27fd4c0f85d0280d63691c8",
+  "archived_price_features_sha256": "bc6d6ac466225d5af07946f4c689fb3cafd5490673e012d52a041cb0562f6dce",
+  "source_manifest_sha256": "845629050de7f47c574f5bac313cb5b8cee9b95733a9e7ec028181a208e33352",
+  "current_implementation_regenerated_price_features": false,
+  "certified_interval": false,
+  "source_market_corpus_read_only": true,
+  "input_sha256": {
+    "data\\evidence-closure\\inputs\\filings.parquet": "3f9e56c2657a5c5cd2fa2f28a21c52ea61d6ec3114a34eeb4a098857eb41359b",
+    "data\\coverage-validation\\inputs\\anchors.parquet": "7686333f070a8027000e0ba816762985def1cce18e5100a8b8e522c94c29c428",
+    "data\\coverage-validation\\inputs\\capital-events.parquet": "db10eb26f96e31773059e28f9acf62e8997f07d90d65edb09c9fca42d937c541",
+    "data\\coverage-validation\\inputs\\share-coverage.parquet": "1b8c40b234dbd10c621db18aec21f07b95c8e30ba31ca15e5f38bc2ca32ec03d"
+  }
+}

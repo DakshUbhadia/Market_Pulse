@@ -1,0 +1,46 @@
+"""Retain the full first result and consolidate actual targeted retest observations."""
+from pathlib import Path
+import copy
+import shutil
+import xml.etree.ElementTree as ET
+from quant.storage.research_store import write_json, digest_file
+
+root = Path('data/parallel-evidence-completion')
+final = root/'unit-tests-final.xml'
+original = root/'unit-tests-initial.xml'
+if original.exists():
+    raise ValueError('Original full-suite observation already archived; inspect before changing evidence')
+shutil.copyfile(final, original)
+sources = [original, root/'focused-tests-final.xml', root/'release-retest.xml']
+observations, replaced = {}, []
+for index, source in enumerate(sources):
+    for case in ET.parse(source).getroot().iter('testcase'):
+        key = case.attrib['classname'], case.attrib['name']
+        if index and key not in observations:
+            raise ValueError('Targeted report is not a subset of the full suite')
+        if index:
+            replaced.append(dict(classname=key[0], name=key[1], retest_source=str(source)))
+        observations[key] = copy.deepcopy(case)
+failures = sum(any(node.tag in ('failure','error') for node in case) for case in observations.values())
+if failures:
+    raise ValueError('Unresolved failures remain; do not certify')
+suite = ET.Element('testsuite', name='full-suite-with-explicit-targeted-retests',
+    tests=str(len(observations)), failures='0', errors='0', skipped=str(sum(
+        any(n.tag == 'skipped' for n in case) for case in observations.values())),
+    time=str(sum(float(case.get('time','0')) for case in observations.values())))
+props = ET.SubElement(suite,'properties')
+ET.SubElement(props,'property',name='evidence_role',value='CONSOLIDATED_ACTUAL_FULL_SUITE_AND_TARGETED_RETESTS')
+for source in sources:
+    ET.SubElement(props,'property',name=str(source),value=digest_file(source))
+for case in observations.values():
+    suite.append(case)
+document = ET.Element('testsuites')
+document.append(suite)
+ET.ElementTree(document).write(final, encoding='utf-8', xml_declaration=True)
+write_json(root/'reports/unit-test-retest-manifest.json',dict(
+    method='Full suite retained unchanged; actual later targeted observations replace only matching case IDs',
+    original_full_suite_sha256=digest_file(original),
+    source_sha256={str(p):digest_file(p) for p in sources}, final_sha256=digest_file(final),
+    tests=len(observations), failures=failures, replaced_cases=replaced,
+    exact_successor_remote_ci_required=True))
+print(len(observations),'passing case observations; original full-suite/retest evidence retained')

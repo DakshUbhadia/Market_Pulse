@@ -1,0 +1,20 @@
+{
+  "route": "NSE_OFFICIAL_ALTERNATE_BASE",
+  "base_url": "https://www.nseindia.in",
+  "params": {
+    "index": "equities",
+    "symbol": "AUBANK",
+    "from_date": "01-04-2023",
+    "to_date": "31-03-2024",
+    "period": "Annual"
+  },
+  "research_authority": "SOURCE_HEALTH_ONLY",
+  "usable_filings": 0,
+  "historical_availability_proven": false,
+  "source_discovery": "Official NSE financial-results page linked by current public search; no search snippet treated as PIT truth",
+  "status": "SOURCE_BLOCKED",
+  "reason": "NSE session warm-up failed with HTTP 403",
+  "source_sha256": "609326beee59d3319c0aa479ac063b46f86fb6e5dca5dc7dac5c9e84a093f7d5",
+  "raw_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\raw\\nse\\session\\2026-11-22\\021219038020-609326beee59d331-66708fe4.html",
+  "http_status": 403
+}

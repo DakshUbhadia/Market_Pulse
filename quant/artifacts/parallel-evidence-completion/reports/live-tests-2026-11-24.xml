@@ -1,0 +1,1402 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="7" skipped="0" tests="11" time="721.840" timestamp="2026-11-24T16:44:53.560495+05:30" hostname="DESKTOP-D9ACJ2I"><testcase classname="quant.tests.integration.test_dhan_instruments_live" name="test_live_dhan" time="38.000" /><testcase classname="quant.tests.integration.test_nse_bhavcopy_live" name="test_live_bhavcopy[day0]" time="1.072" /><testcase classname="quant.tests.integration.test_nse_bhavcopy_live" name="test_live_bhavcopy[day1]" time="0.709" /><testcase classname="quant.tests.integration.test_nse_bhavcopy_live" name="test_live_bhavcopy[None]" time="3.262"><failure message="quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/tmplivepe20261124/test_live_bhavcopy_None_0')
+day = None
+
+    @pytest.mark.parametrize('day', [date(2024, 7, 5), date(2024, 7, 8), None])
+    def test_live_bhavcopy(tmp_path, day):
+        config = Config(data_dir=tmp_path, retries=0, timeout=20)
+        if day is None:
+            from quant.pipeline.cli import completed_day
+            from quant.pipeline.update_calendar import refresh_calendar
+            target = completed_day(config)
+&gt;           calendar, _ = refresh_calendar(config, target - timedelta(days=14), target)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+quant\tests\integration\test_nse_bhavcopy_live.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\pipeline\update_calendar.py:77: in refresh_calendar
+    payload = client.get_json(HOLIDAY_PATH, params={'type': 'trading', 'year': year},
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x00000155F0790590&gt;
+
+    def _warm(self):
+        response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+        if response.status_code in (401, 403):
+&gt;           raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
+E           quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403
+
+quant\data\nse_client.py:168: _SessionBlocked</failure></testcase><testcase classname="quant.tests.integration.test_nse_calendar_live" name="test_live_calendar" time="3.225"><failure message="quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/tmplivepe20261124/test_live_calendar0')
+
+    def test_live_calendar(tmp_path):
+        config = Config(data_dir=tmp_path, retries=0, timeout=20)
+        year = datetime.now(ZoneInfo(config.timezone)).year
+        with NseClient(config) as client:
+&gt;           payload = client.get_json('/api/holiday-master', params={'type': 'trading', 'year': year},
+                                      dataset='calendar')
+
+quant\tests\integration\test_nse_calendar_live.py:19: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x00000155F0725E50&gt;
+
+    def _warm(self):
+        response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+        if response.status_code in (401, 403):
+&gt;           raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
+E           quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403
+
+quant\data\nse_client.py:168: _SessionBlocked</failure></testcase><testcase classname="quant.tests.integration.test_nse_calendar_live" name="test_live_independent_special_session_evidence" time="3.359"><failure message="quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/tmplivepe20261124/test_live_independent_special_0')
+
+    def test_live_independent_special_session_evidence(tmp_path):
+        config = Config(data_dir=tmp_path, retries=0, timeout=20)
+        with NseClient(config) as client:
+&gt;           payload = client.get_json(PATH, params={'indexType': 'NIFTY 50', 'from': '01-02-2010',
+                                                    'to': '28-02-2010'}, dataset='calendar')
+
+quant\tests\integration\test_nse_calendar_live.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x00000155F07260D0&gt;
+
+    def _warm(self):
+        response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+        if response.status_code in (401, 403):
+&gt;           raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
+E           quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403
+
+quant\data\nse_client.py:168: _SessionBlocked</failure></testcase><testcase classname="quant.tests.integration.test_nse_market_live" name="test_live_market_reports" time="3.293" /><testcase classname="quant.tests.integration.test_nse_market_live" name="test_known_reliance_bonus_reconciles" time="636.796"><failure message="quant.data.nse_client.NseSourceError: NSE request timed out or connection failed">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/tmplivepe20261124/test_known_reliance_bonus_reco0')
+
+    def test_known_reliance_bonus_reconciles(tmp_path):
+        config = Config(data_dir=tmp_path, retries=0, timeout=20)
+        with NseClient(config) as client:
+&gt;           payload = client.get_json('/api/corporates-corporateActions',
+                params={'index': 'equities', 'symbol': 'RELIANCE', 'from_date': '25-10-2024',
+                        'to_date': '29-10-2024'}, dataset='corporate_actions')
+
+quant\tests\integration\test_nse_market_live.py:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+quant\data\nse_client.py:166: in _warm
+    response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x00000155F077A8B0&gt;
+url = 'https://www.nseindia.com/', params = None, referer = None
+dataset = 'session', suffix = 'html', warmup = True, migration_allowed = True
+
+    def _request(self, url, *, params=None, referer=None, dataset='web', suffix='bin', warmup=False,
+                 migration_allowed=True):
+        for attempt in range(self.config.retries + 1):
+            time.sleep(max(0, self.config.request_interval - (time.monotonic() - self._last_request))
+                       + random.uniform(0, 0.25))
+            self._last_request = time.monotonic()
+            response = None
+            try:
+                headers = {'Accept': '*/*'} if warmup else {
+                    'Referer': referer or self.config.nse_base_url + '/'}
+                response = self.session.get(url, params=params, timeout=self.config.timeout,
+                                            headers=headers,
+                                            allow_redirects=False)
+            except (requests.Timeout, requests.ConnectionError):
+                if attempt == self.config.retries:
+&gt;                   raise NseSourceError('NSE request timed out or connection failed') from None
+E                   quant.data.nse_client.NseSourceError: NSE request timed out or connection failed
+
+quant\data\nse_client.py:142: NseSourceError</failure></testcase><testcase classname="quant.tests.integration.test_tri_live" name="test_official_tri_live_source[NIFTY 50]" time="11.081"><failure message="requests.exceptions.ConnectionError: HTTPSConnectionPool(host='niftyindices.com', port=443): Max retries exceeded with url: /Backpage/getTotalReturnIndexString (Caused by NameResolutionError(&quot;HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)&quot;))">self = &lt;HTTPSConnection(host='niftyindices.com', port=443) at 0x155f0727390&gt;
+
+    def _new_conn(self) -&gt; socket.socket:
+        """Establish a socket connection and set nodelay settings on it.
+    
+        :return: New socket connection.
+        """
+        try:
+&gt;           sock = connection.create_connection(
+                (self._dns_host, self.port),
+                self.timeout,
+                source_address=self.source_address,
+                socket_options=self.socket_options,
+            )
+
+.venv\Lib\site-packages\urllib3\connection.py:239: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\urllib3\util\connection.py:60: in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+host = 'niftyindices.com', port = 443, family = &lt;AddressFamily.AF_UNSPEC: 0&gt;
+type = &lt;SocketKind.SOCK_STREAM: 1&gt;, proto = 0, flags = 0
+
+    def getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        """Resolve host and port into list of address info entries.
+    
+        Translate the host/port argument into a sequence of 5-tuples that contain
+        all the necessary arguments for creating a socket connected to that service.
+        host is a domain name, a string representation of an IPv4/v6 address or
+        None. port is a string service name such as 'http', a numeric port number or
+        None. By passing None as the value of host and port, you can pass NULL to
+        the underlying C API.
+    
+        The family, type and proto arguments can be optionally specified in order to
+        narrow the list of addresses returned. Passing zero as a value for each of
+        these arguments selects the full range of results.
+        """
+        # We override this function since we want to translate the numeric family
+        # and socket type values to enum constants.
+        addrlist = []
+&gt;       for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       socket.gaierror: [Errno 11001] getaddrinfo failed
+
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\socket.py:977: gaierror
+
+The above exception was the direct cause of the following exception:
+
+self = &lt;urllib3.connectionpool.HTTPSConnectionPool object at 0x00000155F077B100&gt;
+method = 'POST', url = '/Backpage/getTotalReturnIndexString'
+body = b'{"cinfo": "{\'name\': \'NIFTY 50\', \'startDate\': \'08-Jul-2024\', \'endDate\': \'09-Jul-2024\', \'indexName\': \'NIFTY 50\'}"}'
+headers = {'User-Agent': 'Mozilla/5.0', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'keep-alive', 'Referer': 'https://niftyindices.com/reports/historical-data', 'Content-Length': '112', 'Content-Type': 'application/json'}
+retries = Retry(total=0, connect=None, read=False, redirect=None, status=None)
+redirect = False, assert_same_host = False
+timeout = Timeout(connect=30, read=30, total=None), pool_timeout = None
+release_conn = False, chunked = False, body_pos = None, preload_content = False
+decode_content = False, response_kw = {}
+
+    def urlopen(  # type: ignore[override]
+        self,
+        method: str,
+        url: str,
+        body: _TYPE_BODY | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        retries: Retry | bool | int | None = None,
+        redirect: bool = True,
+        assert_same_host: bool = True,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
+        pool_timeout: int | None = None,
+        release_conn: bool | None = None,
+        chunked: bool = False,
+        body_pos: _TYPE_BODY_POSITION | None = None,
+        preload_content: bool = True,
+        decode_content: bool = True,
+        **response_kw: typing.Any,
+    ) -&gt; BaseHTTPResponse:
+        """
+        Get a connection from the pool and perform an HTTP request. This is the
+        lowest level call for making a request, so you'll need to specify all
+        the raw details.
+    
+        .. note::
+    
+           More commonly, it's appropriate to use a convenience method
+           such as :meth:`request`.
+    
+        .. note::
+    
+           `release_conn` will only behave as expected if
+           `preload_content=False` because we want to make
+           `preload_content=False` the default behaviour someday soon without
+           breaking backwards compatibility.
+    
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
+    
+        :param url:
+            The URL to perform the request on.
+    
+        :param body:
+            Data to send in the request body, either :class:`str`, :class:`bytes`,
+            an iterable of :class:`str`/:class:`bytes`, or a file-like object.
+    
+        :param headers:
+            Dictionary of custom headers to send, such as User-Agent,
+            If-None-Match, etc. If None, pool headers are used. If provided,
+            these headers completely replace any pool-specific headers.
+    
+        :param retries:
+            Configure the number of retries to allow before raising a
+            :class:`~urllib3.exceptions.MaxRetryError` exception.
+    
+            If ``None`` (default) will retry 3 times, see ``Retry.DEFAULT``. Pass a
+            :class:`~urllib3.util.retry.Retry` object for fine-grained control
+            over different types of retries.
+            Pass an integer number to retry connection errors that many times,
+            but no other types of errors. Pass zero to never retry.
+    
+            If ``False``, then retries are disabled and any exception is raised
+            immediately. Also, instead of raising a MaxRetryError on redirects,
+            the redirect response will be returned.
+    
+        :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
+    
+        :param redirect:
+            If True, automatically handle redirects (status codes 301, 302,
+            303, 307, 308). Each redirect counts as a retry. Disabling retries
+            will disable redirect, too.
+    
+        :param assert_same_host:
+            If ``True``, will make sure that the host of the pool requests is
+            consistent else will raise HostChangedError. When ``False``, you can
+            use the pool on an HTTP proxy and request foreign hosts.
+    
+        :param timeout:
+            If specified, overrides the default timeout for this one
+            request. It may be a float (in seconds) or an instance of
+            :class:`urllib3.util.Timeout`.
+    
+        :param pool_timeout:
+            If set and the pool is set to block=True, then this method will
+            block for ``pool_timeout`` seconds and raise EmptyPoolError if no
+            connection is available within the time period.
+    
+        :param bool preload_content:
+            If True, the response's body will be preloaded into memory.
+    
+        :param bool decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
+    
+        :param release_conn:
+            If False, then the urlopen call will not release the connection
+            back into the pool once a response is received (but will release if
+            you read the entire contents of the response such as when
+            `preload_content=True`). This is useful if you're not preloading
+            the response's content immediately. You will need to call
+            ``r.release_conn()`` on the response ``r`` to return the connection
+            back into the pool. If None, it takes the value of ``preload_content``
+            which defaults to ``True``.
+    
+        :param bool chunked:
+            If True, urllib3 will send the body using chunked transfer
+            encoding. Otherwise, urllib3 will send the body using the standard
+            content-length form. Defaults to False.
+    
+        :param int body_pos:
+            Position to seek to in file-like body in the event of a retry or
+            redirect. Typically this won't need to be set because urllib3 will
+            auto-populate the value when needed.
+        """
+        # Ensure that the URL we're connecting to is properly encoded
+        if url.startswith("/"):
+            # URLs starting with / are inherently schemeless.
+            url = to_str(_encode_target(url))
+            destination_scheme = None
+        else:
+            parsed_url = parse_url(url)
+            destination_scheme = parsed_url.scheme
+            url = to_str(parsed_url._replace(fragment=None).url)
+    
+        if headers is None:
+            headers = self.headers
+    
+        if not isinstance(retries, Retry):
+            retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
+    
+        if release_conn is None:
+            release_conn = preload_content
+    
+        # Check host
+        if assert_same_host and not self.is_same_host(url):
+            raise HostChangedError(self, url, retries)
+    
+        conn = None
+    
+        # Track whether `conn` needs to be released before
+        # returning/raising/recursing. Update this variable if necessary, and
+        # leave `release_conn` constant throughout the function. That way, if
+        # the function recurses, the original value of `release_conn` will be
+        # passed down into the recursive call, and its value will be respected.
+        #
+        # See issue #651 [1] for details.
+        #
+        # [1] &lt;https://github.com/urllib3/urllib3/issues/651&gt;
+        release_this_conn = release_conn
+    
+        http_tunnel_required = connection_requires_http_tunnel(
+            self.proxy, self.proxy_config, destination_scheme
+        )
+    
+        # Merge the proxy headers. Only done when not using HTTP CONNECT. We
+        # have to copy the headers dict so we can safely change it without those
+        # changes being reflected in anyone else's copy.
+        if not http_tunnel_required:
+            headers = headers.copy()  # type: ignore[attr-defined]
+            headers.update(self.proxy_headers)  # type: ignore[union-attr]
+    
+        # Must keep the exception bound to a separate variable or else Python 3
+        # complains about UnboundLocalError.
+        err = None
+    
+        # Keep track of whether we cleanly exited the except block. This
+        # ensures we do proper cleanup in finally.
+        clean_exit = False
+    
+        # Rewind body position, if needed. Record current position
+        # for future rewinds in the event of a redirect/retry.
+        body_pos = set_file_position(body, body_pos)
+    
+        timeout_obj = self._get_timeout(timeout)
+        try:
+            # Request a connection from the queue.
+            conn = self._get_conn(timeout=pool_timeout)
+            conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
+    
+            # Is this a closed/new connection that requires CONNECT tunnelling?
+            if self.proxy is not None and http_tunnel_required and conn.is_closed:
+                try:
+                    self._prepare_proxy(conn)
+                except (BaseSSLError, OSError, SocketTimeout) as e:
+                    self._raise_timeout(
+                        err=e, url=self.proxy.url, timeout_value=conn.timeout
+                    )
+                    raise
+    
+            # If we're going to release the connection in ``finally:``, then
+            # the response doesn't need to know about the connection. Otherwise
+            # it will also try to release it and we'll have a double-release
+            # mess.
+            response_conn = conn if not release_conn else None
+    
+            # Make the request on the HTTPConnection object
+&gt;           response = self._make_request(
+                conn,
+                method,
+                url,
+                timeout=timeout_obj,
+                body=body,
+                headers=headers,
+                chunked=chunked,
+                retries=retries,
+                response_conn=response_conn,
+                preload_content=preload_content,
+                decode_content=decode_content,
+                **response_kw,
+            )
+
+.venv\Lib\site-packages\urllib3\connectionpool.py:793: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\urllib3\connectionpool.py:494: in _make_request
+    raise new_e
+.venv\Lib\site-packages\urllib3\connectionpool.py:470: in _make_request
+    self._validate_conn(conn)
+.venv\Lib\site-packages\urllib3\connectionpool.py:1125: in _validate_conn
+    conn.connect()
+.venv\Lib\site-packages\urllib3\connection.py:827: in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;HTTPSConnection(host='niftyindices.com', port=443) at 0x155f0727390&gt;
+
+    def _new_conn(self) -&gt; socket.socket:
+        """Establish a socket connection and set nodelay settings on it.
+    
+        :return: New socket connection.
+        """
+        try:
+            sock = connection.create_connection(
+                (self._dns_host, self.port),
+                self.timeout,
+                source_address=self.source_address,
+                socket_options=self.socket_options,
+            )
+        except socket.gaierror as e:
+&gt;           raise NameResolutionError(self.host, self, e) from e
+E           urllib3.exceptions.NameResolutionError: HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)
+
+.venv\Lib\site-packages\urllib3\connection.py:246: NameResolutionError
+
+The above exception was the direct cause of the following exception:
+
+self = &lt;requests.adapters.HTTPAdapter object at 0x00000155F08499D0&gt;
+request = &lt;PreparedRequest [POST]&gt;, stream = False, timeout = 30, verify = True
+cert = None, proxies = OrderedDict()
+
+    def send(
+        self,
+        request: PreparedRequest,
+        stream: bool = False,
+        timeout: _t.TimeoutType = None,
+        verify: _t.VerifyType = True,
+        cert: _t.CertType = None,
+        proxies: dict[str, str] | None = None,
+    ) -&gt; Response:
+        """Sends PreparedRequest object. Returns Response object.
+    
+        :param request: The :class:`PreparedRequest &lt;PreparedRequest&gt;` being sent.
+        :param stream: (optional) Whether to stream the request content.
+        :param timeout: (optional) How long to wait for the server to send
+            data before giving up, as a float, or a :ref:`(connect timeout,
+            read timeout) &lt;timeouts&gt;` tuple.
+        :type timeout: float or tuple or urllib3 Timeout object
+        :param verify: (optional) Either a boolean, in which case it controls whether
+            we verify the server's TLS certificate, or a string, in which case it
+            must be a path to a CA bundle to use
+        :param cert: (optional) Any user-provided SSL certificate to be trusted.
+        :param proxies: (optional) The proxies dictionary to apply to the request.
+        :rtype: requests.Response
+        """
+    
+        assert _is_prepared(request)
+    
+        try:
+            conn = self.get_connection_with_tls_context(
+                request, verify, proxies=proxies, cert=cert
+            )
+        except LocationValueError as e:
+            raise InvalidURL(e, request=request)
+    
+        self.cert_verify(conn, request.url, verify, cert)
+        url = self.request_url(request, proxies)
+        self.add_headers(
+            request,
+            stream=stream,
+            timeout=timeout,
+            verify=verify,
+            cert=cert,
+            proxies=proxies,
+        )
+    
+        chunked = not (request.body is None or "Content-Length" in request.headers)
+    
+        if isinstance(timeout, tuple):
+            try:
+                connect, read = timeout
+                resolved_timeout = TimeoutSauce(connect=connect, read=read)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid timeout {timeout}. Pass a (connect, read) timeout tuple, "
+                    f"or a single float to set both timeouts to the same value."
+                )
+        elif isinstance(timeout, TimeoutSauce):
+            resolved_timeout = timeout
+        else:
+            resolved_timeout = TimeoutSauce(connect=timeout, read=timeout)
+    
+        try:
+&gt;           resp = conn.urlopen(
+                method=request.method,
+                url=url,
+                body=request.body,  # type: ignore[arg-type]  # urllib3 stubs don't accept Iterable[bytes | str]
+                headers=request.headers,  # type: ignore[arg-type]  # urllib3#3072
+                redirect=False,
+                assert_same_host=False,
+                preload_content=False,
+                decode_content=False,
+                retries=self.max_retries,
+                timeout=resolved_timeout,
+                chunked=chunked,
+            )
+
+.venv\Lib\site-packages\requests\adapters.py:696: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\urllib3\connectionpool.py:847: in urlopen
+    retries = retries.increment(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Retry(total=0, connect=None, read=False, redirect=None, status=None)
+method = 'POST', url = '/Backpage/getTotalReturnIndexString', response = None
+error = NameResolutionError("HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)")
+_pool = &lt;urllib3.connectionpool.HTTPSConnectionPool object at 0x00000155F077B100&gt;
+_stacktrace = &lt;traceback object at 0x00000155C56E45C0&gt;
+
+    def increment(
+        self,
+        method: str | None = None,
+        url: str | None = None,
+        response: BaseHTTPResponse | None = None,
+        error: Exception | None = None,
+        _pool: ConnectionPool | None = None,
+        _stacktrace: TracebackType | None = None,
+    ) -&gt; Self:
+        """Return a new Retry object with incremented retry counters.
+    
+        :param response: A response object, or None, if the server did not
+            return a response.
+        :type response: :class:`~urllib3.response.BaseHTTPResponse`
+        :param Exception error: An error encountered during the request, or
+            None if the response was received successfully.
+    
+        :return: A new ``Retry`` object.
+        """
+        if self.total is False and error:
+            # Disabled, indicate to re-raise the error.
+            raise reraise(type(error), error, _stacktrace)
+    
+        total = self.total
+        if total is not None:
+            total -= 1
+    
+        connect = self.connect
+        read = self.read
+        redirect = self.redirect
+        status_count = self.status
+        other = self.other
+        cause = "unknown"
+        status = None
+        redirect_location = None
+    
+        if error and self._is_connection_error(error):
+            # Connect retry?
+            if connect is False:
+                raise reraise(type(error), error, _stacktrace)
+            elif connect is not None:
+                connect -= 1
+    
+        elif error and self._is_read_error(error):
+            # Read retry?
+            if read is False or method is None or not self._is_method_retryable(method):
+                raise reraise(type(error), error, _stacktrace)
+            elif read is not None:
+                read -= 1
+    
+        elif error:
+            # Other retry?
+            if other is not None:
+                other -= 1
+    
+        elif response and response.get_redirect_location():
+            # Redirect retry?
+            if redirect is not None:
+                redirect -= 1
+            cause = "too many redirects"
+            response_redirect_location = response.get_redirect_location()
+            if response_redirect_location:
+                redirect_location = response_redirect_location
+            status = response.status
+    
+        else:
+            # Incrementing because of a server error like a 500 in
+            # status_forcelist and the given method is in the allowed_methods
+            cause = ResponseError.GENERIC_ERROR
+            if response and response.status:
+                if status_count is not None:
+                    status_count -= 1
+                cause = ResponseError.SPECIFIC_ERROR.format(status_code=response.status)
+                status = response.status
+    
+        history = self.history + (
+            RequestHistory(method, url, error, status, redirect_location),
+        )
+    
+        new_retry = self.new(
+            total=total,
+            connect=connect,
+            read=read,
+            redirect=redirect,
+            status=status_count,
+            other=other,
+            history=history,
+        )
+    
+        if new_retry.is_exhausted():
+            reason = error or ResponseError(cause)
+&gt;           raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='niftyindices.com', port=443): Max retries exceeded with url: /Backpage/getTotalReturnIndexString (Caused by NameResolutionError("HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)"))
+
+.venv\Lib\site-packages\urllib3\util\retry.py:555: MaxRetryError
+
+During handling of the above exception, another exception occurred:
+
+name = 'NIFTY 50'
+
+    @pytest.mark.parametrize('name',['NIFTY 50','NIFTY 500'])
+    def test_official_tri_live_source(name):
+&gt;       response = requests.post(SOURCE_URL,json=dict(cinfo=str(dict(name=name,
+            startDate='08-Jul-2024',endDate='09-Jul-2024',indexName=name))),
+            headers={'User-Agent':'Mozilla/5.0','Referer':SOURCE_PAGE},timeout=30)
+
+quant\tests\integration\test_tri_live.py:14: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\requests\api.py:134: in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;requests.adapters.HTTPAdapter object at 0x00000155F08499D0&gt;
+request = &lt;PreparedRequest [POST]&gt;, stream = False, timeout = 30, verify = True
+cert = None, proxies = OrderedDict()
+
+    def send(
+        self,
+        request: PreparedRequest,
+        stream: bool = False,
+        timeout: _t.TimeoutType = None,
+        verify: _t.VerifyType = True,
+        cert: _t.CertType = None,
+        proxies: dict[str, str] | None = None,
+    ) -&gt; Response:
+        """Sends PreparedRequest object. Returns Response object.
+    
+        :param request: The :class:`PreparedRequest &lt;PreparedRequest&gt;` being sent.
+        :param stream: (optional) Whether to stream the request content.
+        :param timeout: (optional) How long to wait for the server to send
+            data before giving up, as a float, or a :ref:`(connect timeout,
+            read timeout) &lt;timeouts&gt;` tuple.
+        :type timeout: float or tuple or urllib3 Timeout object
+        :param verify: (optional) Either a boolean, in which case it controls whether
+            we verify the server's TLS certificate, or a string, in which case it
+            must be a path to a CA bundle to use
+        :param cert: (optional) Any user-provided SSL certificate to be trusted.
+        :param proxies: (optional) The proxies dictionary to apply to the request.
+        :rtype: requests.Response
+        """
+    
+        assert _is_prepared(request)
+    
+        try:
+            conn = self.get_connection_with_tls_context(
+                request, verify, proxies=proxies, cert=cert
+            )
+        except LocationValueError as e:
+            raise InvalidURL(e, request=request)
+    
+        self.cert_verify(conn, request.url, verify, cert)
+        url = self.request_url(request, proxies)
+        self.add_headers(
+            request,
+            stream=stream,
+            timeout=timeout,
+            verify=verify,
+            cert=cert,
+            proxies=proxies,
+        )
+    
+        chunked = not (request.body is None or "Content-Length" in request.headers)
+    
+        if isinstance(timeout, tuple):
+            try:
+                connect, read = timeout
+                resolved_timeout = TimeoutSauce(connect=connect, read=read)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid timeout {timeout}. Pass a (connect, read) timeout tuple, "
+                    f"or a single float to set both timeouts to the same value."
+                )
+        elif isinstance(timeout, TimeoutSauce):
+            resolved_timeout = timeout
+        else:
+            resolved_timeout = TimeoutSauce(connect=timeout, read=timeout)
+    
+        try:
+            resp = conn.urlopen(
+                method=request.method,
+                url=url,
+                body=request.body,  # type: ignore[arg-type]  # urllib3 stubs don't accept Iterable[bytes | str]
+                headers=request.headers,  # type: ignore[arg-type]  # urllib3#3072
+                redirect=False,
+                assert_same_host=False,
+                preload_content=False,
+                decode_content=False,
+                retries=self.max_retries,
+                timeout=resolved_timeout,
+                chunked=chunked,
+            )
+    
+        except (ProtocolError, OSError) as err:
+            raise ConnectionError(err, request=request)
+    
+        except MaxRetryError as e:
+            if isinstance(e.reason, ConnectTimeoutError):
+                # TODO: Remove this in 3.0.0: see #2811
+                if not isinstance(e.reason, NewConnectionError):
+                    raise ConnectTimeout(e, request=request)
+    
+            if isinstance(e.reason, ResponseError):
+                raise RetryError(e, request=request)
+    
+            if isinstance(e.reason, _ProxyError):
+                raise ProxyError(e, request=request)
+    
+            if isinstance(e.reason, _SSLError):
+                # This branch is for urllib3 v1.22 and later.
+                raise SSLError(e, request=request)
+    
+&gt;           raise ConnectionError(e, request=request)
+E           requests.exceptions.ConnectionError: HTTPSConnectionPool(host='niftyindices.com', port=443): Max retries exceeded with url: /Backpage/getTotalReturnIndexString (Caused by NameResolutionError("HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)"))
+
+.venv\Lib\site-packages\requests\adapters.py:729: ConnectionError</failure></testcase><testcase classname="quant.tests.integration.test_tri_live" name="test_official_tri_live_source[NIFTY 500]" time="0.005"><failure message="requests.exceptions.ConnectionError: HTTPSConnectionPool(host='niftyindices.com', port=443): Max retries exceeded with url: /Backpage/getTotalReturnIndexString (Caused by NameResolutionError(&quot;HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)&quot;))">self = &lt;HTTPSConnection(host='niftyindices.com', port=443) at 0x155f0726c10&gt;
+
+    def _new_conn(self) -&gt; socket.socket:
+        """Establish a socket connection and set nodelay settings on it.
+    
+        :return: New socket connection.
+        """
+        try:
+&gt;           sock = connection.create_connection(
+                (self._dns_host, self.port),
+                self.timeout,
+                source_address=self.source_address,
+                socket_options=self.socket_options,
+            )
+
+.venv\Lib\site-packages\urllib3\connection.py:239: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\urllib3\util\connection.py:60: in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+host = 'niftyindices.com', port = 443, family = &lt;AddressFamily.AF_UNSPEC: 0&gt;
+type = &lt;SocketKind.SOCK_STREAM: 1&gt;, proto = 0, flags = 0
+
+    def getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        """Resolve host and port into list of address info entries.
+    
+        Translate the host/port argument into a sequence of 5-tuples that contain
+        all the necessary arguments for creating a socket connected to that service.
+        host is a domain name, a string representation of an IPv4/v6 address or
+        None. port is a string service name such as 'http', a numeric port number or
+        None. By passing None as the value of host and port, you can pass NULL to
+        the underlying C API.
+    
+        The family, type and proto arguments can be optionally specified in order to
+        narrow the list of addresses returned. Passing zero as a value for each of
+        these arguments selects the full range of results.
+        """
+        # We override this function since we want to translate the numeric family
+        # and socket type values to enum constants.
+        addrlist = []
+&gt;       for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       socket.gaierror: [Errno 11001] getaddrinfo failed
+
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\socket.py:977: gaierror
+
+The above exception was the direct cause of the following exception:
+
+self = &lt;urllib3.connectionpool.HTTPSConnectionPool object at 0x00000155F077B820&gt;
+method = 'POST', url = '/Backpage/getTotalReturnIndexString'
+body = b'{"cinfo": "{\'name\': \'NIFTY 500\', \'startDate\': \'08-Jul-2024\', \'endDate\': \'09-Jul-2024\', \'indexName\': \'NIFTY 500\'}"}'
+headers = {'User-Agent': 'Mozilla/5.0', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'keep-alive', 'Referer': 'https://niftyindices.com/reports/historical-data', 'Content-Length': '114', 'Content-Type': 'application/json'}
+retries = Retry(total=0, connect=None, read=False, redirect=None, status=None)
+redirect = False, assert_same_host = False
+timeout = Timeout(connect=30, read=30, total=None), pool_timeout = None
+release_conn = False, chunked = False, body_pos = None, preload_content = False
+decode_content = False, response_kw = {}
+
+    def urlopen(  # type: ignore[override]
+        self,
+        method: str,
+        url: str,
+        body: _TYPE_BODY | None = None,
+        headers: typing.Mapping[str, str] | None = None,
+        retries: Retry | bool | int | None = None,
+        redirect: bool = True,
+        assert_same_host: bool = True,
+        timeout: _TYPE_TIMEOUT = _DEFAULT_TIMEOUT,
+        pool_timeout: int | None = None,
+        release_conn: bool | None = None,
+        chunked: bool = False,
+        body_pos: _TYPE_BODY_POSITION | None = None,
+        preload_content: bool = True,
+        decode_content: bool = True,
+        **response_kw: typing.Any,
+    ) -&gt; BaseHTTPResponse:
+        """
+        Get a connection from the pool and perform an HTTP request. This is the
+        lowest level call for making a request, so you'll need to specify all
+        the raw details.
+    
+        .. note::
+    
+           More commonly, it's appropriate to use a convenience method
+           such as :meth:`request`.
+    
+        .. note::
+    
+           `release_conn` will only behave as expected if
+           `preload_content=False` because we want to make
+           `preload_content=False` the default behaviour someday soon without
+           breaking backwards compatibility.
+    
+        :param method:
+            HTTP request method (such as GET, POST, PUT, etc.)
+    
+        :param url:
+            The URL to perform the request on.
+    
+        :param body:
+            Data to send in the request body, either :class:`str`, :class:`bytes`,
+            an iterable of :class:`str`/:class:`bytes`, or a file-like object.
+    
+        :param headers:
+            Dictionary of custom headers to send, such as User-Agent,
+            If-None-Match, etc. If None, pool headers are used. If provided,
+            these headers completely replace any pool-specific headers.
+    
+        :param retries:
+            Configure the number of retries to allow before raising a
+            :class:`~urllib3.exceptions.MaxRetryError` exception.
+    
+            If ``None`` (default) will retry 3 times, see ``Retry.DEFAULT``. Pass a
+            :class:`~urllib3.util.retry.Retry` object for fine-grained control
+            over different types of retries.
+            Pass an integer number to retry connection errors that many times,
+            but no other types of errors. Pass zero to never retry.
+    
+            If ``False``, then retries are disabled and any exception is raised
+            immediately. Also, instead of raising a MaxRetryError on redirects,
+            the redirect response will be returned.
+    
+        :type retries: :class:`~urllib3.util.retry.Retry`, False, or an int.
+    
+        :param redirect:
+            If True, automatically handle redirects (status codes 301, 302,
+            303, 307, 308). Each redirect counts as a retry. Disabling retries
+            will disable redirect, too.
+    
+        :param assert_same_host:
+            If ``True``, will make sure that the host of the pool requests is
+            consistent else will raise HostChangedError. When ``False``, you can
+            use the pool on an HTTP proxy and request foreign hosts.
+    
+        :param timeout:
+            If specified, overrides the default timeout for this one
+            request. It may be a float (in seconds) or an instance of
+            :class:`urllib3.util.Timeout`.
+    
+        :param pool_timeout:
+            If set and the pool is set to block=True, then this method will
+            block for ``pool_timeout`` seconds and raise EmptyPoolError if no
+            connection is available within the time period.
+    
+        :param bool preload_content:
+            If True, the response's body will be preloaded into memory.
+    
+        :param bool decode_content:
+            If True, will attempt to decode the body based on the
+            'content-encoding' header.
+    
+        :param release_conn:
+            If False, then the urlopen call will not release the connection
+            back into the pool once a response is received (but will release if
+            you read the entire contents of the response such as when
+            `preload_content=True`). This is useful if you're not preloading
+            the response's content immediately. You will need to call
+            ``r.release_conn()`` on the response ``r`` to return the connection
+            back into the pool. If None, it takes the value of ``preload_content``
+            which defaults to ``True``.
+    
+        :param bool chunked:
+            If True, urllib3 will send the body using chunked transfer
+            encoding. Otherwise, urllib3 will send the body using the standard
+            content-length form. Defaults to False.
+    
+        :param int body_pos:
+            Position to seek to in file-like body in the event of a retry or
+            redirect. Typically this won't need to be set because urllib3 will
+            auto-populate the value when needed.
+        """
+        # Ensure that the URL we're connecting to is properly encoded
+        if url.startswith("/"):
+            # URLs starting with / are inherently schemeless.
+            url = to_str(_encode_target(url))
+            destination_scheme = None
+        else:
+            parsed_url = parse_url(url)
+            destination_scheme = parsed_url.scheme
+            url = to_str(parsed_url._replace(fragment=None).url)
+    
+        if headers is None:
+            headers = self.headers
+    
+        if not isinstance(retries, Retry):
+            retries = Retry.from_int(retries, redirect=redirect, default=self.retries)
+    
+        if release_conn is None:
+            release_conn = preload_content
+    
+        # Check host
+        if assert_same_host and not self.is_same_host(url):
+            raise HostChangedError(self, url, retries)
+    
+        conn = None
+    
+        # Track whether `conn` needs to be released before
+        # returning/raising/recursing. Update this variable if necessary, and
+        # leave `release_conn` constant throughout the function. That way, if
+        # the function recurses, the original value of `release_conn` will be
+        # passed down into the recursive call, and its value will be respected.
+        #
+        # See issue #651 [1] for details.
+        #
+        # [1] &lt;https://github.com/urllib3/urllib3/issues/651&gt;
+        release_this_conn = release_conn
+    
+        http_tunnel_required = connection_requires_http_tunnel(
+            self.proxy, self.proxy_config, destination_scheme
+        )
+    
+        # Merge the proxy headers. Only done when not using HTTP CONNECT. We
+        # have to copy the headers dict so we can safely change it without those
+        # changes being reflected in anyone else's copy.
+        if not http_tunnel_required:
+            headers = headers.copy()  # type: ignore[attr-defined]
+            headers.update(self.proxy_headers)  # type: ignore[union-attr]
+    
+        # Must keep the exception bound to a separate variable or else Python 3
+        # complains about UnboundLocalError.
+        err = None
+    
+        # Keep track of whether we cleanly exited the except block. This
+        # ensures we do proper cleanup in finally.
+        clean_exit = False
+    
+        # Rewind body position, if needed. Record current position
+        # for future rewinds in the event of a redirect/retry.
+        body_pos = set_file_position(body, body_pos)
+    
+        timeout_obj = self._get_timeout(timeout)
+        try:
+            # Request a connection from the queue.
+            conn = self._get_conn(timeout=pool_timeout)
+            conn.timeout = timeout_obj.connect_timeout  # type: ignore[assignment]
+    
+            # Is this a closed/new connection that requires CONNECT tunnelling?
+            if self.proxy is not None and http_tunnel_required and conn.is_closed:
+                try:
+                    self._prepare_proxy(conn)
+                except (BaseSSLError, OSError, SocketTimeout) as e:
+                    self._raise_timeout(
+                        err=e, url=self.proxy.url, timeout_value=conn.timeout
+                    )
+                    raise
+    
+            # If we're going to release the connection in ``finally:``, then
+            # the response doesn't need to know about the connection. Otherwise
+            # it will also try to release it and we'll have a double-release
+            # mess.
+            response_conn = conn if not release_conn else None
+    
+            # Make the request on the HTTPConnection object
+&gt;           response = self._make_request(
+                conn,
+                method,
+                url,
+                timeout=timeout_obj,
+                body=body,
+                headers=headers,
+                chunked=chunked,
+                retries=retries,
+                response_conn=response_conn,
+                preload_content=preload_content,
+                decode_content=decode_content,
+                **response_kw,
+            )
+
+.venv\Lib\site-packages\urllib3\connectionpool.py:793: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\urllib3\connectionpool.py:494: in _make_request
+    raise new_e
+.venv\Lib\site-packages\urllib3\connectionpool.py:470: in _make_request
+    self._validate_conn(conn)
+.venv\Lib\site-packages\urllib3\connectionpool.py:1125: in _validate_conn
+    conn.connect()
+.venv\Lib\site-packages\urllib3\connection.py:827: in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;HTTPSConnection(host='niftyindices.com', port=443) at 0x155f0726c10&gt;
+
+    def _new_conn(self) -&gt; socket.socket:
+        """Establish a socket connection and set nodelay settings on it.
+    
+        :return: New socket connection.
+        """
+        try:
+            sock = connection.create_connection(
+                (self._dns_host, self.port),
+                self.timeout,
+                source_address=self.source_address,
+                socket_options=self.socket_options,
+            )
+        except socket.gaierror as e:
+&gt;           raise NameResolutionError(self.host, self, e) from e
+E           urllib3.exceptions.NameResolutionError: HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)
+
+.venv\Lib\site-packages\urllib3\connection.py:246: NameResolutionError
+
+The above exception was the direct cause of the following exception:
+
+self = &lt;requests.adapters.HTTPAdapter object at 0x00000155DE9C33D0&gt;
+request = &lt;PreparedRequest [POST]&gt;, stream = False, timeout = 30, verify = True
+cert = None, proxies = OrderedDict()
+
+    def send(
+        self,
+        request: PreparedRequest,
+        stream: bool = False,
+        timeout: _t.TimeoutType = None,
+        verify: _t.VerifyType = True,
+        cert: _t.CertType = None,
+        proxies: dict[str, str] | None = None,
+    ) -&gt; Response:
+        """Sends PreparedRequest object. Returns Response object.
+    
+        :param request: The :class:`PreparedRequest &lt;PreparedRequest&gt;` being sent.
+        :param stream: (optional) Whether to stream the request content.
+        :param timeout: (optional) How long to wait for the server to send
+            data before giving up, as a float, or a :ref:`(connect timeout,
+            read timeout) &lt;timeouts&gt;` tuple.
+        :type timeout: float or tuple or urllib3 Timeout object
+        :param verify: (optional) Either a boolean, in which case it controls whether
+            we verify the server's TLS certificate, or a string, in which case it
+            must be a path to a CA bundle to use
+        :param cert: (optional) Any user-provided SSL certificate to be trusted.
+        :param proxies: (optional) The proxies dictionary to apply to the request.
+        :rtype: requests.Response
+        """
+    
+        assert _is_prepared(request)
+    
+        try:
+            conn = self.get_connection_with_tls_context(
+                request, verify, proxies=proxies, cert=cert
+            )
+        except LocationValueError as e:
+            raise InvalidURL(e, request=request)
+    
+        self.cert_verify(conn, request.url, verify, cert)
+        url = self.request_url(request, proxies)
+        self.add_headers(
+            request,
+            stream=stream,
+            timeout=timeout,
+            verify=verify,
+            cert=cert,
+            proxies=proxies,
+        )
+    
+        chunked = not (request.body is None or "Content-Length" in request.headers)
+    
+        if isinstance(timeout, tuple):
+            try:
+                connect, read = timeout
+                resolved_timeout = TimeoutSauce(connect=connect, read=read)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid timeout {timeout}. Pass a (connect, read) timeout tuple, "
+                    f"or a single float to set both timeouts to the same value."
+                )
+        elif isinstance(timeout, TimeoutSauce):
+            resolved_timeout = timeout
+        else:
+            resolved_timeout = TimeoutSauce(connect=timeout, read=timeout)
+    
+        try:
+&gt;           resp = conn.urlopen(
+                method=request.method,
+                url=url,
+                body=request.body,  # type: ignore[arg-type]  # urllib3 stubs don't accept Iterable[bytes | str]
+                headers=request.headers,  # type: ignore[arg-type]  # urllib3#3072
+                redirect=False,
+                assert_same_host=False,
+                preload_content=False,
+                decode_content=False,
+                retries=self.max_retries,
+                timeout=resolved_timeout,
+                chunked=chunked,
+            )
+
+.venv\Lib\site-packages\requests\adapters.py:696: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\urllib3\connectionpool.py:847: in urlopen
+    retries = retries.increment(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Retry(total=0, connect=None, read=False, redirect=None, status=None)
+method = 'POST', url = '/Backpage/getTotalReturnIndexString', response = None
+error = NameResolutionError("HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)")
+_pool = &lt;urllib3.connectionpool.HTTPSConnectionPool object at 0x00000155F077B820&gt;
+_stacktrace = &lt;traceback object at 0x00000155F64D1BC0&gt;
+
+    def increment(
+        self,
+        method: str | None = None,
+        url: str | None = None,
+        response: BaseHTTPResponse | None = None,
+        error: Exception | None = None,
+        _pool: ConnectionPool | None = None,
+        _stacktrace: TracebackType | None = None,
+    ) -&gt; Self:
+        """Return a new Retry object with incremented retry counters.
+    
+        :param response: A response object, or None, if the server did not
+            return a response.
+        :type response: :class:`~urllib3.response.BaseHTTPResponse`
+        :param Exception error: An error encountered during the request, or
+            None if the response was received successfully.
+    
+        :return: A new ``Retry`` object.
+        """
+        if self.total is False and error:
+            # Disabled, indicate to re-raise the error.
+            raise reraise(type(error), error, _stacktrace)
+    
+        total = self.total
+        if total is not None:
+            total -= 1
+    
+        connect = self.connect
+        read = self.read
+        redirect = self.redirect
+        status_count = self.status
+        other = self.other
+        cause = "unknown"
+        status = None
+        redirect_location = None
+    
+        if error and self._is_connection_error(error):
+            # Connect retry?
+            if connect is False:
+                raise reraise(type(error), error, _stacktrace)
+            elif connect is not None:
+                connect -= 1
+    
+        elif error and self._is_read_error(error):
+            # Read retry?
+            if read is False or method is None or not self._is_method_retryable(method):
+                raise reraise(type(error), error, _stacktrace)
+            elif read is not None:
+                read -= 1
+    
+        elif error:
+            # Other retry?
+            if other is not None:
+                other -= 1
+    
+        elif response and response.get_redirect_location():
+            # Redirect retry?
+            if redirect is not None:
+                redirect -= 1
+            cause = "too many redirects"
+            response_redirect_location = response.get_redirect_location()
+            if response_redirect_location:
+                redirect_location = response_redirect_location
+            status = response.status
+    
+        else:
+            # Incrementing because of a server error like a 500 in
+            # status_forcelist and the given method is in the allowed_methods
+            cause = ResponseError.GENERIC_ERROR
+            if response and response.status:
+                if status_count is not None:
+                    status_count -= 1
+                cause = ResponseError.SPECIFIC_ERROR.format(status_code=response.status)
+                status = response.status
+    
+        history = self.history + (
+            RequestHistory(method, url, error, status, redirect_location),
+        )
+    
+        new_retry = self.new(
+            total=total,
+            connect=connect,
+            read=read,
+            redirect=redirect,
+            status=status_count,
+            other=other,
+            history=history,
+        )
+    
+        if new_retry.is_exhausted():
+            reason = error or ResponseError(cause)
+&gt;           raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='niftyindices.com', port=443): Max retries exceeded with url: /Backpage/getTotalReturnIndexString (Caused by NameResolutionError("HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)"))
+
+.venv\Lib\site-packages\urllib3\util\retry.py:555: MaxRetryError
+
+During handling of the above exception, another exception occurred:
+
+name = 'NIFTY 500'
+
+    @pytest.mark.parametrize('name',['NIFTY 50','NIFTY 500'])
+    def test_official_tri_live_source(name):
+&gt;       response = requests.post(SOURCE_URL,json=dict(cinfo=str(dict(name=name,
+            startDate='08-Jul-2024',endDate='09-Jul-2024',indexName=name))),
+            headers={'User-Agent':'Mozilla/5.0','Referer':SOURCE_PAGE},timeout=30)
+
+quant\tests\integration\test_tri_live.py:14: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\requests\api.py:134: in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\requests\sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;requests.adapters.HTTPAdapter object at 0x00000155DE9C33D0&gt;
+request = &lt;PreparedRequest [POST]&gt;, stream = False, timeout = 30, verify = True
+cert = None, proxies = OrderedDict()
+
+    def send(
+        self,
+        request: PreparedRequest,
+        stream: bool = False,
+        timeout: _t.TimeoutType = None,
+        verify: _t.VerifyType = True,
+        cert: _t.CertType = None,
+        proxies: dict[str, str] | None = None,
+    ) -&gt; Response:
+        """Sends PreparedRequest object. Returns Response object.
+    
+        :param request: The :class:`PreparedRequest &lt;PreparedRequest&gt;` being sent.
+        :param stream: (optional) Whether to stream the request content.
+        :param timeout: (optional) How long to wait for the server to send
+            data before giving up, as a float, or a :ref:`(connect timeout,
+            read timeout) &lt;timeouts&gt;` tuple.
+        :type timeout: float or tuple or urllib3 Timeout object
+        :param verify: (optional) Either a boolean, in which case it controls whether
+            we verify the server's TLS certificate, or a string, in which case it
+            must be a path to a CA bundle to use
+        :param cert: (optional) Any user-provided SSL certificate to be trusted.
+        :param proxies: (optional) The proxies dictionary to apply to the request.
+        :rtype: requests.Response
+        """
+    
+        assert _is_prepared(request)
+    
+        try:
+            conn = self.get_connection_with_tls_context(
+                request, verify, proxies=proxies, cert=cert
+            )
+        except LocationValueError as e:
+            raise InvalidURL(e, request=request)
+    
+        self.cert_verify(conn, request.url, verify, cert)
+        url = self.request_url(request, proxies)
+        self.add_headers(
+            request,
+            stream=stream,
+            timeout=timeout,
+            verify=verify,
+            cert=cert,
+            proxies=proxies,
+        )
+    
+        chunked = not (request.body is None or "Content-Length" in request.headers)
+    
+        if isinstance(timeout, tuple):
+            try:
+                connect, read = timeout
+                resolved_timeout = TimeoutSauce(connect=connect, read=read)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid timeout {timeout}. Pass a (connect, read) timeout tuple, "
+                    f"or a single float to set both timeouts to the same value."
+                )
+        elif isinstance(timeout, TimeoutSauce):
+            resolved_timeout = timeout
+        else:
+            resolved_timeout = TimeoutSauce(connect=timeout, read=timeout)
+    
+        try:
+            resp = conn.urlopen(
+                method=request.method,
+                url=url,
+                body=request.body,  # type: ignore[arg-type]  # urllib3 stubs don't accept Iterable[bytes | str]
+                headers=request.headers,  # type: ignore[arg-type]  # urllib3#3072
+                redirect=False,
+                assert_same_host=False,
+                preload_content=False,
+                decode_content=False,
+                retries=self.max_retries,
+                timeout=resolved_timeout,
+                chunked=chunked,
+            )
+    
+        except (ProtocolError, OSError) as err:
+            raise ConnectionError(err, request=request)
+    
+        except MaxRetryError as e:
+            if isinstance(e.reason, ConnectTimeoutError):
+                # TODO: Remove this in 3.0.0: see #2811
+                if not isinstance(e.reason, NewConnectionError):
+                    raise ConnectTimeout(e, request=request)
+    
+            if isinstance(e.reason, ResponseError):
+                raise RetryError(e, request=request)
+    
+            if isinstance(e.reason, _ProxyError):
+                raise ProxyError(e, request=request)
+    
+            if isinstance(e.reason, _SSLError):
+                # This branch is for urllib3 v1.22 and later.
+                raise SSLError(e, request=request)
+    
+&gt;           raise ConnectionError(e, request=request)
+E           requests.exceptions.ConnectionError: HTTPSConnectionPool(host='niftyindices.com', port=443): Max retries exceeded with url: /Backpage/getTotalReturnIndexString (Caused by NameResolutionError("HTTPSConnection(host='niftyindices.com', port=443): Failed to resolve 'niftyindices.com' ([Errno 11001] getaddrinfo failed)"))
+
+.venv\Lib\site-packages\requests\adapters.py:729: ConnectionError</failure></testcase><testcase classname="quant.tests.test_calendar" name="test_live_calendar" time="19.595"><failure message="quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403">tmp_path = WindowsPath('C:/Users/DELL/Desktop/Market_Pulse_1/Market_Pulse/data/tmplivepe20261124/test_live_calendar1')
+
+    @pytest.mark.integration
+    def test_live_calendar(tmp_path):
+        config = Config(data_dir=tmp_path)
+        with NseClient(config) as client:
+            for year in (2018, 2024, 2026):
+&gt;               data = client.get_json('/api/holiday-master', params={'type': 'trading', 'year': year}, dataset='calendar')
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+quant\tests\test_calendar.py:244: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+quant\data\nse_client.py:205: in get_json
+    content = self.get_bytes(path, params=params, referer=referer, dataset=dataset, suffix='json')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+quant\data\nse_client.py:183: in get_bytes
+    self._warm()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;quant.data.nse_client.NseClient object at 0x00000155F077AFD0&gt;
+
+    def _warm(self):
+        response = self._request(self.config.nse_base_url + '/', dataset='session', suffix='html', warmup=True)
+        if response.status_code in (401, 403):
+&gt;           raise _SessionBlocked(f'NSE session warm-up failed with HTTP {response.status_code}',
+                                  http_status=response.status_code)
+E           quant.data.nse_client._SessionBlocked: NSE session warm-up failed with HTTP 403
+
+quant\data\nse_client.py:168: _SessionBlocked</failure></testcase></testsuite></testsuites>

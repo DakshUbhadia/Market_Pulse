@@ -1,0 +1,26 @@
+{
+  "epic": "quant-parallel-evidence-completion",
+  "governance_gate": "TIDEWATER_2016_HUMAN_REVIEW",
+  "human_review_status": "PENDING",
+  "fallback_window": "PREPARED_BUT_NOT_ADMITTED",
+  "V1_PRICE": "BLOCKED_BY_GOVERNANCE",
+  "V1_TOTAL_RETURN": "BLOCKED_BY_GOVERNANCE",
+  "real_forward_cohorts": "BLOCKED_BY_GOVERNANCE",
+  "production_publishing": "BLOCKED_BY_GOVERNANCE",
+  "diagnostic_replay_allowed": true,
+  "copied_review_evidence": {
+    "raw\\security-transitions\\bse-announcements-5792a2a44a505cac.bin": "5792a2a44a505cacb3d7cef9aa7a6536086a4aea8213585ccf2653394152a095",
+    "raw\\security-transitions\\issuer-annual-reports-f4a17a6c531965e7.bin": "f4a17a6c531965e7020285dcc697c812985500ed66dba2f9c3e5314a3143a89a",
+    "raw\\security-transitions\\issuer-board-august-439f6c71a945a2df.bin": "439f6c71a945a2df1f2bf8b7155793db932b8bd18c36e19eff697c28bd039fba",
+    "raw\\security-transitions\\issuer-board-january-fb2ed615c74834d6.bin": "fb2ed615c74834d60d8ad6df74135e3697dded04bd88a6a35f60bb034f60aed7",
+    "raw\\security-transitions\\issuer-board-may-1ff7af6541e5e3d6.bin": "1ff7af6541e5e3d69dfd0420ed5acd9e7f5b2d8c65cfbd196136aa98da514e14",
+    "raw\\security-transitions\\issuer-disclosures-34651b403abb8499.bin": "34651b403abb8499043da778dd349621e784d0432c3dea922b5028c868b72376",
+    "raw\\security-transitions\\tidewater-2016\\original-listing-c5facf625bb9e19752ff9c0265a8c37462a84c8b134fd3c475a69926535935e2.html": "c5facf625bb9e19752ff9c0265a8c37462a84c8b134fd3c475a69926535935e2",
+    "raw\\security-transitions\\tidewater-2016\\postal-ballot.pdf": "976e7e64a8ea414ff52231a97552bf8c477f7fe615e433011c93f5c6bad15597",
+    "raw\\security-transitions\\tidewater-2016\\record-date.pdf": "12ee71931a6470d08a827b550b0a1d55451a0f55ec582f3139e5efb30734b4f8",
+    "reports\\security-transitions\\additional-source-search.json": "605dc379e85eb4128d04384267ee083e938c857a486a547f8ec05e80046452b9",
+    "reports\\security-transitions\\original-held-blocker.json": "8b1dfd464d7926d141fdf2d1cfbcef62a94832d65859d5fbbc329ec5b6d4d64d"
+  },
+  "real_human_approval_created": false,
+  "source_market_corpus_read_only": true
+}

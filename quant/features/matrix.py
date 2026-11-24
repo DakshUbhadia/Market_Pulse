@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pandas as pd
 
 from quant.universe.eligible import panels, eligibility
 from quant.features.momentum import momentum_features

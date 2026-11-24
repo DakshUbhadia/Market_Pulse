@@ -32,6 +32,8 @@ from quant.version import MODEL_VERSION, EVIDENCE_POLICY_VERSION, COST_MODEL_VER
 
 def run_registered_forward(config, *, registry, model_id, cohort, as_of, price_baseline,
                            total_return_baseline, spec_path=None, fundamental_paths=None, now=None):
+    from quant.governance.gates import require_action
+    require_action(config, 'V2_REAL_FORWARD')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,63}', cohort):
         raise ValueError('A simple named forward cohort is required')
     store = ModelRegistry(registry)

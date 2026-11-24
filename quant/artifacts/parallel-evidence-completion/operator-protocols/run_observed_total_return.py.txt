@@ -1,0 +1,45 @@
+"""Observe the unchanged diagnostic runner; every guard and computation stays active."""
+from dataclasses import replace
+from datetime import date
+from pathlib import Path
+import json
+import time
+
+from quant.config import Config
+from quant.pipeline import run_backtest as runner
+from quant.pipeline import research_proof, check_research_ready
+from quant.storage.research_store import write_json, digest_file
+
+root = Path('data/parallel-evidence-completion').resolve()
+output_config = Config(data_dir=root)
+corpus_config = replace(output_config,data_dir=Path('D:/Market_Pulse_Quant_20261113/data'))
+trace = []
+def observe(module, name, *, readiness=False):
+    original = getattr(module,name)
+    def wrapped(*args,**kwargs):
+        started = time.monotonic()
+        print('START',name,flush=True)
+        result = original(*args,**kwargs)
+        elapsed = time.monotonic()-started
+        print('RETURN',name,round(elapsed,2),'seconds',flush=True)
+        trace.append(dict(stage=name,elapsed_seconds=elapsed))
+        if readiness:
+            write_json(root/'reports/diagnostic-total-return-readiness.json',result)
+        return result
+    setattr(module,name,wrapped)
+
+observe(research_proof,'cached_readiness')
+observe(check_research_ready,'check_research_ready',readiness=True)
+for name in ('input_manifest','load_research_data','build_feature_matrix','forward_labels',
+             'run_backtest','robustness_runs','walk_forward'):
+    observe(runner,name)
+try:
+    path,evidence = runner.run_research(output_config,date(2016,1,1),date(2026,11,17),
+        estimate_historical_costs=True,full_robustness=True,total_return=True,
+        evaluation_window=root/'reports/v1-evaluation-declaration.json',
+        research_authority='DIAGNOSTIC_ONLY',corpus_config=corpus_config)
+    print(json.dumps(dict(path=str(path),status=evidence['status'])),flush=True)
+finally:
+    write_json(root/'reports/diagnostic-total-return-observation-trace.json',dict(
+        operator_sha256=digest_file(Path(__file__)),research_authority='DIAGNOSTIC_ONLY',
+        observations_only=True,calculations_or_authorizations_bypassed=False,stages=trace))

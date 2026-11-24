@@ -1,0 +1,39 @@
+"""Complete each controlled daily observation; synthetic incidents stay isolated."""
+from pathlib import Path
+import json
+import numpy as np
+import pandas as pd
+from quant.forward.tests.test_forward import fixture
+from quant.backtest.tests.test_simulation import zero_cost
+from quant.backtest.portfolio import PortfolioConfig
+from quant.forward.shadow_portfolio import update_shadow
+from quant.forward.metrics import forward_metrics
+from quant.pipeline.report_research_monitoring import research_monitoring
+from quant.storage.research_store import write_json
+
+root = Path('data/parallel-evidence-completion').resolve()
+cohort = root/'forward/test-only/controlled'
+prices, benchmark, sessions, scores = fixture()
+for day in sessions[sessions >= pd.Timestamp('2024-10-31')]:
+    update_shadow(cohort, prices, sessions, as_of=str(day.date()), portfolio=PortfolioConfig(holdings=1,max_weight=1),
+        cost_model=zero_cost(), corporate_actions=None, lifecycle_events=None,
+        lifecycle_scenario='MANDATORY_ECONOMIC_EVENTS_ONLY')
+end = str(sessions[-1].date())
+rows = [json.loads(p.read_text()) for p in (cohort/'shadow').glob('*.json')]
+curve = pd.DataFrame([dict(trade_date=row['as_of'],**row['equity']) for row in rows]).sort_values('trade_date')
+reference = pd.DataFrame(dict(as_of=pd.Timestamp('2024-09-01'),feature=np.arange(30)))
+current = pd.DataFrame(dict(as_of=pd.Timestamp(end),feature=np.arange(30)+100))
+ref_ic = pd.DataFrame(dict(block='momentum',IC=.1,exit_date=[end]*12))
+report = research_monitoring(root=cohort, as_of=end, reference=reference,current=current,features=['feature'],
+    reference_ic=ref_ic,current_ic=ref_ic.assign(IC=-.1),curve=curve,
+    source_health={'sources':[dict(source_id='test',required_for_forward_refresh=True,current_eod_ready='STALE',
+                                   last_verified_session='2024-10-31')]},
+    coverage=dict(overall=.7,top100=.8,parser_attempts=10,parser_failures=5),cluster_weights={'x':1.},
+    incident_root=root/'incidents')
+assert report['panels']['portfolio_risk']['status'] == 'ALERT'
+assert report['unresolved_incidents'] == 1 and report['promotion_eligible'] is False
+write_json(root/'reports/monitoring-dry-run.json',report)
+metrics = forward_metrics(cohort,as_of=end)
+write_json(root/'reports/test-forward-dry-run.json',dict(input_scope='SYNTHETIC_CONTROLLED_INPUTS',
+    shadow_sessions=len(curve),as_of=end,**metrics))
+print('Daily TEST_ONLY shadow observations:',len(curve))

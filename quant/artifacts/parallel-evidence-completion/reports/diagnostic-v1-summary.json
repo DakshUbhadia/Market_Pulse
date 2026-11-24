@@ -1,0 +1,86 @@
+{
+  "generated_at": "2026-11-24T11:41:30.776874+00:00",
+  "authority": "DIAGNOSTIC_ONLY",
+  "requested_window_unchanged": true,
+  "prepared_window_admitted": false,
+  "all_real_replays_completed": false,
+  "accepted_seals_created": false,
+  "real_decisions_created": false,
+  "attempts": [
+    {
+      "return_basis": "PRICE",
+      "experiment_id": "20261122T091230-7b3bddc4",
+      "implementation_sha": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+      "research_authority": "DIAGNOSTIC_ONLY",
+      "outcome": "BLOCKED_BY_DATA",
+      "decision": "BLOCKED",
+      "reason": "UnvaluedHolding: Unvalued holding a4d2246c-e16f-54c3-a1d0-14c307f6ba60 on 2017-04-26; verified delisting/settlement evidence required",
+      "governance_status": "PENDING",
+      "seal_eligible": false,
+      "historical_validation": false,
+      "promotion_eligible": false,
+      "real_forward_evidence": false,
+      "requested_start": "2016-01-01",
+      "requested_end": "2026-11-17",
+      "effective_start": "2017-03-28",
+      "blocked_holding": {
+        "instrument_id": "a4d2246c-e16f-54c3-a1d0-14c307f6ba60",
+        "trade_date": "2017-04-26",
+        "lifecycle_scenario": "MANDATORY_ECONOMIC_EVENTS_ONLY"
+      },
+      "experiment_outcome_sha256": "15741530011332e4e75ede440ec419f708cc2d88811e626f6b62213ec0a60c1a",
+      "prepared_input_sha256": {
+        "prepared-inputs.json": "d8ea6fc7f26fb1495949a51c01537b75bf56c2cbfd219d7715499617a97042ef",
+        "prepared-scores.parquet": "2f7179ebbe8162da6babd99aa169a52a1fd70d70670ad03ffedae9ba937f1ba2",
+        "prepared-universe.parquet": "b0f8d3d9ff28e2c5d67178c07db276577d83fdcd9481b664067e7badcf10eeab"
+      },
+      "full_robustness_requested": true,
+      "full_replay_completed": false,
+      "prepared_manifest_input_sha256": "b1dda1d759e2af99327ac4a224736fd4c2962b7a2854815f78e140735c94db4d",
+      "prepared_source_code_sha256": "acfcc5fdc2075802ba949d3a5e111a37b0da64fd1e50d41b7df242c7b8d75399"
+    },
+    {
+      "return_basis": "TOTAL_RETURN",
+      "experiment_id": "20261124T111156-b9d35d7d",
+      "implementation_sha": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+      "research_authority": "DIAGNOSTIC_ONLY",
+      "outcome": "BLOCKED_BY_DATA",
+      "decision": "BLOCKED",
+      "reason": "UnvaluedHolding: Unvalued holding a4d2246c-e16f-54c3-a1d0-14c307f6ba60 on 2017-04-26; verified delisting/settlement evidence required",
+      "governance_status": "PENDING",
+      "seal_eligible": false,
+      "historical_validation": false,
+      "promotion_eligible": false,
+      "real_forward_evidence": false,
+      "requested_start": "2016-01-01",
+      "requested_end": "2026-11-17",
+      "effective_start": "2017-03-28",
+      "blocked_holding": {
+        "instrument_id": "a4d2246c-e16f-54c3-a1d0-14c307f6ba60",
+        "trade_date": "2017-04-26",
+        "lifecycle_scenario": "MANDATORY_ECONOMIC_EVENTS_ONLY"
+      },
+      "experiment_outcome_sha256": "f717be8d16ec845efb486a8fbf4e3e4445ce13a259a939f9bb36bf769f3f4146",
+      "prepared_input_sha256": {
+        "prepared-inputs.json": "d8ea6fc7f26fb1495949a51c01537b75bf56c2cbfd219d7715499617a97042ef",
+        "prepared-scores.parquet": "2f7179ebbe8162da6babd99aa169a52a1fd70d70670ad03ffedae9ba937f1ba2",
+        "prepared-universe.parquet": "b0f8d3d9ff28e2c5d67178c07db276577d83fdcd9481b664067e7badcf10eeab"
+      },
+      "full_robustness_requested": true,
+      "full_replay_completed": false,
+      "prepared_manifest_input_sha256": "b1dda1d759e2af99327ac4a224736fd4c2962b7a2854815f78e140735c94db4d",
+      "prepared_source_code_sha256": "acfcc5fdc2075802ba949d3a5e111a37b0da64fd1e50d41b7df242c7b8d75399"
+    }
+  ],
+  "real_robustness_and_walkforward_completion_proven": false,
+  "controlled_robustness_and_walkforward_tests_passed": true,
+  "same_prepared_source_inputs": true,
+  "same_prepared_source_code": true,
+  "same_prepared_scores": true,
+  "additional_blocker_packet": {
+    "path": "reports/security-transitions/cairn-2017-evidence-gap.json",
+    "sha256": "c9898fd0aad5744f3db0628c8736ac8ee358d13c4b65b707560cd8a513fcc00b",
+    "status": "NEEDS_EVIDENCE_AND_ACCOUNTING_REVIEW"
+  },
+  "next_data_requirement": "Review and complete the CAIRN equity/preference/cash consideration history and contemporaneous availability; preserve all existing gates."
+}

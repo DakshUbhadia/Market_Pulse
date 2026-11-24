@@ -85,12 +85,16 @@ def validate_specification(spec):
 
 def validate_coverage_reports(spec, reports):
     from quant.research.coverage_policy import reliable_interval
-    if not reports or set(reports) != {'filings', 'shares'}:
+    if not reports or not {'filings', 'shares'} <= set(reports) <= {'filings', 'shares', 'matrix'}:
         raise ValueError('Freeze requires certified filing and historical-share coverage reports')
     start, end = spec['evaluation_windows'][0]['from'], spec['evaluation_windows'][-1]['to']
     for name, report in reports.items():
         rows = report.get('periods', [])
-        overall, top = ('coverage_pct', 'top_liquidity_coverage_pct') if name == 'filings' else ('verified_share_coverage', 'top100_verified_share_coverage')
+        overall, top = {
+            'filings': ('coverage_pct', 'top_liquidity_coverage_pct'),
+            'shares': ('verified_share_coverage', 'top100_verified_share_coverage'),
+            'matrix': ('joint_overall_pct', 'joint_top100_pct'),
+        }[name]
         if not rows or any(type(r.get(k)) not in (int, float) or not 0 <= r[k] <= 100
                            for r in rows for k in (overall, top)):
             raise ValueError('Coverage certification requires assessed monthly percentages')
@@ -121,9 +125,13 @@ def freeze_specification(spec, output, *, coverage_reports=None, governance_revi
     validate_coverage_reports(spec, coverage_reports)
     from quant.research.data_interval import require_data_interval
     from quant.governance.review import require_review
-    require_data_interval(data_interval or {}, coverage_reports['filings'], coverage_reports['shares'])
+    require_data_interval(data_interval or {}, coverage_reports['filings'], coverage_reports['shares'],
+        matrix=coverage_reports.get('matrix'))
     require_review(governance_review, review_type='V2_SPEC_APPROVAL',
-                   subject_sha256=specification_subject(spec, coverage_reports, data_interval), decision='APPROVE')
+                   subject_sha256=specification_subject(spec, coverage_reports, data_interval),
+                   subject_id=spec['spec_version'], decision='APPROVE')
+    from quant.governance.gates import GateRegistry, data_root_for
+    gate_context = GateRegistry(data_root_for(output)).require('V2_SPEC_FREEZE')
     # One version has one policy in a specification store. Re-evaluation requires
     # the same frozen record; policy edits require a new spec_version.
     import re
@@ -135,7 +143,7 @@ def freeze_specification(spec, output, *, coverage_reports=None, governance_revi
     from quant.storage.research_store import git_commit
     body=dict(specification=spec,source_code_sha256=research_code_hashes(), git_commit=git_commit(),
               coverage_reports=coverage_reports,
-              data_interval=data_interval, governance_review=governance_review,
+              data_interval=data_interval, governance_review=governance_review, governance_gates=gate_context,
               coverage_report_sha256={k:content_hash(v) for k,v in coverage_reports.items()},
               frozen_at=datetime.now(timezone.utc).isoformat())
     append_record(output,dict(**body,sha256=content_hash(body)))
@@ -156,9 +164,14 @@ def load_specification(path):
         raise ValueError('Frozen coverage evidence changed')
     from quant.research.data_interval import require_data_interval
     from quant.governance.review import require_review
-    require_data_interval(record.get('data_interval', {}), reports['filings'], reports['shares'])
+    require_data_interval(record.get('data_interval', {}), reports['filings'], reports['shares'],
+        matrix=reports.get('matrix'))
     require_review(record.get('governance_review'), review_type='V2_SPEC_APPROVAL',
-        subject_sha256=specification_subject(spec, reports, record['data_interval']), decision='APPROVE')
+        subject_sha256=specification_subject(spec, reports, record['data_interval']),
+        subject_id=spec['spec_version'], decision='APPROVE')
+    from quant.governance.gates import GateRegistry, data_root_for
+    if record.get('governance_gates') != GateRegistry(data_root_for(path)).require('V2_SPEC_FREEZE'):
+        raise ValueError('Governance approval changed after V2 specification freeze')
     return spec
 
 

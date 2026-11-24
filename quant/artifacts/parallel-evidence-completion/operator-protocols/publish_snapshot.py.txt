@@ -1,0 +1,65 @@
+"""Copy measured evidence; source SHA inside older reports remains unchanged."""
+from pathlib import Path
+import json
+import shutil
+from datetime import datetime, timezone
+from quant.storage.research_store import write_json, digest_file, git_commit
+
+root = Path('data/parallel-evidence-completion')
+target = Path('quant/artifacts/parallel-evidence-completion')
+names = ['reports/governance-gates.json','reports/governance-dependencies.json',
+    'reports/parallel-evidence-initialization.json','reports/security-transitions/tidewater-2016-human-review-pending.json',
+    'reports/v2-matrix-status.json','reports/controlled-diagnostics.json','reports/monitoring-dry-run.json',
+    'reports/parallel-evidence-completion-phase.json','reports/v2-data-interval.json',
+    'reports/fundamental-universe-coverage.json','reports/fundamental-coverage-ceiling.json',
+    'reports/fundamental-discovery-gap.json','reports/latest-discovery-batch.json',
+    'reports/capital-event-verification.json','reports/share-history-coverage.json','reports/share-evidence-plan.json',
+    'reports/diagnostic-v1-summary.json','reports/unit-test-retest-manifest.json','reports/official-alternate-probe.json',
+    'reports/current-status.json','reports/research-readiness.json','reports/test-forward-dry-run.json','reports/diagnostic-total-return-readiness.json',
+    'reports/diagnostic-total-return-observation-trace.json','reports/source-health-refresh-2026-11-24.json',
+    'reports/security-transitions/cairn-2017-evidence-gap.json']
+names += ['reports/'+name for name in ('unit-tests-final.xml','unit-tests-initial.xml','release-retest.xml','focused-tests-final.xml','live-tests.xml','live-tests-2026-11-24.xml')]
+for name in names:
+    source = root/name
+    if not source.is_file() and source.suffix == '.xml':
+        source = root/source.name
+    if source.is_file():
+        destination = target/name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
+full_status = root/'reports/current-status.json'
+if full_status.exists():
+    full = json.loads(full_status.read_text())
+    keys = ('generated_at','PUBLIC_MAIN_SHA','LOCAL_IMPLEMENTATION_SHA','RESEARCH_CERTIFIED_SHA',
+        'versions','security_transition_version','human_review_status','tidewater_human_review_state',
+        'fallback_window_state','evaluation_window_admissible','software_certification_scope',
+        'V1_BASELINE_STATE','forward_cohort_state','test_only_cohorts','production_recommendation_publishing',
+        'controlled_diagnostics','diagnostic_v1_summary','completion_criteria','phase_complete',
+        'retained_certified_market_session','latest_source_health_refresh')
+    compact = {k:full[k] for k in keys if k in full}
+    compact.update(publication_scope='COMPACT_STATUS_INDEX_WITH_FULL_SEPARATE_REPORTS',
+        full_local_status_path=str(full_status),full_local_status_sha256=digest_file(full_status),
+        report_refs={name.removeprefix('reports/'):dict(path=name.removeprefix('reports/'),
+            sha256=digest_file(target/name)) for name in names
+            if name.startswith('reports/') and name!='reports/current-status.json' and (target/name).is_file()})
+    write_json(target/'reports/current-status.json',compact)
+certificate = root/'reports'/f'implementation-certification-{git_commit()[:7]}.json'
+if certificate.exists():
+    shutil.copyfile(certificate, target/'reports'/certificate.name)
+protocols = ('refresh_evidence.py','prepare_archived_matrix.py','run_controlled_diagnostics.py',
+    'run_forward_dry_run.py','complete_test_shadow.py','run_observed_total_return.py',
+    'archive_cairn_sources.py','archive_cairn_supplement.py','refresh_source_health.py',
+    'finalize_parallel_phase.py','consolidate_tests.py','publish_snapshot.py')
+for name in protocols:
+    source = root/name
+    destination = target/'operator-protocols'/(name+'.txt')
+    destination.parent.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(source,destination)
+snapshot = dict(generated_at=datetime.now(timezone.utc).isoformat(), snapshot_prepared_at_commit=git_commit(),
+    successor_commit_requires_own_exact_sha_ci=True, human_review_status='PENDING',
+    historical_validation=False, promotion_eligible=False, real_forward_evidence=False,
+    phase_complete=False, software_implementation_and_measured_data_evidence_only=True,
+    files={p.relative_to(target).as_posix():digest_file(p) for p in sorted(target.rglob('*'))
+        if p.is_file() and p.name != 'evidence-snapshot.json'})
+write_json(target/'evidence-snapshot.json', snapshot)
+print('Published',len(snapshot['files']),'evidence files; phase_complete=false')
