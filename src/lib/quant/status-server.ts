@@ -40,30 +40,50 @@ export function canSyncQuantStatus(authorization: string | null) {
   return bytes.length === expected.length && timingSafeEqual(bytes, expected);
 }
 
+async function readEnvelope(file: string) {
+  const handle = await open(file);
+  try {
+    const buffer = Buffer.alloc(MAX_STATUS_BYTES + 1);
+    let offset = 0;
+    while (offset < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, offset, buffer.length - offset);
+      if (!bytesRead) break;
+      offset += bytesRead;
+    }
+    if (offset > MAX_STATUS_BYTES) throw new Error("Invalid quant envelope size");
+    return JSON.parse(buffer.subarray(0, offset).toString("utf8")) as unknown;
+  } finally {
+    await handle.close();
+  }
+}
+
+function verifyStoredEnvelope(envelope: unknown) {
+  return verifyEnvelope(envelope, process.env.QUANT_STATUS_SIGNING_KEY, Date.now(),
+    process.env.QUANT_STATUS_OWNER_ID, process.env.QUANT_STATUS_PREVIOUS_SIGNING_KEY);
+}
+
+async function readLocalStatus(file: string) {
+  // The publisher commits this checkpoint before replacing the display pointer.
+  const checkpoint = await readEnvelope(file + ".latest").catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  if (checkpoint === null) return verifyStoredEnvelope(await readEnvelope(file));
+  const archived = verifyStoredEnvelope(checkpoint);
+  const pointer = await readEnvelope(file).then(verifyStoredEnvelope).catch(() => null);
+  return pointer?.envelope.sha256 === archived.envelope.sha256 ? pointer : { ...archived, stale: true };
+}
+
 export async function readQuantStatus() {
   const file = process.env.QUANT_STATUS_FILE;
   try {
-    let envelope: unknown;
-    if (file && !process.env.VERCEL) {
-      const handle = await open(file);
-      try {
-        const buffer = Buffer.alloc(MAX_STATUS_BYTES + 1);
-        let offset = 0;
-        while (offset < buffer.length) {
-          const { bytesRead } = await handle.read(buffer, offset, buffer.length - offset);
-          if (!bytesRead) break;
-          offset += bytesRead;
-        }
-        if (offset > MAX_STATUS_BYTES) return { state: "INVALID" } as const;
-        envelope = JSON.parse(buffer.subarray(0, offset).toString("utf8"));
-      } finally {
-        await handle.close();
-      }
-    } else if (quantStatusSyncEnabled()) {
-      envelope = (await collection().findOne({ _id: "current" }))?.envelope;
+    const local = file && !process.env.VERCEL;
+    if (!local && !quantStatusSyncEnabled()) {
+      return { state: process.env.VERCEL ? "HOSTED_EMPTY" : "EMPTY" } as const;
     }
-    if (!envelope) return { state: "EMPTY" } as const;
-    const { status, stale } = verifyEnvelope(envelope, process.env.QUANT_STATUS_SIGNING_KEY);
+    const stored = local ? null : await collection().findOne({ _id: "current" });
+    if (!local && !stored) return { state: "HOSTED_EMPTY" } as const;
+    const { status, stale } = local ? await readLocalStatus(file) : verifyStoredEnvelope(stored?.envelope);
     return { state: stale ? "STALE" : "AVAILABLE", status } as const;
   } catch (error) {
     return { state: (error as NodeJS.ErrnoException).code === "ENOENT" ? "EMPTY" : "INVALID" } as const;

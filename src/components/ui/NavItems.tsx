@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 type NavItemsProps = {
+    showQuant?: boolean
     onSearchClick?: () => void
     onNavClick?: () => void
 }
 
-const NavItems = ({ onSearchClick, onNavClick }: NavItemsProps) => {
+const NavItems = ({ showQuant, onSearchClick, onNavClick }: NavItemsProps) => {
     const pathname = usePathname()
 
     const isActive = (path: string) => {
@@ -24,7 +25,7 @@ const NavItems = ({ onSearchClick, onNavClick }: NavItemsProps) => {
 
     return (
         <ul className="flex flex-col sm:flex-row p-2 gap-3 sm:gap-10 font-medium">
-            {NAV_ITEMS.map(({ href, label, variant }: NavItem) => {
+            {NAV_ITEMS.filter(item => item.href !== '/quant' || showQuant).map(({ href, label, variant }: NavItem) => {
                 const linkClass = getLinkClass(variant !== 'command' && isActive(href))
 
                 return (

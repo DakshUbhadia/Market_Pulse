@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { parseResearchDetails, type ResearchDetails } from "./research-contract.ts";
 
 export const MAX_STATUS_BYTES = 65_536;
 export const MAX_STATUS_AGE_MS = 48 * 60 * 60 * 1000;
@@ -15,8 +16,7 @@ export type CoverageRow = {
   jointTop100: number | null;
 };
 
-export type QuantStatus = {
-  schemaVersion: 1;
+type BaseStatus = {
   runId: string;
   gitCommit: string;
   asOf: string;
@@ -41,8 +41,11 @@ export type QuantStatus = {
   capitalCandidates: number | null;
   coverage: CoverageRow[];
 };
+export type QuantStatus = BaseStatus & ({ schemaVersion: 1 } | {
+  schemaVersion: 2; ownerScope: string; publishingAllowed: false; details: ResearchDetails;
+});
 
-export type Envelope = { payload: string; sha256: string; signature: string };
+export type Envelope = { payload: string; sha256: string; signature: string; keyId?: string };
 type ObjectRecord = Record<string, unknown>;
 
 const hash = /^[a-f0-9]{64}$/;
@@ -77,7 +80,9 @@ function count(value: unknown) {
 }
 
 export function parseStatus(value: unknown): QuantStatus {
-  if (!exact(value, statusKeys) || value.schemaVersion !== 1 || !matches(value.runId, hash)
+  const extended = typeof value === "object" && value !== null && "schemaVersion" in value && value.schemaVersion === 2;
+  const keys = extended ? [...statusKeys, "ownerScope", "publishingAllowed", "details"] : statusKeys;
+  if (!exact(value, keys) || (value.schemaVersion !== 1 && value.schemaVersion !== 2) || !matches(value.runId, hash)
     || !matches(value.gitCommit, /^[a-f0-9]{40}$/)
     || !matches(value.asOf, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
     || !Number.isFinite(Date.parse(value.asOf)) || new Date(value.asOf).toISOString() !== value.asOf
@@ -106,23 +111,42 @@ export function parseStatus(value: unknown): QuantStatus {
     }
     previous = row.cutoff;
   }
+  if (extended) {
+    if (!matches(value.ownerScope, hash) || value.publishingAllowed !== false) throw new Error("Invalid quant owner or publication schema");
+    const details = parseResearchDetails(value.details);
+    if ((value.implementation === "CERTIFIED" && details.certifiedSha !== value.gitCommit)
+      || (value.authority === "TEST_ONLY" && value.implementation === "CERTIFIED")
+      || (details.metrics.realCohorts?.value && value.authority === "TEST_ONLY")
+      || (details.continuousJoint && value.jointMatrix !== "THRESHOLDS_MET")) {
+      throw new Error("Contradictory quant research gates");
+    }
+  }
   return value as unknown as QuantStatus;
 }
 
-export function verifyEnvelope(value: unknown, key: string | undefined, now = Date.now()) {
-  if (!key || !hash.test(key) || !exact(value, ["payload", "sha256", "signature"])
+export function verifyEnvelope(value: unknown, key: string | undefined, now = Date.now(),
+  ownerId?: string, previousKey?: string) {
+  const keyed = typeof value === "object" && value !== null && "keyId" in value;
+  if (!exact(value, keyed ? ["payload", "sha256", "signature", "keyId"] : ["payload", "sha256", "signature"])
     || typeof value.payload !== "string" || value.payload.length > MAX_STATUS_BYTES
     || !matches(value.sha256, hash) || !matches(value.signature, hash)) {
     throw new Error("Invalid quant status envelope");
   }
   const bytes = Buffer.from(value.payload, "base64");
   const digest = createHash("sha256").update(bytes).digest("hex");
-  const signature = createHmac("sha256", Buffer.from(key, "hex")).update(bytes).digest();
-  if (bytes.toString("base64") !== value.payload || digest !== value.sha256
-    || !timingSafeEqual(signature, Buffer.from(value.signature, "hex"))) {
+  const credentials = [key, previousKey].filter((candidate): candidate is string => !!candidate && hash.test(candidate));
+  const verified = credentials.some(candidate => {
+    const secret = Buffer.from(candidate, "hex");
+    return (!keyed || createHash("sha256").update(secret).digest("hex").slice(0, 16) === value.keyId)
+      && timingSafeEqual(createHmac("sha256", secret).update(bytes).digest(), Buffer.from(value.signature as string, "hex"));
+  });
+  if (bytes.toString("base64") !== value.payload || digest !== value.sha256 || !verified) {
     throw new Error("Quant status integrity check failed");
   }
   const status = parseStatus(JSON.parse(bytes.toString("utf8")));
+  if (status.schemaVersion === 2 && (!keyed || !ownerId
+    || status.ownerScope !== createHash("sha256").update(ownerId).digest("hex"))) throw new Error("Invalid quant owner scope");
+  if (status.schemaVersion === 1 && keyed) throw new Error("Invalid quant envelope version");
   const age = now - Date.parse(status.asOf);
   if (age < -300_000) throw new Error("Quant status timestamp is in the future");
   return { envelope: value as Envelope, status, stale: age > MAX_STATUS_AGE_MS };

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import NavItems from './NavItems'
@@ -11,6 +11,14 @@ import { Menu, X } from 'lucide-react'
 const Header = () => {
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showQuant, setShowQuant] = useState(false)
+  useEffect(() => {
+    const request = new AbortController()
+    fetch('/api/quant/status', { method: 'HEAD', cache: 'no-store', signal: request.signal })
+      .then(response => setShowQuant(response.status === 204))
+      .catch(() => { if (!request.signal.aborted) setShowQuant(false) })
+    return () => request.abort()
+  }, [])
 
   return (
     <>
@@ -34,7 +42,7 @@ const Header = () => {
           
           {/* Desktop Navigation */}
           <nav className="hidden md:block">
-            <NavItems onSearchClick={() => setSearchOpen(true)} />
+            <NavItems showQuant={showQuant} onSearchClick={() => setSearchOpen(true)} />
           </nav>
           
           {/* Desktop User Dropdown */}
@@ -57,7 +65,7 @@ const Header = () => {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-border/30 bg-background/95 backdrop-blur-sm">
             <div className="container px-4 py-4">
-              <NavItems onSearchClick={() => {
+              <NavItems showQuant={showQuant} onSearchClick={() => {
                 setMobileMenuOpen(false)
                 setSearchOpen(true)
               }} onNavClick={() => setMobileMenuOpen(false)} />
