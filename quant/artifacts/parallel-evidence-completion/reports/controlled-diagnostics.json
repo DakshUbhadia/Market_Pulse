@@ -1,0 +1,36 @@
+{
+  "input_scope": "SYNTHETIC_CONTROLLED_INPUTS",
+  "v2_diagnostic_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\artifacts\\diagnostics\\factor_v2\\20261122T091200-ef1755ea",
+  "diagnostic_completion_sha256": "68c28b4562c453416a32fa916ff2f7ca96a36180d2010204e0d1635e81adac58",
+  "four_arms_exercised": true,
+  "capital_scenarios": [
+    1000000,
+    2500000,
+    5000000,
+    10000000
+  ],
+  "diagnostic_release": {
+    "status": "VERIFIED_DIAGNOSTIC_RELEASE",
+    "release_type": "DIAGNOSTIC_RELEASE",
+    "research_authority": "DIAGNOSTIC_ONLY",
+    "historical_validation": false,
+    "promotion_eligible": false,
+    "real_forward_evidence": false,
+    "governance_block": "TIDEWATER_2016_HUMAN_REVIEW",
+    "governance_status": "PENDING",
+    "diagnostic_completion_sha256": "68c28b4562c453416a32fa916ff2f7ca96a36180d2010204e0d1635e81adac58",
+    "files": 73
+  },
+  "relocation_verified": true,
+  "TEST_ONLY_forward": true,
+  "monitoring_alerts_and_incidents_exercised": true,
+  "human_review_status": "PENDING",
+  "seal_eligible": false,
+  "historical_validation": false,
+  "promotion_eligible": false,
+  "real_forward_evidence": false,
+  "no_real_v2_decision": true,
+  "test_only_forward_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\forward\\test-only\\controlled",
+  "synthetic_incident_ledger_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\incidents",
+  "real_incident_ledger_used": false
+}

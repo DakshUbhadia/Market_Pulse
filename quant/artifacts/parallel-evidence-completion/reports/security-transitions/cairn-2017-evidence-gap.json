@@ -1,0 +1,108 @@
+{
+  "status": "NEEDS_EVIDENCE_AND_ACCOUNTING_REVIEW",
+  "subject_id": "CAIRN_2017",
+  "instrument_id": "a4d2246c-e16f-54c3-a1d0-14c307f6ba60",
+  "observed_block_date": "2017-04-26",
+  "observed_error": "UnvaluedHolding",
+  "research_authority": "DIAGNOSTIC_ONLY",
+  "seal_eligible": false,
+  "source_market_corpus_modified": false,
+  "TIDEWATER_human_review_status": "PENDING",
+  "source_records": [
+    {
+      "source_url": "https://www.vedantalimited.com/public/uploads/11865/vedanta-cairn-merger-effective-april-11-2017.pdf",
+      "retrieved_at": "2026-11-24T11:13:40.192231+00:00",
+      "retrieved_at_used_as_historical_availability": false,
+      "http_status": 200,
+      "final_url": "https://www.vedantalimited.com/public/uploads/11865/vedanta-cairn-merger-effective-april-11-2017.pdf",
+      "sha256": "158278b4227569d483420770f4166dfdcd110133a12e9e329dac1d0e3df322c3",
+      "raw_path": "raw/security-transitions/cairn-2017/merger-effective-158278b4227569d4.pdf",
+      "content_type": "application/pdf",
+      "usable_source_bytes": true
+    },
+    {
+      "source_url": "https://www.vedantalimited.com/uploads/stock-exchange-announcements/2017-18/Allotment-of-shares-of-Vedanta-to-shareholders-of-Cairn-.India-Limited.pdf",
+      "retrieved_at": "2026-11-24T11:13:41.456547+00:00",
+      "retrieved_at_used_as_historical_availability": false,
+      "http_status": 200,
+      "final_url": "https://www.vedantalimited.com/uploads/stock-exchange-announcements/2017-18/Allotment-of-shares-of-Vedanta-to-shareholders-of-Cairn-.India-Limited.pdf",
+      "sha256": "edafc95a51e234be0697286f344ad08bdf9084d267da34824256a5ad4e276bc7",
+      "raw_path": "raw/security-transitions/cairn-2017/allotment-edafc95a51e234be.pdf",
+      "content_type": "application/pdf",
+      "usable_source_bytes": true
+    },
+    {
+      "source_url": "https://www.vedantalimited.com/public/uploads/5033/Vedanta-Limited-Statement-Of-Unaudited-Standalone-Results-For-The-Quarter-Ended-June-30-2017.pdf",
+      "retrieved_at": "2026-11-24T11:13:42.051860+00:00",
+      "retrieved_at_used_as_historical_availability": false,
+      "http_status": 200,
+      "final_url": "https://www.vedantalimited.com/public/uploads/5033/Vedanta-Limited-Statement-Of-Unaudited-Standalone-Results-For-The-Quarter-Ended-June-30-2017.pdf",
+      "sha256": "a2d52acda53e7bd19aede51b63b10dccc55e24c57eedf101526c8522ed89011e",
+      "raw_path": "raw/security-transitions/cairn-2017/quarter-update-a2d52acda53e7bd1.pdf",
+      "content_type": "application/pdf",
+      "usable_source_bytes": true
+    },
+    {
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1370431/000119312517120784/d270284dex991.htm",
+      "retrieved_at": "2026-11-24T11:13:51.815454+00:00",
+      "retrieved_at_used_as_historical_availability": false,
+      "http_status": 403,
+      "final_url": "https://www.sec.gov/Archives/edgar/data/1370431/000119312517120784/d270284dex991.htm",
+      "sha256": "850786ed029b35de4aa4da78f1eb1242f03420b4b31fcb18a4a8943cea0644de",
+      "raw_path": "raw/security-transitions/cairn-2017/sec-merger-exhibit-850786ed029b35de.html",
+      "content_type": "text/html",
+      "usable_source_bytes": false
+    },
+    {
+      "source_url": "https://www.bseindia.com/downloads/SPDJ_ANN/MediaReleasePDF/514949_mediarelease-changestos%26pbseindices20170420.pdf",
+      "retrieved_at": "2026-11-24T11:34:12.372423+00:00",
+      "source_scope": "BSE index-provider press release; corroboration only, not a direct NSE cash-market notice",
+      "retrieved_at_used_as_historical_availability": false,
+      "http_status": 403,
+      "sha256": "11cca9cba7e8fc14f71e200222e84bbd2634f1d55a86d652ba1162cac1e40f35",
+      "raw_path": "raw/security-transitions/cairn-2017/bse-index-notice-11cca9cba7e8fc14.bin",
+      "usable_source_bytes": false
+    }
+  ],
+  "candidate_primary_source_facts": [
+    {
+      "source": "merger-effective",
+      "facts": [
+        "Issuer states merger became operative on 2017-04-11 and sets 2017-04-27 record date.",
+        "Issuer describes one Vedanta equity share plus four redeemable preference shares per Cairn equity share.",
+        "Issuer describes a separate interim dividend and an optional third-party preference-share cash exit facility."
+      ]
+    },
+    {
+      "source": "allotment",
+      "facts": [
+        "Issuer reports allotment on 2017-04-28; its listing applications were still to be made."
+      ]
+    },
+    {
+      "source": "quarter-update",
+      "facts": [
+        "Later issuer update states new equity shares traded from 2017-05-16.",
+        "The later update describes preference shares credited with their listing application still pending."
+      ]
+    },
+    {
+      "source": "BSE index-provider press release",
+      "facts": [
+        "A dated BSE-hosted index release describes CAIRN suspension effective April 26, 2017; this does not prove all NSE trading and settlement facts."
+      ]
+    }
+  ],
+  "facts_not_yet_certified": [
+    "Contemporaneous suspension and equity listing notices with historical availability.",
+    "Exact credit dates and instrument/ISIN lineage for both consideration legs.",
+    "Then-known preference-share valuation, any redemption/exit participation and cash/dividend timing.",
+    "Accounting and cost-basis treatment across equity, preference and cash legs."
+  ],
+  "restrictions": [
+    "No automatic one-for-one equity-only bridge.",
+    "Optional cash exit is not an assumed executed settlement.",
+    "Later disclosure dates do not backdate historical knowledge.",
+    "Prepared fallback declaration is unchanged; no accepted transition or research seal is created."
+  ]
+}

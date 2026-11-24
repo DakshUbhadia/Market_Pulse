@@ -1,0 +1,32 @@
+{
+  "operator_sha256": "66686b0ab649a999a1ed2542d450735ba7b31c2b81898f976dd5f102a21124a8",
+  "research_authority": "DIAGNOSTIC_ONLY",
+  "observations_only": true,
+  "calculations_or_authorizations_bypassed": false,
+  "stages": [
+    {
+      "stage": "cached_readiness",
+      "elapsed_seconds": 16.870164799969643
+    },
+    {
+      "stage": "check_research_ready",
+      "elapsed_seconds": 877.3633179999888
+    },
+    {
+      "stage": "input_manifest",
+      "elapsed_seconds": 12.906441000057384
+    },
+    {
+      "stage": "load_research_data",
+      "elapsed_seconds": 85.29904810001608
+    },
+    {
+      "stage": "build_feature_matrix",
+      "elapsed_seconds": 421.3033291999018
+    },
+    {
+      "stage": "forward_labels",
+      "elapsed_seconds": 37.50847769994289
+    }
+  ]
+}

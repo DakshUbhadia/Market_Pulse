@@ -1,0 +1,355 @@
+{
+  "generated_at": "2026-11-24T11:41:32.502105+00:00",
+  "PUBLIC_MAIN_SHA": "b6ce96653afc45ad60247c7240c2647060d0901d",
+  "LOCAL_IMPLEMENTATION_SHA": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+  "RESEARCH_CERTIFIED_SHA": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+  "versions": {
+    "CHAMPION_CHALLENGER_VERSION": "evidence_champion_challenger_1.0.0",
+    "COST_MODEL_VERSION": "india_delivery_1.1.0",
+    "DIAGNOSTIC_AUTHORITY_VERSION": "diagnostic_only_1.0.0",
+    "EVIDENCE_CLOSURE_VERSION": "evidence_closure_1.0.0",
+    "EVIDENCE_POLICY_VERSION": "factor_v1_evidence_1.5.0",
+    "FACTOR_V2_VERSION": "factor_v2_candidate_1.0.0",
+    "FEATURE_VERSION": "factor_v1_features_1.0.5",
+    "FUNDAMENTAL_FEATURE_VERSION": "fundamental_features_1.2.0",
+    "FUNDAMENTAL_SNAPSHOT_VERSION": "pit_fundamentals_1.1.0",
+    "GOVERNANCE_POLICY_VERSION": "explicit_pending_governance_1.0.0",
+    "LIFECYCLE_POLICY_VERSION": "pit_lifecycle_1.2.0",
+    "MODEL_VERSION": "factor_v1_1.0.0",
+    "PORTFOLIO_ACCOUNTING_VERSION": "ex_date_cash_1.3.0",
+    "PORTFOLIO_RISK_VERSION": "portfolio_risk_1.1.0",
+    "SHARE_CHAIN_VERSION": "reconciled_share_chains_1.1.0"
+  },
+  "security_transition_version": "security_transitions_1.1.0",
+  "human_review_status": "PENDING",
+  "tidewater_human_review_state": "HUMAN_REVIEW_PENDING",
+  "fallback_window_state": "PREPARED_BUT_NOT_ADMITTED",
+  "evaluation_window_admissible": false,
+  "software_certification_scope": "SOFTWARE_IMPLEMENTATION_ONLY_NOT_MODEL_HISTORICAL_VALIDATION",
+  "V1_BASELINE_STATE": {
+    "status": "BLOCKED",
+    "outcome": "BLOCKED_BY_GOVERNANCE",
+    "governance_status": "PENDING",
+    "PRICE": "BLOCKED",
+    "TOTAL_RETURN": "BLOCKED",
+    "human_window_admitted": false,
+    "admission_error": null,
+    "decisions": [],
+    "governance_gate": "TIDEWATER_2016_HUMAN_REVIEW"
+  },
+  "forward_cohort_state": {
+    "registered_cohorts": [],
+    "state": "BLOCKED",
+    "outcome": "BLOCKED_BY_GOVERNANCE",
+    "governance_status": "PENDING",
+    "cohort_type": "REAL"
+  },
+  "test_only_cohorts": [
+    {
+      "root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\forward\\test-only\\controlled",
+      "real_forward_evidence": false,
+      "promotion_eligible": false,
+      "signal_sessions": 4
+    }
+  ],
+  "production_recommendation_publishing": {
+    "status": "BLOCKED",
+    "governance_status": "PENDING"
+  },
+  "controlled_diagnostics": {
+    "input_scope": "SYNTHETIC_CONTROLLED_INPUTS",
+    "v2_diagnostic_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\artifacts\\diagnostics\\factor_v2\\20261122T091200-ef1755ea",
+    "diagnostic_completion_sha256": "68c28b4562c453416a32fa916ff2f7ca96a36180d2010204e0d1635e81adac58",
+    "four_arms_exercised": true,
+    "capital_scenarios": [
+      1000000,
+      2500000,
+      5000000,
+      10000000
+    ],
+    "diagnostic_release": {
+      "status": "VERIFIED_DIAGNOSTIC_RELEASE",
+      "release_type": "DIAGNOSTIC_RELEASE",
+      "research_authority": "DIAGNOSTIC_ONLY",
+      "historical_validation": false,
+      "promotion_eligible": false,
+      "real_forward_evidence": false,
+      "governance_block": "TIDEWATER_2016_HUMAN_REVIEW",
+      "governance_status": "PENDING",
+      "diagnostic_completion_sha256": "68c28b4562c453416a32fa916ff2f7ca96a36180d2010204e0d1635e81adac58",
+      "files": 73
+    },
+    "relocation_verified": true,
+    "TEST_ONLY_forward": true,
+    "monitoring_alerts_and_incidents_exercised": true,
+    "human_review_status": "PENDING",
+    "seal_eligible": false,
+    "historical_validation": false,
+    "promotion_eligible": false,
+    "real_forward_evidence": false,
+    "no_real_v2_decision": true,
+    "test_only_forward_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\forward\\test-only\\controlled",
+    "synthetic_incident_ledger_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\incidents",
+    "real_incident_ledger_used": false
+  },
+  "diagnostic_v1_summary": {
+    "generated_at": "2026-11-24T11:41:30.776874+00:00",
+    "authority": "DIAGNOSTIC_ONLY",
+    "requested_window_unchanged": true,
+    "prepared_window_admitted": false,
+    "all_real_replays_completed": false,
+    "accepted_seals_created": false,
+    "real_decisions_created": false,
+    "attempts": [
+      {
+        "return_basis": "PRICE",
+        "experiment_id": "20261122T091230-7b3bddc4",
+        "implementation_sha": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+        "research_authority": "DIAGNOSTIC_ONLY",
+        "outcome": "BLOCKED_BY_DATA",
+        "decision": "BLOCKED",
+        "reason": "UnvaluedHolding: Unvalued holding a4d2246c-e16f-54c3-a1d0-14c307f6ba60 on 2017-04-26; verified delisting/settlement evidence required",
+        "governance_status": "PENDING",
+        "seal_eligible": false,
+        "historical_validation": false,
+        "promotion_eligible": false,
+        "real_forward_evidence": false,
+        "requested_start": "2016-01-01",
+        "requested_end": "2026-11-17",
+        "effective_start": "2017-03-28",
+        "blocked_holding": {
+          "instrument_id": "a4d2246c-e16f-54c3-a1d0-14c307f6ba60",
+          "trade_date": "2017-04-26",
+          "lifecycle_scenario": "MANDATORY_ECONOMIC_EVENTS_ONLY"
+        },
+        "experiment_outcome_sha256": "15741530011332e4e75ede440ec419f708cc2d88811e626f6b62213ec0a60c1a",
+        "prepared_input_sha256": {
+          "prepared-inputs.json": "d8ea6fc7f26fb1495949a51c01537b75bf56c2cbfd219d7715499617a97042ef",
+          "prepared-scores.parquet": "2f7179ebbe8162da6babd99aa169a52a1fd70d70670ad03ffedae9ba937f1ba2",
+          "prepared-universe.parquet": "b0f8d3d9ff28e2c5d67178c07db276577d83fdcd9481b664067e7badcf10eeab"
+        },
+        "full_robustness_requested": true,
+        "full_replay_completed": false,
+        "prepared_manifest_input_sha256": "b1dda1d759e2af99327ac4a224736fd4c2962b7a2854815f78e140735c94db4d",
+        "prepared_source_code_sha256": "acfcc5fdc2075802ba949d3a5e111a37b0da64fd1e50d41b7df242c7b8d75399"
+      },
+      {
+        "return_basis": "TOTAL_RETURN",
+        "experiment_id": "20261124T111156-b9d35d7d",
+        "implementation_sha": "42edfb0869dd8c3c49d094a8e494c66ee4967a79",
+        "research_authority": "DIAGNOSTIC_ONLY",
+        "outcome": "BLOCKED_BY_DATA",
+        "decision": "BLOCKED",
+        "reason": "UnvaluedHolding: Unvalued holding a4d2246c-e16f-54c3-a1d0-14c307f6ba60 on 2017-04-26; verified delisting/settlement evidence required",
+        "governance_status": "PENDING",
+        "seal_eligible": false,
+        "historical_validation": false,
+        "promotion_eligible": false,
+        "real_forward_evidence": false,
+        "requested_start": "2016-01-01",
+        "requested_end": "2026-11-17",
+        "effective_start": "2017-03-28",
+        "blocked_holding": {
+          "instrument_id": "a4d2246c-e16f-54c3-a1d0-14c307f6ba60",
+          "trade_date": "2017-04-26",
+          "lifecycle_scenario": "MANDATORY_ECONOMIC_EVENTS_ONLY"
+        },
+        "experiment_outcome_sha256": "f717be8d16ec845efb486a8fbf4e3e4445ce13a259a939f9bb36bf769f3f4146",
+        "prepared_input_sha256": {
+          "prepared-inputs.json": "d8ea6fc7f26fb1495949a51c01537b75bf56c2cbfd219d7715499617a97042ef",
+          "prepared-scores.parquet": "2f7179ebbe8162da6babd99aa169a52a1fd70d70670ad03ffedae9ba937f1ba2",
+          "prepared-universe.parquet": "b0f8d3d9ff28e2c5d67178c07db276577d83fdcd9481b664067e7badcf10eeab"
+        },
+        "full_robustness_requested": true,
+        "full_replay_completed": false,
+        "prepared_manifest_input_sha256": "b1dda1d759e2af99327ac4a224736fd4c2962b7a2854815f78e140735c94db4d",
+        "prepared_source_code_sha256": "acfcc5fdc2075802ba949d3a5e111a37b0da64fd1e50d41b7df242c7b8d75399"
+      }
+    ],
+    "real_robustness_and_walkforward_completion_proven": false,
+    "controlled_robustness_and_walkforward_tests_passed": true,
+    "same_prepared_source_inputs": true,
+    "same_prepared_source_code": true,
+    "same_prepared_scores": true,
+    "additional_blocker_packet": {
+      "path": "reports/security-transitions/cairn-2017-evidence-gap.json",
+      "sha256": "c9898fd0aad5744f3db0628c8736ac8ee358d13c4b65b707560cd8a513fcc00b",
+      "status": "NEEDS_EVIDENCE_AND_ACCOUNTING_REVIEW"
+    },
+    "next_data_requirement": "Review and complete the CAIRN equity/preference/cash consideration history and contemporaneous availability; preserve all existing gates."
+  },
+  "completion_criteria": {
+    "exact_implementation_sha_ci_certified": true,
+    "governance_pending_explicit_and_enforced": true,
+    "diagnostic_fallback_end_to_end": false,
+    "theoretical_filing_discovery_85_overall": false,
+    "theoretical_filing_discovery_95_top100": false,
+    "usable_filing_80_90_continuous_interval": false,
+    "capital_event_verification_pipeline_operational": true,
+    "verified_share_80_90_continuous_interval": false,
+    "full_v2_matrix_complete_for_certified_interval": false,
+    "four_arm_v2_exercised_diagnostically": true,
+    "risk_contract_tests_passed": true,
+    "registry_and_release_dry_runs_passed": true,
+    "test_only_forward_dry_run_passed": true
+  },
+  "phase_complete": false,
+  "retained_certified_market_session": "2026-11-17",
+  "latest_source_health_refresh": {
+    "checked_at": "2026-11-24T11:14:51.624406+00:00",
+    "sources": [
+      {
+        "base_url": "https://www.nseindia.com",
+        "checked_at": "2026-11-24T11:14:45.062783+00:00",
+        "scope": "SOURCE_HEALTH_ONLY",
+        "status": "SOURCE_BLOCKED",
+        "reason": "NSE session warm-up failed with HTTP 403",
+        "http_status": 403,
+        "source_sha256": "e44bcda523e0ff36c7cd9f06e680f0c8573285f0c12e3e98beb9bcae8451f39c",
+        "raw_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\raw\\nse\\session\\2026-11-24\\164448404527-e44bcda523e0ff36-11b8c160.html"
+      },
+      {
+        "base_url": "https://www.nseindia.in",
+        "checked_at": "2026-11-24T11:14:48.408433+00:00",
+        "scope": "SOURCE_HEALTH_ONLY",
+        "status": "SOURCE_BLOCKED",
+        "reason": "NSE session warm-up failed with HTTP 403",
+        "http_status": 403,
+        "source_sha256": "3a345d2bef4a7660dedcddcc5457b4acac6e4db636b718ff0a3e3bc7e64439c4",
+        "raw_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\raw\\nse\\session\\2026-11-24\\164451619933-3a345d2bef4a7660-410d8a1b.html"
+      }
+    ],
+    "historical_filings_admitted": 0,
+    "source_market_corpus_modified": false,
+    "retrieved_at_used_as_historical_availability": false
+  },
+  "publication_scope": "COMPACT_STATUS_INDEX_WITH_FULL_SEPARATE_REPORTS",
+  "full_local_status_path": "data\\parallel-evidence-completion\\reports\\current-status.json",
+  "full_local_status_sha256": "6ef812450fe4e911d0da634287014b649483e0780e8e2a464f1e001620c4544c",
+  "report_refs": {
+    "governance-gates.json": {
+      "path": "governance-gates.json",
+      "sha256": "c37e25f0101c41a28353d365f3e24cdbf8f83d721cb2be61546c56eb6b0195b3"
+    },
+    "governance-dependencies.json": {
+      "path": "governance-dependencies.json",
+      "sha256": "22bff17f65ff1eeb2ad202fc50ba9564c940c9190cd5625b2b5aea288d02e9da"
+    },
+    "parallel-evidence-initialization.json": {
+      "path": "parallel-evidence-initialization.json",
+      "sha256": "cf5efd11930c1376ba3c76a675df600492a197ddc432e673eeec780cc5dd2bdc"
+    },
+    "security-transitions/tidewater-2016-human-review-pending.json": {
+      "path": "security-transitions/tidewater-2016-human-review-pending.json",
+      "sha256": "1a113dd5333ee36470397741f5dcf078ed6228d79f5d1c1a48078cca3955ec90"
+    },
+    "v2-matrix-status.json": {
+      "path": "v2-matrix-status.json",
+      "sha256": "8ddb34a5a1ea3ec03711ecd5ab7326c4bfe1fd8804dbb9681a665bd76bf8e99d"
+    },
+    "controlled-diagnostics.json": {
+      "path": "controlled-diagnostics.json",
+      "sha256": "0575e8d9e7b28ea0a0810e507dea05348da198ea80dc81c9c77db01db629a36f"
+    },
+    "monitoring-dry-run.json": {
+      "path": "monitoring-dry-run.json",
+      "sha256": "55ebc7bd9b6b32290b8920da94266821f63f27c4d5664a599ba0e069105ea971"
+    },
+    "parallel-evidence-completion-phase.json": {
+      "path": "parallel-evidence-completion-phase.json",
+      "sha256": "bf831e737c0cd10ff0080258342571c767124213aeed577121f2e57359ab2051"
+    },
+    "v2-data-interval.json": {
+      "path": "v2-data-interval.json",
+      "sha256": "ef1a958f07f7a7500be9fb8b75a4da492ef9b857263f397680241a10f0bdd9e0"
+    },
+    "fundamental-universe-coverage.json": {
+      "path": "fundamental-universe-coverage.json",
+      "sha256": "fe38d1319102b5b8a9e1263c29325073df6f3a75635e737516133c78f68c5a28"
+    },
+    "fundamental-coverage-ceiling.json": {
+      "path": "fundamental-coverage-ceiling.json",
+      "sha256": "d64b18a3335a1942c61baeb08394a58cbc64b1a70867f2509afa764b9a68d5fb"
+    },
+    "fundamental-discovery-gap.json": {
+      "path": "fundamental-discovery-gap.json",
+      "sha256": "fe1764a3682449ac6024fcf9aebe58263ab08c1f7a21bf5de1814aa416004d8a"
+    },
+    "latest-discovery-batch.json": {
+      "path": "latest-discovery-batch.json",
+      "sha256": "92afc3a99b7d09cd528f13118b3a79f50d1b51c9d1a291d74a657edd747857e7"
+    },
+    "capital-event-verification.json": {
+      "path": "capital-event-verification.json",
+      "sha256": "9a982249976f0bda6de5628e1bd29667864952f59adfa0642894d769998f52e8"
+    },
+    "share-history-coverage.json": {
+      "path": "share-history-coverage.json",
+      "sha256": "a86c8c7c62de4806228c3c75ef6c87422618d3dbc25442726692cc4edf1f8f08"
+    },
+    "share-evidence-plan.json": {
+      "path": "share-evidence-plan.json",
+      "sha256": "a52760ae2d428c2e064e5285befa89e642d21ed0223e3e251773dc3f4e6f62c6"
+    },
+    "diagnostic-v1-summary.json": {
+      "path": "diagnostic-v1-summary.json",
+      "sha256": "68c6c92bae6dfd2df52e8e1cfecf7588601350023f8e726b27c65055537fd3b3"
+    },
+    "unit-test-retest-manifest.json": {
+      "path": "unit-test-retest-manifest.json",
+      "sha256": "2b245a4c6dc8e7a1c617d4c4402d5e2cc175528e0a812855b89369cf3386f0d0"
+    },
+    "official-alternate-probe.json": {
+      "path": "official-alternate-probe.json",
+      "sha256": "5261e67c7d007ad9289c7d2867d45e2c63f95f229d80250aac474901df009e21"
+    },
+    "research-readiness.json": {
+      "path": "research-readiness.json",
+      "sha256": "b6b2cbc78240353a1772c7fb97ee32cf9ea4fec483d00395cb0f959dcfdf0015"
+    },
+    "test-forward-dry-run.json": {
+      "path": "test-forward-dry-run.json",
+      "sha256": "ad3833e72939962ccd4be4681a83d962d1584ab0562074e3194d6624712874ed"
+    },
+    "diagnostic-total-return-readiness.json": {
+      "path": "diagnostic-total-return-readiness.json",
+      "sha256": "a5f86e4cf26f4aba266d7da22583074bd3e9e1922922ddeaf8218d0f74ca79ad"
+    },
+    "diagnostic-total-return-observation-trace.json": {
+      "path": "diagnostic-total-return-observation-trace.json",
+      "sha256": "621ceaa7f071da7cecd567c2f657080be39f6ba0f92241e9944453e09d835013"
+    },
+    "source-health-refresh-2026-11-24.json": {
+      "path": "source-health-refresh-2026-11-24.json",
+      "sha256": "3388045bd90a276d7c083e2c5b6bfe7187c3b677b24cd5f362912e517fdfa546"
+    },
+    "security-transitions/cairn-2017-evidence-gap.json": {
+      "path": "security-transitions/cairn-2017-evidence-gap.json",
+      "sha256": "c9898fd0aad5744f3db0628c8736ac8ee358d13c4b65b707560cd8a513fcc00b"
+    },
+    "unit-tests-final.xml": {
+      "path": "unit-tests-final.xml",
+      "sha256": "2e33bfaed355c348381af98098a951e871edae9a108cbca023bb619e4d5ef257"
+    },
+    "unit-tests-initial.xml": {
+      "path": "unit-tests-initial.xml",
+      "sha256": "e182990f4b5b3b0ac0c27988403672429e5034078ff0489d60999f85fa23f3be"
+    },
+    "release-retest.xml": {
+      "path": "release-retest.xml",
+      "sha256": "1ee824ed5e5e3ce24204409326e77c84bea387e1b574fee27e2c13e97dd39260"
+    },
+    "focused-tests-final.xml": {
+      "path": "focused-tests-final.xml",
+      "sha256": "5abf91db1b8bea7f8b72f4131e1122025ad9b3e19f5dcbcb7e4d283bc929c104"
+    },
+    "live-tests.xml": {
+      "path": "live-tests.xml",
+      "sha256": "03fbcc892d0c881cee6286e7813347fe6b7c8e03f75904f3a78fa035276b1b03"
+    },
+    "live-tests-2026-11-24.xml": {
+      "path": "live-tests-2026-11-24.xml",
+      "sha256": "7560d6b434395a89f737c52c6183e2eb707fadbad8e82d81b6f65530db2914a8"
+    }
+  }
+}

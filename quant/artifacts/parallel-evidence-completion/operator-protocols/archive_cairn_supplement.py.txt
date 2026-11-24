@@ -1,0 +1,25 @@
+from pathlib import Path
+from datetime import datetime,timezone
+import hashlib,json,requests
+from quant.storage.research_store import write_json
+root=Path('data/parallel-evidence-completion').resolve()
+url='https://www.bseindia.com/downloads/SPDJ_ANN/MediaReleasePDF/514949_mediarelease-changestos%26pbseindices20170420.pdf'
+packet=json.loads((root/'reports/security-transitions/cairn-2017-evidence-gap.json').read_text())
+item=dict(source_url=url,retrieved_at=datetime.now(timezone.utc).isoformat(),
+    source_scope='BSE index-provider press release; corroboration only, not a direct NSE cash-market notice',
+    retrieved_at_used_as_historical_availability=False)
+try:
+    response=requests.get(url,timeout=15)
+    body=response.content
+    digest=hashlib.sha256(body).hexdigest()
+    path=root/'raw/security-transitions/cairn-2017'/f'bse-index-notice-{digest[:16]}.bin'
+    if not path.exists(): path.write_bytes(body)
+    item.update(http_status=response.status_code,sha256=digest,raw_path=path.relative_to(root).as_posix(),
+        usable_source_bytes=response.status_code==200 and body.startswith(b'%PDF'))
+except requests.RequestException as error:
+    item.update(error=str(error),usable_source_bytes=False)
+packet['source_records'].append(item)
+packet['candidate_primary_source_facts'].append(dict(source='BSE index-provider press release',
+    facts=['A dated BSE-hosted index release describes CAIRN suspension effective April 26, 2017; this does not prove all NSE trading and settlement facts.']))
+write_json(root/'reports/security-transitions/cairn-2017-evidence-gap.json',packet)
+print(item)

@@ -1,0 +1,29 @@
+from dataclasses import replace
+from datetime import datetime, timezone
+from pathlib import Path
+from quant.config import Config
+from quant.data.nse_client import NseClient
+from quant.data.nse_financials import PATH
+from quant.storage.research_store import write_json
+
+root = Path('data/parallel-evidence-completion').resolve()
+results = []
+for base in ('https://www.nseindia.com','https://www.nseindia.in'):
+    config = replace(Config(),data_dir=root,nse_base_url=base,timeout=10,retries=0)
+    item = dict(base_url=base,checked_at=datetime.now(timezone.utc).isoformat(),scope='SOURCE_HEALTH_ONLY')
+    with NseClient(config) as client:
+        try:
+            payload = client.get_json(PATH,params=dict(index='equities',symbol='AUBANK',
+                from_date='01-04-2023',to_date='31-03-2024',period='Annual'))
+            item.update(status='RESPONSE_ARCHIVED_NOT_ADMITTED',payload_type=type(payload).__name__)
+        except Exception as error:
+            item.update(status='SOURCE_BLOCKED',reason=str(error))
+        if client.last_response:
+            raw = client.last_response
+            item.update(http_status=raw.http_status,source_sha256=raw.sha256,raw_path=str(raw.path))
+    results.append(item)
+report = dict(checked_at=datetime.now(timezone.utc).isoformat(),sources=results,
+    historical_filings_admitted=0,source_market_corpus_modified=False,
+    retrieved_at_used_as_historical_availability=False)
+write_json(root/'reports/source-health-refresh-2026-11-24.json',report)
+print(report)

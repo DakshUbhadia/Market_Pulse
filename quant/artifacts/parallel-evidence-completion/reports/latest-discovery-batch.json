@@ -1,0 +1,79 @@
+{
+  "status": "SOURCE_BLOCKED",
+  "requests": 1,
+  "completed_queries_skipped": 0,
+  "documents_attempted": 0,
+  "new_observations": 0,
+  "selected_cells": 100,
+  "selected_instruments": 25,
+  "responses": [],
+  "errors": [
+    {
+      "instrument_id": "1625521c-e72f-58bc-9924-4dad0fd81f5c",
+      "symbol": "AUBANK",
+      "reason": "NSE session warm-up failed with HTTP 403",
+      "http_status": 403,
+      "raw_path": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\raw\\nse\\session\\2026-11-22\\021007193651-c0774d18d2a79287-f975e4ea.html",
+      "sha256": "c0774d18d2a79287a377491ad754115594975ffaf77192f274b0a1edc6710373"
+    }
+  ],
+  "review": [],
+  "missing_cells_before": 6460,
+  "missing_cells_after": 6460,
+  "requires_replanning_before_next_batch": true,
+  "coverage_certified": false,
+  "performance_used_to_prioritize": false,
+  "output": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\research\\discovery-batches\\c95031ecc97f456ca64950ae1fd01b2c",
+  "productivity": {
+    "documents_discovered_per_100_queries": 0.0,
+    "usable_filings_per_100_queries": 0.0,
+    "name_month_repairs_per_100_queries": 0.0,
+    "top100_repairs_per_100_queries": 0.0,
+    "coverage_gain_per_100_queries": 0.0,
+    "coverage_gain_units": "MEAN_MONTHLY_PERCENTAGE_POINTS",
+    "performance_information_used": false
+  },
+  "official_route_attempts": [],
+  "supported_official_routes": [
+    "NSE_STATIC_XBRL_ARCHIVE",
+    "NSE_DIRECT_DOCUMENT",
+    "BSE_OFFICIAL_ARCHIVE",
+    "REVIEWED_ISSUER_IR"
+  ],
+  "route_productivity": {
+    "NSE_STATIC_XBRL_ARCHIVE": {
+      "queries": 0,
+      "usable_filings": 0,
+      "status": "NOT_ATTEMPTED_NO_REVIEWED_CANDIDATES"
+    },
+    "NSE_DIRECT_DOCUMENT": {
+      "queries": 0,
+      "usable_filings": 0,
+      "status": "NOT_ATTEMPTED_NO_REVIEWED_CANDIDATES"
+    },
+    "BSE_OFFICIAL_ARCHIVE": {
+      "queries": 0,
+      "usable_filings": 0,
+      "status": "NOT_ATTEMPTED_NO_REVIEWED_CANDIDATES"
+    },
+    "REVIEWED_ISSUER_IR": {
+      "queries": 0,
+      "usable_filings": 0,
+      "status": "NOT_ATTEMPTED_NO_REVIEWED_CANDIDATES"
+    },
+    "NSE_FINANCIAL_METADATA_API": {
+      "queries": 1
+    }
+  },
+  "output_sha256": {
+    "acquisition-plan.json": "d8b9afcaa62ac3a6925d3c6f0b1262a39482f03d2369099ca07d205f3a823fc8",
+    "attempts.json": "b68554b9bae3b50df877eff2c22ca8c2e34cdfed0f4e23767fa1d6297bf9d5a7",
+    "coverage-ceiling.json": "d64b18a3335a1942c61baeb08394a58cbc64b1a70867f2509afa764b9a68d5fb",
+    "coverage.json": "fe38d1319102b5b8a9e1263c29325073df6f3a75635e737516133c78f68c5a28",
+    "discovery-gap.json": "fe1764a3682449ac6024fcf9aebe58263ab08c1f7a21bf5de1814aa416004d8a",
+    "filings.parquet": "4d86d85d8619363710c7ba637d3a3fe19398f8de8b64a3f4ff3ab7623882daea",
+    "input-ledger.json": "cf268f69a083123f7b947720272c5660a4134239dfc6b6455d26d0a902bca875",
+    "new-filings.parquet": "5b9ec578c7648bfc4673d5628b77f00ed74f7a1427f2bd31579477dd605cdc92",
+    "selected-cells.json": "df07e2ee30d3c945f96046a5d67854ee2e34a381d69fade925c762bfc2467884"
+  }
+}

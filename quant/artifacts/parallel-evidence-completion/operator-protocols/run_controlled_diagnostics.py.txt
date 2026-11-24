@@ -1,0 +1,48 @@
+"""Operator dry run: explicit synthetic scope, no human or model entitlement."""
+from pathlib import Path
+from unittest.mock import patch
+import json
+from quant.config import Config, REPO_ROOT
+from quant.tests.test_parallel_diagnostics import controlled_v2_inputs, test_test_only_forward_matures_and_monitoring_remains_nonpromotable
+from quant.pipeline.run_v2_diagnostics import run_v2_diagnostics
+from quant.pipeline.report_research_monitoring import research_monitoring
+from quant.research.release import build_diagnostic_release, verify_diagnostic_release
+from quant.storage.research_store import write_json, digest_file
+from quant.storage.parquet_store import write_parquet
+from quant.backtest.artifacts import verify_diagnostic_completion
+
+root = Path('data/parallel-evidence-completion').resolve()
+inputs = controlled_v2_inputs()
+input_files = []
+for name in ('prices','price_features','fundamental_features','labels','benchmark'):
+    path = root/'controlled-inputs'/(name+'.parquet')
+    write_parquet(inputs[name], path)
+    input_files.append(path)
+input_files += [REPO_ROOT/'quant/tests/test_parallel_diagnostics.py', REPO_ROOT/'quant/tests/research_fixtures.py']
+write_json(root/'controlled-inputs/draft-spec.json', inputs['draft_spec'])
+input_files.append(root/'controlled-inputs/draft-spec.json')
+folder = run_v2_diagnostics(Config(data_dir=root), **inputs, input_files=input_files)
+completion = verify_diagnostic_completion(folder)
+release = build_diagnostic_release(folder, root/'diagnostic-releases/v2-controlled')
+moved = root/'diagnostic-releases/v2-relocated'
+release.rename(moved)
+verified = verify_diagnostic_release(moved)
+
+# Observe the actual monitor result while reusing the controlled test protocol;
+# no engine, certificate, governance, outcome or monitoring checks are replaced.
+def capture_monitoring(**kwargs):
+    report = research_monitoring(**kwargs)
+    write_json(root/'reports/monitoring-dry-run.json', report)
+    return report
+with patch('quant.pipeline.report_research_monitoring.research_monitoring', side_effect=capture_monitoring):
+    test_test_only_forward_matures_and_monitoring_remains_nonpromotable(root/'controlled-forward')
+
+summary = dict(input_scope='SYNTHETIC_CONTROLLED_INPUTS', v2_diagnostic_path=str(folder),
+    diagnostic_completion_sha256=digest_file(folder/'diagnostic-completion.json'),
+    four_arms_exercised=True, capital_scenarios=[1000000,2500000,5000000,10000000],
+    diagnostic_release=verified, relocation_verified=True, TEST_ONLY_forward=True,
+    monitoring_alerts_and_incidents_exercised=True, human_review_status='PENDING',
+    seal_eligible=False, historical_validation=False, promotion_eligible=False,
+    real_forward_evidence=False, no_real_v2_decision=True)
+write_json(root/'reports/controlled-diagnostics.json', summary)
+print(json.dumps(summary, indent=2))

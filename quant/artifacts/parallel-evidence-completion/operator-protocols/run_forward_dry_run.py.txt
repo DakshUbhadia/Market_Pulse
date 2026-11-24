@@ -1,0 +1,19 @@
+from pathlib import Path
+from unittest.mock import patch
+import json
+from quant.tests.test_parallel_diagnostics import test_test_only_forward_matures_and_monitoring_remains_nonpromotable
+from quant.pipeline.report_research_monitoring import research_monitoring
+from quant.storage.research_store import write_json
+root = Path('data/parallel-evidence-completion').resolve()
+def capture(**kwargs):
+    result = research_monitoring(**kwargs)
+    write_json(root/'reports/monitoring-dry-run.json', result)
+    return result
+with patch('quant.pipeline.report_research_monitoring.research_monitoring', side_effect=capture):
+    test_test_only_forward_matures_and_monitoring_remains_nonpromotable(root)
+report = json.loads((root/'reports/controlled-diagnostics.json').read_text())
+report['test_only_forward_root'] = str(root/'forward/test-only/controlled')
+report['synthetic_incident_ledger_root'] = str(root/'incidents')
+report['real_incident_ledger_used'] = False
+write_json(root/'reports/controlled-diagnostics.json', report)
+print('TEST_ONLY cohort and monitoring/incident dry run completed under the phase output root')

@@ -1050,7 +1050,7 @@ After certifying the exact current clean SHA, execute diagnostic PRICE and
 TOTAL_RETURN runs using the original requested start and prepared declaration:
 
 ```powershell
-python -m quant.pipeline.run_backtest --data-dir data/parallel-evidence-completion --corpus-data-dir D:/Market_Pulse_Quant_20261113/data --start 2016-01-01 --end 2026-11-17 --research-authority DIAGNOSTIC_ONLY --evaluation-window data/parallel-evidence-completion/reports/v1-evaluation-declaration.json --estimate-historical-costs
+python -m quant.pipeline.run_backtest --data-dir data/parallel-evidence-completion --corpus-data-dir D:/Market_Pulse_Quant_20261113/data --from 2016-01-01 --to 2026-11-17 --research-authority DIAGNOSTIC_ONLY --evaluation-window data/parallel-evidence-completion/reports/v1-evaluation-declaration.json --estimate-historical-costs
 ```
 
 Repeat with `--total-return`. Diagnostic execution retains all source, lifecycle,

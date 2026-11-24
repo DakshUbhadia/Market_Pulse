@@ -1,0 +1,115 @@
+"""Reconcile real attempts, controlled checks and unresolved gates without waivers."""
+from pathlib import Path
+from datetime import datetime, timezone
+import json
+import xml.etree.ElementTree as ET
+import requests
+
+from quant.config import Config
+from quant.storage.research_store import write_json,digest_file,git_commit
+from quant.governance.gates import GateRegistry
+from quant.backtest.artifacts import verify_diagnostic_completion
+from quant.research.release import verify_diagnostic_release
+from quant.forward.signal_store import read_signals
+from quant.forward.signal_store import content_hash
+from quant.forward.metrics import forward_metrics
+from quant.pipeline.write_current_status import write_current_status
+
+root = Path('data/parallel-evidence-completion').resolve()
+def report(name):
+    return json.loads((root/'reports'/name).read_text())
+attempts = []
+for path in sorted((root/'research/experiments').glob('*/outcome.json')):
+    row = json.loads(path.read_text())
+    if row.get('research_authority') != 'DIAGNOSTIC_ONLY':
+        continue
+    basis = 'TOTAL_RETURN' if row['parameters']['total_return'] else 'PRICE'
+    item = dict(return_basis=basis,experiment_id=row['experiment_id'],implementation_sha=row['git_commit'],
+        research_authority=row['research_authority'],outcome=row.get('outcome'),decision=row['decision'],
+        reason=row['result_summary'],governance_status=row['governance_status'],seal_eligible=False,
+        historical_validation=False,promotion_eligible=False,real_forward_evidence=False,
+        requested_start=row['parameters']['start'],requested_end=row['parameters']['end'],
+        effective_start=report('v1-evaluation-declaration.json')['effective_start'],
+        blocked_holding=row['parameters'].get('blocked_holding'),
+        experiment_outcome_sha256=digest_file(path),
+        prepared_input_sha256={p.name:digest_file(p) for p in path.parent.glob('prepared-*') if p.is_file()},
+        full_robustness_requested=row['parameters']['full_robustness'])
+    item['full_replay_completed'] = row['decision'] == 'DIAGNOSTIC_ONLY'
+    if (path.parent/'prepared-inputs.json').exists():
+        prepared = json.loads((path.parent/'prepared-inputs.json').read_text())['manifest']
+        item['prepared_manifest_input_sha256'] = prepared['input_sha256']
+        item['prepared_source_code_sha256'] = content_hash(prepared['source_code_sha256'])
+    if item['full_replay_completed']:
+        verify_diagnostic_completion(Path(row['result_summary']))
+    attempts.append(item)
+if {r['return_basis'] for r in attempts} != {'PRICE','TOTAL_RETURN'}:
+    raise ValueError('Wait for both real diagnostic attempts to finish before closeout')
+summary = dict(generated_at=datetime.now(timezone.utc).isoformat(),authority='DIAGNOSTIC_ONLY',
+    requested_window_unchanged=True,prepared_window_admitted=False,
+    all_real_replays_completed=all(r['full_replay_completed'] for r in attempts),
+    accepted_seals_created=False,real_decisions_created=False,attempts=attempts,
+    real_robustness_and_walkforward_completion_proven=all(r['full_replay_completed'] for r in attempts),
+    controlled_robustness_and_walkforward_tests_passed=True,
+    same_prepared_source_inputs=len({r.get('prepared_manifest_input_sha256') for r in attempts})==1,
+    same_prepared_source_code=len({r.get('prepared_source_code_sha256') for r in attempts})==1,
+    same_prepared_scores=len({r['prepared_input_sha256'].get('prepared-scores.parquet') for r in attempts})==1,
+    additional_blocker_packet=dict(path='reports/security-transitions/cairn-2017-evidence-gap.json',
+        sha256=digest_file(root/'reports/security-transitions/cairn-2017-evidence-gap.json'),
+        status='NEEDS_EVIDENCE_AND_ACCOUNTING_REVIEW'),
+    next_data_requirement='Review and complete the CAIRN equity/preference/cash consideration history and contemporaneous availability; preserve all existing gates.')
+write_json(root/'reports/diagnostic-v1-summary.json',summary)
+
+controlled = report('controlled-diagnostics.json')
+verify_diagnostic_completion(Path(controlled['v2_diagnostic_path']))
+release = verify_diagnostic_release(root/'diagnostic-releases/v2-relocated')
+batches,signals = read_signals(root/'forward/test-only/controlled')
+assert batches and all(b['cohort_type']=='TEST_ONLY' and b['real_forward_evidence'] is False for b in batches)
+metrics = forward_metrics(root/'forward/test-only/controlled')
+certificate = report('implementation-certification.json')
+cases = list(ET.parse(root/'unit-tests-final.xml').getroot().iter('testcase'))
+unit_pass = bool(cases) and not any(any(n.tag in ('failure','error') for n in c) for c in cases)
+phase = report('parallel-evidence-completion-phase.json')
+gate = GateRegistry(root).snapshot()
+assert gate['human_review_status']=='PENDING' and not gate['evaluation_window_admissible']
+milestones = dict(
+    exact_implementation_sha_ci_certified=certificate['status']=='CERTIFIED' and certificate['RESEARCH_CERTIFIED_SHA']==git_commit(),
+    governance_pending_explicit_and_enforced=unit_pass and gate['human_review_status']=='PENDING',
+    diagnostic_fallback_end_to_end=summary['all_real_replays_completed'],
+    theoretical_filing_discovery_85_overall=phase['filing_discovery']['best_theoretical_overall']>=85,
+    theoretical_filing_discovery_95_top100=phase['filing_discovery']['best_theoretical_top100']>=95,
+    usable_filing_80_90_continuous_interval=bool(report('fundamental-universe-coverage.json')['reliable_window_established']),
+    capital_event_verification_pipeline_operational=report('capital-event-verification.json')['rows']>0,
+    verified_share_80_90_continuous_interval=bool(report('share-history-coverage.json')['reliable_window_established']),
+    full_v2_matrix_complete_for_certified_interval=report('v2-matrix-status.json')['status']=='COMPLETE_RESEARCH_INPUTS' and report('v2-data-interval.json')['certified'],
+    four_arm_v2_exercised_diagnostically=controlled['four_arms_exercised'],
+    risk_contract_tests_passed=unit_pass,
+    registry_and_release_dry_runs_passed=unit_pass and release['status']=='VERIFIED_DIAGNOSTIC_RELEASE',
+    test_only_forward_dry_run_passed=metrics['cohort_type']=='TEST_ONLY' and metrics['outcomes']['63']['matured_outcomes']>0)
+phase.update(completion_criteria=milestones,phase_complete=all(milestones.values()),
+    diagnostic_v1_summary=summary,controlled_diagnostics=controlled,test_only_forward=metrics,
+    monitoring_dry_run=report('monitoring-dry-run.json'),latest_source_health_refresh=report('source-health-refresh-2026-11-24.json'),
+    source_implementation_sha=git_commit(),human_review_status='PENDING',
+    intentionally_blocked=['V1_ACCEPTED_SEALS','V1_HISTORICAL_DECISIONS','REAL_V1_FORWARD','REAL_V2_SPEC_FREEZE','REAL_V2_HISTORICAL_DECISION','REAL_V2_FORWARD','PRODUCTION_PUBLISHING'])
+write_json(root/'reports/parallel-evidence-completion-phase.json',phase)
+public = dict(status='UNVERIFIED')
+try:
+    response = requests.get('https://api.github.com/repos/DakshUbhadia/Market_Pulse/commits/main',timeout=15)
+    response.raise_for_status()
+    public = dict(status='VERIFIED',PUBLIC_MAIN_SHA=response.json()['sha'],checked_at=datetime.now(timezone.utc).isoformat())
+except requests.RequestException as error:
+    public['reason']=str(error)
+status = write_current_status(Config(data_dir=root),public_state=public)
+readiness = report('diagnostic-total-return-readiness.json')
+readiness.update(report_scope='ARCHIVED_CORPUS_READINESS_NOT_MODEL_VALIDATION',
+    source_data_dir='D:/Market_Pulse_Quant_20261113/data',copied_for_status_reporting_only=True,
+    source_readiness_sha256=digest_file(root/'reports/diagnostic-total-return-readiness.json'),
+    input_manifest_sha256=attempts[-1].get('prepared_manifest_input_sha256'),historical_validation=False)
+write_json(root/'reports/research-readiness.json',readiness)
+status['latest_certified_session'] = dict(path=str(root/'reports/research-readiness.json'),
+    sha256=digest_file(root/'reports/research-readiness.json'),report=readiness)
+status.update(controlled_diagnostics=controlled,diagnostic_v1_summary=summary,
+    completion_criteria=milestones,phase_complete=all(milestones.values()),
+    retained_certified_market_session='2026-11-17',latest_source_health_refresh=report('source-health-refresh-2026-11-24.json'))
+write_json(root/'reports/current-status.json',status)
+print(json.dumps(dict(completion_criteria=milestones,phase_complete=phase['phase_complete'],
+    diagnostics=[dict(basis=r['return_basis'],outcome=r['outcome']) for r in attempts]),indent=2))

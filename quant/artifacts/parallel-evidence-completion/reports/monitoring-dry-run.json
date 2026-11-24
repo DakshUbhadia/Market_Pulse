@@ -1,0 +1,113 @@
+{
+  "status": "REVIEW_REQUIRED",
+  "as_of": "2025-02-17",
+  "generated_at": "2026-11-22T09:21:50.931599+00:00",
+  "research_authority": "DIAGNOSTIC_ONLY",
+  "cohort_type": "TEST_ONLY",
+  "real_forward_evidence": false,
+  "promotion_eligible": false,
+  "model_card_sha256": null,
+  "cohort_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\forward\\test-only\\controlled",
+  "panels": {
+    "feature_drift": {
+      "status": "ALERT",
+      "features": [
+        {
+          "feature": "feature",
+          "status": "ALERT",
+          "psi": 3.9753898760836814
+        }
+      ],
+      "threshold": 0.2,
+      "action": "REVIEW_ONLY",
+      "automatic_retraining": false
+    },
+    "factor_ic": {
+      "factors": [
+        {
+          "block": "momentum",
+          "observations": 12,
+          "mean_ic_change": -0.20000000000000004,
+          "status": "ALERT"
+        }
+      ],
+      "action": "REVIEW_ONLY",
+      "automatic_retraining": false
+    },
+    "coverage": {
+      "status": "ALERT",
+      "overall_coverage": 0.7,
+      "top100_coverage": 0.8,
+      "parser_failure_rate": 0.5,
+      "action": "REVIEW_ONLY"
+    },
+    "portfolio_risk": {
+      "status": "ALERT",
+      "realized_volatility": 0.0,
+      "target_volatility": 0.15,
+      "max_cluster_concentration": 1.0,
+      "cash_weight": 9.313225746154785e-16,
+      "action": "REVIEW_ONLY"
+    },
+    "freshness": {
+      "status": "ALERT",
+      "sources": [
+        {
+          "source_id": "test",
+          "last_verified_session": "2024-10-31",
+          "status": "ALERT"
+        }
+      ],
+      "required_session": "2025-02-17",
+      "action": "REVIEW_ONLY"
+    }
+  },
+  "incidents": {
+    "data": 1,
+    "lifecycle": 0,
+    "transition": 0,
+    "accounting": 0,
+    "model": 0,
+    "risk": 0
+  },
+  "unresolved_incidents": 1,
+  "operational_integrity": false,
+  "incident_ledger": {
+    "ledger_root": "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\incidents",
+    "ledger_sha256": "94da3e0019b5db72d2722a14abd1ad1b20c575600df933dc75f8e47559b0ee06",
+    "unresolved_incidents": 1,
+    "counts": {
+      "data": 1,
+      "lifecycle": 0,
+      "transition": 0,
+      "accounting": 0,
+      "model": 0,
+      "risk": 0
+    },
+    "incidents": [
+      {
+        "affected_cohorts": [
+          "C:\\Users\\DELL\\Desktop\\Market_Pulse_1\\Market_Pulse\\data\\parallel-evidence-completion\\forward\\test-only\\controlled"
+        ],
+        "affected_dates": [
+          "2025-02-17"
+        ],
+        "affected_models": [],
+        "evidence": {
+          "scope": "SYNTHETIC_TEST_ONLY"
+        },
+        "incident_class": "PARSER_REGRESSION",
+        "incident_id": "da1400ec6d66486e9874e0962943cf00",
+        "opened_at": "2026-11-22T09:13:52.560780+00:00",
+        "resolution": null,
+        "resolved_at": null,
+        "severity": "HIGH",
+        "status": "OPEN"
+      }
+    ]
+  },
+  "rank_turnover": 0.0,
+  "automatic_retraining": false,
+  "automatic_promotion": false,
+  "cohort_evidence_sha256": "c7eb9a2ba9dfc75bd7340b06baf1cec7a3a7cbe36370b9403dfe5154f5a849bc"
+}
