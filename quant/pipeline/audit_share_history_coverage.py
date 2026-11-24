@@ -4,6 +4,7 @@ import json
 import pandas as pd
 
 from quant.features.share_history import share_history
+from quant.forward.signal_store import content_hash
 from quant.pipeline.audit_fundamental_coverage import coverage_dates
 from quant.research.coverage_policy import reliable_interval
 from quant.storage.parquet_store import read_parquet_file
@@ -57,6 +58,8 @@ def audit_share_history_coverage(universe, anchors, events, coverage, sessions, 
             eligible_with_verified_shares=available, verified_share_coverage=overall,
             overall_share_coverage=overall, top100_share_coverage=top_pct,
             top100_adv_count=top, top100_with_verified_shares=top_available,
+            eligible_ids_sha256=content_hash(sorted(cross.instrument_id)),
+            top100_ids_sha256=content_hash(sorted(liquid.instrument_id)),
             top100_verified_share_coverage=top_pct,
             broken_share_chains=int(verified.share_chain_status.eq('BROKEN').sum()) if len(verified) else 0,
             share_chain_failure_reasons=verified.loc[~verified.value_feature_valid, 'reason'].value_counts().to_dict() if len(verified) else {},

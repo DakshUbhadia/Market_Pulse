@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash, createHmac } from "node:crypto";
 import { test } from "node:test";
 import { isStatusOwner, parseStatus, syncDecision, verifyEnvelope } from "../src/lib/quant/status-contract.ts";
+import { rankingDigest, readRankingPageNumber, verifyRankingManifest, verifyRankingPage } from "../src/lib/quant/investment-contract.ts";
 
 const key = "a".repeat(64);
 const now = Date.parse("2026-11-25T09:00:00.000Z");
@@ -100,4 +101,51 @@ test("sync rejects a changed snapshot at the same or earlier time", () => {
   assert.equal(syncDecision(first, first), "DUPLICATE");
   assert.equal(syncDecision(first, { ...first, sha256: "changed" }), "REPLAY");
   assert.equal(syncDecision(first, { sha256: "new", asOf: "2026-11-25T09:00:00.000Z" }), "ACCEPT");
+});
+
+const investmentKey = "e".repeat(64);
+const row = { instrumentId: "10000000-0000-0000-0000-000000000000", symbol: "TEST", rank: 1, percentile: 100,
+  advInr: 3300000, volatility: 0.21, blocks: { momentum: 0.4, relative_strength: -0.2, low_risk: 0.3, liquidity: 0 } };
+const samplePage = Buffer.from(JSON.stringify([row]));
+const ranking = { schemaVersion: 1, authority: "RESEARCH_RANKINGS", ownerScope: rankingDigest("owner"),
+  modelId: "v1-test", modelVersion: "factor_v1_1.0.0", codeSha: status.gitCommit,
+  seal: status.runId, manifest: status.runId, gateDecision: status.runId, runId: status.runId,
+  registry: { file: "00000001.json", sha256: status.runId },
+  liveInputs: Object.fromEntries(["governance", "window", "incidents", "calendar", "pipeline"].map(name => [name, status.runId])),
+  session: "2026-11-24", asOf: "2026-11-25T08:45:00.000Z", expiresAt: "2026-11-25T09:15:00.000Z",
+  nextOpen: "2026-11-26T03:45:00.000Z", size: 1, proxyCosts: true, pages: [rankingDigest(samplePage)] };
+
+function signRanking(value) {
+  const bytes = Buffer.from(JSON.stringify(value));
+  const signature = createHmac("sha256", Buffer.from(investmentKey, "hex"))
+    .update("quant/investment/v1\0").update(bytes).digest("hex");
+  return Buffer.from(JSON.stringify({ payload: bytes.toString("base64"), sha256: rankingDigest(bytes), signature }));
+}
+
+test("investment contract authenticates owner, integrity, and short eligible windows", () => {
+  const envelope = signRanking(ranking);
+  assert.deepEqual(verifyRankingManifest(envelope, investmentKey, "owner", now), ranking);
+  assert.throws(() => verifyRankingManifest(envelope, investmentKey, "other", now), /manifest/);
+  assert.throws(() => verifyRankingManifest(envelope, key, "owner", now), /integrity/);
+  assert.throws(() => verifyRankingManifest(envelope, investmentKey, "owner", Date.parse(ranking.expiresAt)), /expired/);
+  assert.throws(() => verifyRankingManifest(signRanking({ ...ranking, expiresAt: ranking.nextOpen }), investmentKey, "owner", now), /window/);
+  assert.throws(() => verifyRankingManifest(Buffer.from(JSON.stringify(signExtended(extended()))), key, "owner", now), /envelope/);
+  assert.throws(() => verifyEnvelope(JSON.parse(envelope.toString()), investmentKey, now, "owner"), /integrity/);
+});
+
+test("investment pages enforce manifest digests, exact rows and bounded pagination", () => {
+  assert.deepEqual(verifyRankingPage(samplePage, ranking, 1), [row]);
+  assert.throws(() => verifyRankingPage(samplePage, ranking, 2), /integrity/);
+  assert.throws(() => verifyRankingPage(Buffer.concat([samplePage, Buffer.from(" ")]), ranking, 1), /integrity/);
+  for (const changed of [{ rank: 2 }, { percentile: 101 }, { targetWeight: .03 }, { blocks: { ...row.blocks, target: 2 } }]) {
+    const bytes = Buffer.from(JSON.stringify([{ ...row, ...changed }]));
+    assert.throws(() => verifyRankingPage(bytes, { ...ranking, pages: [rankingDigest(bytes)] }, 1), /page/);
+  }
+  for (const changed of [{ authority: "TEST_ONLY" }, { schemaVersion: 0 }, { size: 5001 },
+    { registry: { ...ranking.registry, file: "../registry.json" } }, { liveInputs: { ...ranking.liveInputs, rawFile: "file" } }]) {
+    assert.throws(() => verifyRankingManifest(signRanking({ ...ranking, ...changed }), investmentKey, "owner", now), /manifest/);
+  }
+  assert.equal(readRankingPageNumber(undefined), 1);
+  assert.equal(readRankingPageNumber("100"), 100);
+  for (const input of ["0", "01", "101", "-1", "1.2", ["1", "2"]]) assert.equal(readRankingPageNumber(input), null);
 });

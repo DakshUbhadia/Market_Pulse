@@ -80,7 +80,9 @@ def project_details(current, status, *, reports, archive, history, current_sha25
         return archive / 'reports' / name
     local = read('acceptance', reports / 'acceptance.json')
     certificate = read('certificate', reports / 'implementation-certification.json', 'implementation_certification')
-    refresh = read('refresh', reports.parent / 'market-refresh/reports/research-readiness.json')
+    refresh = (read('refresh', Path(current['latest_refresh_attempt']['path']), 'latest_refresh_attempt')
+        if current.get('latest_refresh_attempt') else
+        read('refresh', reports.parent / 'market-refresh/reports/research-readiness.json'))
     smoke = read('smoke', p('source-health-refresh-2026-11-24.json'))
     pilot = read('pilot', reports / 'official-source-pilot.json', 'completion_source_pilot')
     read('filing', reports / 'fundamental-universe-coverage.json', 'filing_coverage')
@@ -242,7 +244,7 @@ def project_details(current, status, *, reports, archive, history, current_sha25
         cairnObserved=day(cairn.get('observed_block_date')) if cairn.get('subject_id') == 'CAIRN_2017' else None,
         fourArmDiagnostic=controlled.get('four_arms_exercised') is True and controlled.get('historical_validation') is False,
         continuousJoint=interval.get('certified') is True and joint.get('joint_status') == 'THRESHOLDS_MET',
-        eod='BLOCKED' if refresh.get('status') == 'NOT_READY' else 'UNASSESSED',
+        eod='BLOCKED' if refresh.get('status') in ('FAILED', 'NOT_READY') else 'UNASSESSED',
         scheduler='ACCESS_DENIED' if recovery.get('windows_schedule') == 'ACCESS_DENIED' else 'UNASSESSED',
         certifiedSha=identifier(certified_sha, r'[a-f0-9]{40}'),
         riskVersion=identifier(current.get('versions', {}).get('PORTFOLIO_RISK_VERSION'), r'[a-zA-Z0-9_.-]{1,64}'),

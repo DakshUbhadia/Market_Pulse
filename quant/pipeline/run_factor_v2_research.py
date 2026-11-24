@@ -35,7 +35,8 @@ def run_factor_v2_research(config, *, spec_path, price_baseline, total_return_ba
         require_action(config, 'V2_SPEC_FREEZE')
         spec=load_specification(spec_path)
         from quant.research.specification import verify_coverage_inputs
-        verify_coverage_inputs(json.loads(Path(spec_path).read_text(encoding='utf-8')), config.data_dir)
+        record = json.loads(Path(spec_path).read_text(encoding='utf-8'))
+        verify_coverage_inputs(record, config.data_dir)
         implementation = require_certified_implementation(config)
         baselines=require_completed_baselines(config,price_baseline,total_return_baseline)
         start=pd.Timestamp(spec['evaluation_windows'][0]['from']).date()
@@ -44,6 +45,10 @@ def run_factor_v2_research(config, *, spec_path, price_baseline, total_return_ba
         manifest=input_manifest(config,end)
         paths=[spec_path,filings_path,anchors_path,events_path,share_coverage_path]
         hashes={str(p):digest_file(p) for p in paths}
+        matrix_report = record['coverage_reports']['matrix']
+        for role, path in zip(('filings', 'anchors', 'capital_events', 'share_coverage'), paths[1:], strict=True):
+            if matrix_report['input_sha256'][matrix_report['input_roles'][role]] != hashes[str(path)]:
+                raise ValueError('V2 research input differs from the reviewed joint coverage source')
         filings,anchors,events,share_coverage=[read_parquet_file(p) for p in paths[1:]]
         from quant.pipeline.audit_share_history_coverage import verify_share_archives
         anchors, events, share_coverage = [verify_share_archives(f, config.data_dir) for f in (anchors, events, share_coverage)]
@@ -87,8 +92,12 @@ def run_factor_v2_research(config, *, spec_path, price_baseline, total_return_ba
         ranked, matrix = prepare_v2_matrix(features, fundamentals, min_group_size=spec['min_group_size'],
             coverage_inputs=(filings, anchors, events, share_coverage))
         write_json(folder/'feature-coverage.json', matrix)
-        if matrix['status'] != 'COMPLETE_RESEARCH_INPUTS':
-            raise ValueError('V2 feature completeness fails the per-cutoff 80% / 90% gate')
+        if matrix['status'] != 'COMPLETE_RESEARCH_INPUTS' or any(
+            row.get('joint_top100_pct') is None or row['joint_overall_pct'] < 80 or row['joint_top100_pct'] < 90
+            or row['overall']['joint'] != row['complete_seven_block_rows']
+            for row in matrix['periods']
+        ):
+            raise ValueError('V2 evaluated rows must pass the joint filing, shares and seven-block gate')
         for name,scores in ranked.items():
             write_parquet(scores,folder/(name+'-scores.parquet'))
         labels=forward_labels(prices,benchmark,sessions,signal_keys=ranked['full_v1'][['as_of','instrument_id']])
@@ -143,6 +152,7 @@ def run_factor_v2_research(config, *, spec_path, price_baseline, total_return_ba
         write_json(folder/'v2-decision.json',decision)
         verify_manifest(config,manifest)
         load_specification(spec_path)  # implementation must still match the frozen review
+        verify_coverage_inputs(record, config.data_dir)
         if hashes!={str(p):digest_file(p) for p in paths}:
             raise ValueError('Research inputs changed during evaluation')
         write_json(folder/'config.json',dict(specification=spec,baselines=baselines,manifest=manifest,

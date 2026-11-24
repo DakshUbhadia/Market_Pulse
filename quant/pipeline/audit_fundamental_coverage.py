@@ -99,6 +99,8 @@ def audit_fundamental_coverage(universe, filings, sessions, *, start, end, frequ
             universe_assessment='ASSESSED' if count else 'UNASSESSED_EMPTY_OR_MISSING_UNIVERSE')
         from quant.forward.signal_store import content_hash
         row['universe_sha256'] = content_hash(cross[['instrument_id', 'adv60']].sort_values('instrument_id').to_dict('records')) if count else content_hash([])
+        row['eligible_ids_sha256'] = content_hash(sorted(cross.instrument_id)) if count else content_hash([])
+        row['top100_ids_sha256'] = content_hash(sorted(liquid.instrument_id)) if count else content_hash([])
         # Categories come only from classifications known at this historical date.
         for category in ('bank', 'industrial', 'nbfc'):
             members = cross[cross.entity_type.eq(category)] if count and 'entity_type' in cross else cross.iloc[:0]

@@ -13,12 +13,11 @@ def main():
     parser.add_argument('--share-coverage', type=Path, required=True)
     parser.add_argument('--governance-review', type=Path, required=True)
     parser.add_argument('--data-interval', type=Path, required=True)
-    parser.add_argument('--joint-matrix-coverage', type=Path, help='Optional joint evidence bound by the human review')
+    parser.add_argument('--joint-matrix-coverage', type=Path, required=True, help='Joint seven-block evidence bound by the human review')
     args=parser.parse_args()
     coverage_reports = {'filings': json.loads(args.coverage.read_text(encoding='utf-8')),
-                        'shares': json.loads(args.share_coverage.read_text(encoding='utf-8'))}
-    if args.joint_matrix_coverage:
-        coverage_reports['matrix'] = json.loads(args.joint_matrix_coverage.read_text(encoding='utf-8'))
+                        'shares': json.loads(args.share_coverage.read_text(encoding='utf-8')),
+                        'matrix': json.loads(args.joint_matrix_coverage.read_text(encoding='utf-8'))}
     freeze_specification(json.loads(args.spec.read_text(encoding='utf-8')),args.output,
         coverage_reports=coverage_reports,
         governance_review=json.loads(args.governance_review.read_text(encoding='utf-8')),

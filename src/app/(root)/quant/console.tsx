@@ -2,6 +2,8 @@
 import { notFound } from "next/navigation";
 import { canReadQuantStatus, readQuantStatus } from "@/lib/quant/status-server";
 import type { QuantStatus } from "@/lib/quant/status-contract";
+import { readRankingPageNumber } from "@/lib/quant/investment-contract";
+import { readOwnerInvestment } from "@/lib/quant/investment-server";
 import { Coverage, Evidence, type Search } from "./evidence-views";
 import { Card, Fields, dateLabel, details, display, measured, panel, state, type Snapshot } from "./presentation";
 
@@ -42,12 +44,12 @@ export async function QuantConsole({ section, search = {}, runId }: { section: s
       </dl>
     </header>
     {result.state !== "AVAILABLE" && <p role="status" className="mb-5 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-amber-100">
-      {{ EMPTY: "No verified local snapshot is available.", HOSTED_EMPTY: "No verified hosted snapshot is available.",
+      {{ EMPTY: "No verified local snapshot is available. Export a signed status snapshot to the configured server file.", HOSTED_EMPTY: "No verified hosted snapshot is available.",
         INVALID: "The status snapshot failed verification.", STALE: "Archived snapshot. The latest verified figures shown here may be stale." }[result.state]}
     </p>}
     <div className="grid gap-6 lg:grid-cols-[11rem_minmax(0,1fr)]">
       <nav aria-label="Quant sections" className="flex overflow-x-auto rounded-lg border border-slate-800 p-1 lg:sticky lg:top-24 lg:self-start lg:flex-col">
-        {sections.map(([key, label]) => <Link key={key} href={key ? `/quant/${key}` : "/quant"}
+        {sections.map(([key, label]) => <Link key={key} href={key ? `/quant/${key}` : "/quant"} prefetch={key === "rankings" ? false : undefined}
           aria-current={key === section ? "page" : undefined}
           className={(key === section ? "bg-yellow-500/10 text-yellow-300" : "text-slate-300 hover:bg-slate-800")
             + " shrink-0 rounded px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-yellow-300"}>{label}
@@ -68,7 +70,8 @@ export async function QuantConsole({ section, search = {}, runId }: { section: s
           : section === "risk" ? <Risk status={status} />
           : section === "forward" ? <Forward status={status} test={search.cohort === "test"} />
           : section === "operations" ? <Operations status={status} />
-          : section === "portfolio" || section === "rankings" ? <Locked />
+          : section === "rankings" ? <Rankings status={result} requestedPage={search.page} />
+          : section === "portfolio" ? <Locked />
           : <Card heading="Instrument status"><p className="break-all font-mono">{section}</p><p>Verified instrument metadata is unavailable in this snapshot.</p></Card>}
         {status && <Provenance status={status} />}
       </div>
@@ -197,4 +200,45 @@ function Operations({ status }: { status: Snapshot }) {
 function Locked() {
   return <Card heading="Access locked"><p>Access requires a manually promoted champion, eligible current data, verified risk limits and publication approval.</p>
     <Link className="text-yellow-300 underline" href="/quant/models">View model and promotion gates</Link></Card>;
+}
+
+async function Rankings({ status, requestedPage }: {
+  status: Awaited<ReturnType<typeof readQuantStatus>>;
+  requestedPage: Search[string];
+}) {
+  const page = readRankingPageNumber(requestedPage);
+  const result = page === null ? null : await readOwnerInvestment("rankings", page, status);
+  if (!result || result.state === "PAGE_NOT_FOUND") {
+    return <Card heading="Ranking page unavailable"><Link className="text-yellow-300 underline" href="/quant/rankings">First page</Link></Card>;
+  }
+  if (result.state === "LOCKED") {
+    return <Card heading="Access locked"><p>Current research rankings require an approved V1 release and verified inputs for the latest completed session.</p>
+      <ul className="list-inside list-disc">{result.reasons.map(reason => <li key={reason}>{state(reason)}</li>)}</ul>
+      <Link className="text-yellow-300 underline" href="/quant/research">View research gates</Link></Card>;
+  }
+  const num = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
+  return <Card heading="Current V1 research rankings">
+    <Fields items={[["Model", result.model], ["Version", result.modelVersion], ["Data session", result.session],
+      ["Snapshot issued", dateLabel(result.asOf)], ["Next scheduled open", dateLabel(result.nextOpen)], ["Eligible universe", result.size]]} />
+    <p>Percentiles describe relative ranks in this eligible universe. Block contributions are the weighted, cross-sectionally normalized V1 inputs.</p>
+    {result.proxyCosts && <p className="text-amber-300">Historical validation includes proxy trading costs.</p>}
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <caption className="sr-only">Research rankings and weighted factor contributions</caption>
+        <thead><tr>{["Rank", "Symbol", "Percentile", "ADV (INR)", "63-session volatility", "Momentum", "Relative strength", "Low risk", "Liquidity"].map(label =>
+          <th scope="col" key={label} className="whitespace-nowrap px-3 py-2 text-slate-200">{label}</th>)}</tr></thead>
+        <tbody>{result.rows.map(row => <tr key={row.instrumentId} className="border-t border-slate-800">
+          <td className="px-3 py-2 tabular-nums">{row.rank}</td><th scope="row" className="px-3 py-2">{row.symbol}</th>
+          {[num.format(row.percentile), num.format(row.advInr), num.format(row.volatility * 100) + "%",
+            ...[row.blocks.momentum, row.blocks.relative_strength, row.blocks.low_risk, row.blocks.liquidity].map(n => num.format(n))].map((value, i) =>
+            <td key={i} className="px-3 py-2 tabular-nums">{value}</td>)}
+        </tr>)}</tbody>
+      </table>
+    </div>
+    <nav aria-label="Ranking pages" className="flex flex-wrap gap-4 text-sm">
+      {result.page > 1 && <Link className="text-yellow-300 underline" prefetch={false} href={`/quant/rankings?page=${result.page - 1}`}>Previous</Link>}
+      <span>Page {result.page} of {result.pageCount}</span>
+      {result.page < result.pageCount && <Link className="text-yellow-300 underline" prefetch={false} href={`/quant/rankings?page=${result.page + 1}`}>Next</Link>}
+    </nav>
+  </Card>;
 }

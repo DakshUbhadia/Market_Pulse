@@ -6,6 +6,26 @@ The [43-section assessment](PARALLEL_EVIDENCE_STATUS.md) and
 [measured phase report](artifacts/parallel-evidence-completion/reports/parallel-evidence-completion-phase.json)
 retain the prior execution evidence.
 
+## Private console activation
+
+The local startup script uses the operator's authenticated Better Auth account
+ID and exports a signed status snapshot. The latest EOD attempt can be shown
+alongside the November 17 certified archive. The November 25 retry remained
+`NOT_READY` after an NSE HTTP 403. The new issuer notice confirms that the
+CAIRN preference shares began trading in August 2017. A reviewed April 26
+valuation or disposition is still required for the held-event replay.
+
+An independently signed owner rankings projection requires paired passing V1
+seals, a registered model and verified release, an exact software certificate,
+current EOD, and an incident check. TIDEWATER review and fallback admission are
+still pending. The private rankings, real forward and portfolio endpoints
+therefore have locked access. V2 freeze also requires the joint matrix with
+matching dated eligible and top-100 populations and reviewed input digests.
+
+The retained joint result is zero complete rows of 339 on November 17. No
+forward cohort or production publication was admitted. See the local startup
+and scheduling commands in the [Quant README](README.md).
+
 | November 25 work package | State | Acceptance evidence or blocker |
 | --- | --- | --- |
 | Exact implementation | `VERIFY_PER_REVISION` | The preceding console revision `6e230ad213aff987a865245a697d9b6c81ca7deb` passed [GitHub unit CI](https://github.com/DakshUbhadia/Market_Pulse/actions/runs/45468765675). The signed projection reports certification for the exact source revision when its matching certificate is available. |

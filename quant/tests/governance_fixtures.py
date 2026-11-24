@@ -18,7 +18,7 @@ def human_review(review_type, subject, decision, **fields):
 def freeze_test_specification(spec, output, *, coverage_reports):
     from quant.research.data_interval import certify_data_interval
     from quant.research.specification import freeze_specification, specification_subject
-    interval = certify_data_interval(coverage_reports['filings'], coverage_reports['shares'])
+    interval = certify_data_interval(coverage_reports['filings'], coverage_reports['shares'], matrix=coverage_reports['matrix'])
     approve_test_gate(output.parent)
     review = human_review('V2_SPEC_APPROVAL', specification_subject(spec, coverage_reports, interval), 'APPROVE',
                          subject_id=spec['spec_version'])

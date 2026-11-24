@@ -1074,9 +1074,12 @@ historical month-end feature cross-section per cutoff with the full eligible
 denominator. The report counts usable filings, verified shares, complete V2
 blocks and their intersection, including historical top-100 and entity slices.
 Pass its `matrix-status.json` to `quant.research.data_interval --matrix`.
-An optional V2 freeze with `--joint-matrix-coverage` binds the joint report to
-the reviewed specification. The report must then pass the same monthly
-continuity and evaluation-window requirements.
+V2 freeze requires `--joint-matrix-coverage`. Regenerate the three reports for
+the same dated eligible and historical top-100 identities before a human
+reviews the specification. The freeze binds the matrix's six input files and
+checks continuous 80% overall and 90% top-100 coverage for at least 12 months
+before OOS. The runner checks the supplied inputs against the frozen joint
+report and remeasures joint coverage for the evaluated rows.
 
 Build and verify portable diagnostic bundles with
 `python -m quant.pipeline.build_diagnostic_release --source ... --output ...`.
@@ -1114,18 +1117,35 @@ same source to repair its pointer. After key rotation, set
 `QUANT_STATUS_PREVIOUS_SIGNING_KEY` on the reader for retained entries and
 publish a new source snapshot with the active key.
 
-For local preview, configure the signing key, owner ID and projection path in
-the environment, start Next.js with `npm run dev`, sign in with the configured
-account, and open `/quant`. Use `--test-only` with separate output and keys for
-an isolated demo. Hosted sync remains opt-in and rejects demo snapshots.
-`--evidence-dir` reads archived reports where the writable workspace has no
-fresh equivalent.
+For local preview, sign in to the local app and open `/api/auth/get-session`
+in the same browser. Use its `user.id` as the owner ID. Run the startup script
+from the repository root. It signs a snapshot with the current shell's key or
+generates a key in that shell and launches Next.js on localhost. Stop an
+existing dev server first or add `-Port 3001`. Pass `-RefreshReport` with the
+latest EOD attempt to show a failed refresh alongside the certified archive.
 
 ```powershell
-.venv/Scripts/python.exe -m quant.pipeline.write_current_status --data-dir data/completion-enhancement --evidence-dir quant/artifacts/parallel-evidence-completion
-.venv/Scripts/python.exe -m quant.pipeline.export_quant_status --current-status data/completion-enhancement/reports/current-status.json --output data/completion-enhancement/status-envelope.json
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\start_quant_console.ps1 -OwnerId '<your Better Auth user.id>'
 node --experimental-strip-types --test scripts/test-quant-status.mjs
 ```
+
+Use `--test-only` with separate output and keys for an isolated demo. Hosted
+sync remains opt-in and rejects demo snapshots. `-EvidenceDir` reads archived
+reports where the writable workspace has no fresh equivalent.
+
+Current V1 rankings have a separate local projection at `/api/quant/rankings`
+and `/quant/rankings`. After the matched PRICE and TOTAL_RETURN baselines pass
+and the corresponding registered model and release verify, use
+`python -m quant.pipeline.export_research_rankings --help` for the required
+paths and current completed signal session. Set `QUANT_PRIVATE_RESEARCH_VIEW`
+to `true` on both processes only when explicitly authorizing this owner view.
+Share a distinct `QUANT_INVESTMENT_SIGNING_KEY` and point Next.js at the
+absolute `QUANT_INVESTMENT_FILE`, `QUANT_INVESTMENT_REGISTRY_EVENTS`, and
+`QUANT_INVESTMENT_DATA_DIR` paths. The ranking expires at the earlier of 30
+minutes from export and the next scheduled open. A changed registry,
+governance, incident or market state invalidates it. The owner APIs for real
+forward and portfolio access return locked status while their evidence is
+unavailable. The status API continues to serve research metadata.
 
 Hosted status sync uses `QUANT_STATUS_SYNC=true`, a separate random 32-byte
 `QUANT_STATUS_SYNC_TOKEN`, and a MongoDB account scoped to the `quant_status`
@@ -1141,6 +1161,11 @@ Daily and weekly EOD commands share the lock in `state/market-writer.lock`.
 The OS releases it if a job exits. Use `scripts/run_quant_eod.ps1 -DataDir
 <writable-corpus>` for the daily task and append `-FullAudit` for a separate
 weekly task. Keep the retained corpus outside both writable targets.
+For a local signed status refresh after the scheduled job, add
+`-ConsoleStatusDataDir <writable-status-workspace>`. The wrapper records the job
+exit status, including failures. For a detailed measured report, pass
+`-ConsoleRefreshReport <latest-EOD-attempt-json>`. Provide the same owner, key,
+and private status path to the scheduler and Next.js server.
 
 After an interrupted acquisition, verify the prior batch's output hashes and
 resume using the combined filings, updated coverage and ceiling, and

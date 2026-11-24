@@ -12,6 +12,8 @@ from quant.storage.parquet_store import read_parquet_file, write_parquet
 from quant.storage.research_store import write_json, digest_file
 from quant.research.coverage_policy import reliable_interval
 
+MATRIX_INPUT_ROLES = ('price_features', 'fundamental_features', 'filings', 'anchors', 'capital_events', 'share_coverage')
+
 
 def prepare_v2_matrix(price_features, fundamental_features, *, min_group_size=20, coverage_inputs=None):
     if min_group_size < 20:
@@ -68,6 +70,8 @@ def prepare_v2_matrix(price_features, fundamental_features, *, min_group_size=20
                                  & missingness.instrument_id.isin(filing_names & share_names)]
             reasons = {block: group.reason.value_counts().to_dict() for block, group in losses.groupby('block')}
             row.update(overall=counts(set(cross.instrument_id)), top100=counts(liquid_names),
+                eligible_ids_sha256=content_hash(sorted(cross.instrument_id)),
+                top100_ids_sha256=content_hash(sorted(liquid_names)),
                 entities={str(kind): counts(set(cross.loc[members.eq(kind), 'instrument_id']))
                           for kind in sorted(members.unique())},
                 joint_overall_pct=100*len(joint)/len(cross),
@@ -102,7 +106,7 @@ def main():
     args = parser.parse_args()
     if args.output.exists():
         raise ValueError('Choose a new matrix preparation directory')
-    inputs = [args.price_features, args.fundamental_features]
+    inputs = [args.price_features.resolve(), args.fundamental_features.resolve()]
     coverage_inputs = None
     evidence = [args.archive_root, args.filings, args.anchors, args.capital_events, args.share_coverage]
     if any(evidence):
@@ -110,7 +114,7 @@ def main():
             parser.error('Joint coverage needs --archive-root, --filings, --anchors, --capital-events and --share-coverage')
         from quant.pipeline.audit_fundamental_coverage import verify_filing_archives
         from quant.pipeline.audit_share_history_coverage import verify_share_archives
-        inputs.extend(evidence[1:])
+        inputs.extend(p.resolve() for p in evidence[1:])
         coverage_inputs = [verify_filing_archives(read_parquet_file(args.filings), args.archive_root),
             *(verify_share_archives(read_parquet_file(p), args.archive_root) for p in evidence[2:])]
     hashes = {str(p): digest_file(p) for p in inputs}
@@ -120,6 +124,8 @@ def main():
     for name, frame in arms.items():
         write_parquet(frame, args.output/(name+'.parquet'))
     report['input_sha256'] = hashes
+    if coverage_inputs is not None:
+        report['input_roles'] = dict(zip(MATRIX_INPUT_ROLES, map(str, inputs), strict=True))
     write_json(args.output/'matrix-status.json', report)
     print(json.dumps(report, indent=2))
 

@@ -21,7 +21,7 @@ def read_report(path):
         return dict(status='INVALID', path=str(path))
 
 
-def write_current_status(config, *, public_state=None, evidence_dir=None):
+def write_current_status(config, *, public_state=None, evidence_dir=None, refresh_report=None):
     from quant.identity.transitions import TRANSITION_VERSION
     from quant.pipeline.cli import completed_day
     root = config.data_dir
@@ -53,6 +53,8 @@ def write_current_status(config, *, public_state=None, evidence_dir=None):
         fundamental_documents=read_report(root/'reports/fundamental-document-backfill-status.json'),
         historical_costs=read_report(root/'reports/historical-cost-evidence-review.json'),
         factor_v2_enabled=False,production_promotion=False)
+    if refresh_report is not None:
+        report['latest_refresh_attempt'] = read_report(Path(refresh_report))
     from quant.monitoring.incidents import IncidentLedger
     ledger = root/'research/incidents'
     report['incident_ledger'] = (IncidentLedger(ledger).report() if (ledger/'ledger.json').is_file()
@@ -126,8 +128,10 @@ def main():
     from quant.pipeline.cli import parser_config
     parser, config = parser_config(__doc__)
     parser.add_argument('--evidence-dir', type=Path)
+    parser.add_argument('--refresh-report', type=Path, help='Latest EOD attempt, separate from the certified archive')
     args = parser.parse_args()
-    print(json.dumps(write_current_status(args.config(config), evidence_dir=args.evidence_dir),indent=2))
+    print(json.dumps(write_current_status(args.config(config), evidence_dir=args.evidence_dir,
+        refresh_report=args.refresh_report), indent=2))
 
 
 if __name__ == '__main__':

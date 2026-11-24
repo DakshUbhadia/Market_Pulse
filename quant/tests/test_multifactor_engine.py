@@ -149,12 +149,25 @@ def reviewed_spec():
     return spec
 
 
-def synthetic_coverage_reports(spec):
+def synthetic_coverage_reports(spec, matrix_inputs=None):
     dates = pd.date_range(pd.Timestamp(spec['evaluation_windows'][0]['from'])-pd.DateOffset(months=13),
                           pd.Timestamp(spec['evaluation_windows'][-1]['to'])+pd.offsets.MonthEnd(0), freq='ME')
     periods = [dict(as_of=str(d.date()), coverage_pct=100., top_liquidity_coverage_pct=100.,
+                    eligible_ids_sha256='a'*64, top100_ids_sha256='a'*64,
                     verified_share_coverage=100., top100_verified_share_coverage=100., thresholds_met=True) for d in dates]
-    return {k:dict(scope='SYNTHETIC_TEST_ONLY', frequency='monthly', periods=periods) for k in ('filings', 'shares')}
+    from quant.models.factor_v2 import BLOCKS
+    from quant.pipeline.prepare_v2_matrix import MATRIX_INPUT_ROLES
+    roles = dict(zip(MATRIX_INPUT_ROLES, map(str, matrix_inputs or MATRIX_INPUT_ROLES), strict=True))
+    hashes = {path: digest_file(Path(path)) if matrix_inputs else 'b'*64 for path in roles.values()}
+    counts = dict(eligible=25, joint=25, usable_filings=25, verified_shares=25, filings_and_shares=25, complete_blocks=25)
+    return dict(
+        filings=dict(scope='SYNTHETIC_TEST_ONLY', frequency='monthly', periods=[
+            dict(row, eligible_universe_count=25, top_liquidity_count=25) for row in periods]),
+        shares=dict(scope='SYNTHETIC_TEST_ONLY', periods=[
+            dict(row, eligible_count=25, top100_adv_count=25) for row in periods]),
+        matrix=dict(scope='SYNTHETIC_TEST_ONLY', required_blocks=list(BLOCKS), value_required=True,
+            input_roles=roles, input_sha256=hashes, periods=[
+            dict(row, joint_overall_pct=100., joint_top100_pct=100., overall=counts.copy(), top100=counts.copy()) for row in periods]))
 
 
 def test_specification_rejects_draft_and_detects_tampering(tmp_path):
@@ -173,15 +186,30 @@ def test_specification_rejects_draft_and_detects_tampering(tmp_path):
         load_specification(path)
 
 
-def test_v2_research_block_retains_outcome_without_completion(tmp_path, monkeypatch):
-    from quant.config import Config
+def test_v2_freeze_rejects_missing_joint_report_and_changed_denominator(tmp_path):
     from quant.research.specification import freeze_specification
+    spec = reviewed_spec()
+    reports = synthetic_coverage_reports(spec)
+    matrix = reports.pop('matrix')
+    with pytest.raises(ValueError, match='joint seven-block coverage'):
+        freeze_specification(spec, tmp_path/'missing.json', coverage_reports=reports)
+    reports['matrix'] = matrix
+    matrix['periods'][0]['overall']['eligible'] = 26
+    with pytest.raises(ValueError, match='shared cutoff denominators'):
+        freeze_specification(spec, tmp_path/'mismatch.json', coverage_reports=reports)
+    matrix['periods'][0]['overall']['eligible'] = 25
+    matrix['periods'][0]['top100_ids_sha256'] = 'c'*64
+    with pytest.raises(ValueError, match='same dated eligible and top-100 identities'):
+        freeze_specification(spec, tmp_path/'changed-identities.json', coverage_reports=reports)
+
+
+def test_v2_research_block_retains_outcome_without_completion(tmp_path):
+    from quant.config import Config
     from quant.pipeline.run_factor_v2_research import run_factor_v2_research
-    monkeypatch.setattr('quant.pipeline.run_factor_v2_research.require_certified_implementation', lambda *a: {'scope': 'SYNTHETIC_ONLY'})
     spec=tmp_path/'spec.json'
     from quant.tests.governance_fixtures import freeze_test_specification
     freeze_test_specification(reviewed_spec(),spec,coverage_reports=synthetic_coverage_reports(reviewed_spec()))
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ValueError, match='Frozen coverage source is missing or changed'):
         run_factor_v2_research(Config(data_dir=tmp_path),spec_path=spec,
             price_baseline=tmp_path/'no-price-baseline',total_return_baseline=tmp_path/'no-tr-baseline',
             filings_path=tmp_path/'missing',anchors_path=tmp_path/'missing',events_path=tmp_path/'missing',
@@ -370,7 +398,10 @@ def test_complete_v2_runner_seals_synthetic_comparison_without_promotion(tmp_pat
     spec['evaluation_windows']=[dict(**{'from':'2025-01-01','to':'2025-02-07'})]
     spec_path=tmp_path/'frozen-spec.json'
     from quant.tests.governance_fixtures import freeze_test_specification
-    freeze_test_specification(spec,spec_path,coverage_reports=synthetic_coverage_reports(spec))
+    coverage_features = [tmp_path/'price-features.parquet', tmp_path/'fundamental-features.parquet']
+    write_parquet(prices, coverage_features[0])
+    write_parquet(pd.DataFrame(rows), coverage_features[1])
+    freeze_test_specification(spec,spec_path,coverage_reports=synthetic_coverage_reports(spec, coverage_features + inputs))
     # Only the external V1/data foundation is isolated. Feature construction,
     # PIT selection, coverage, all accounting comparisons and seals remain real.
     monkeypatch.setattr(runner,'require_completed_baselines',lambda *a:{'scope':'SYNTHETIC_TEST_ONLY'})

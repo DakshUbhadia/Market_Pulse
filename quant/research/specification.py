@@ -85,8 +85,8 @@ def validate_specification(spec):
 
 def validate_coverage_reports(spec, reports):
     from quant.research.coverage_policy import reliable_interval
-    if not reports or not {'filings', 'shares'} <= set(reports) <= {'filings', 'shares', 'matrix'}:
-        raise ValueError('Freeze requires certified filing and historical-share coverage reports')
+    if not reports or set(reports) != {'filings', 'shares', 'matrix'}:
+        raise ValueError('Freeze requires filing, historical-share and joint seven-block coverage reports')
     start, end = spec['evaluation_windows'][0]['from'], spec['evaluation_windows'][-1]['to']
     for name, report in reports.items():
         rows = report.get('periods', [])
@@ -104,6 +104,41 @@ def validate_coverage_reports(spec, reports):
                 or pd.Period(checked[-1]['as_of'], freq='M') < pd.Period(end, freq='M')
                 or (name == 'filings' and report.get('frequency') != 'monthly')):
             raise ValueError('Certified continuous monthly coverage must precede and span OOS dates')
+    import math
+    import re
+    from quant.models.factor_v2 import BLOCKS
+    from quant.pipeline.prepare_v2_matrix import MATRIX_INPUT_ROLES
+    matrix = reports['matrix']
+    if matrix.get('required_blocks') != list(BLOCKS) or matrix.get('value_required') is not True:
+        raise ValueError('Joint coverage must assess all seven V2 blocks with Value required')
+    roles, hashes = matrix.get('input_roles', {}), matrix.get('input_sha256', {})
+    if (set(roles) != set(MATRIX_INPUT_ROLES) or len(hashes) != len(roles)
+            or set(roles.values()) != set(hashes)
+            or not all(isinstance(d, str) and re.fullmatch(r'[a-f0-9]{64}', d) for d in hashes.values())):
+        raise ValueError('Joint coverage must bind all six source artifacts')
+    filings_by_day = {r['as_of']: r for r in reports['filings']['periods']}
+    shares_by_day = {r['as_of']: r for r in reports['shares']['periods']}
+    for row in matrix['periods']:
+        filing = filings_by_day.get(row['as_of'], {})
+        shares = shares_by_day.get(row['as_of'], {})
+        for key in ('eligible_ids_sha256', 'top100_ids_sha256'):
+            fingerprint = row.get(key)
+            if (not isinstance(fingerprint, str) or not re.fullmatch(r'[a-f0-9]{64}', fingerprint)
+                    or fingerprint != filing.get(key) or fingerprint != shares.get(key)):
+                raise ValueError('Joint coverage requires the same dated eligible and top-100 identities')
+        for group, percent, filing_total, share_total in (
+            ('overall', 'joint_overall_pct', 'eligible_universe_count', 'eligible_count'),
+            ('top100', 'joint_top100_pct', 'top_liquidity_count', 'top100_adv_count'),
+        ):
+            counts = row.get(group, {})
+            eligible, joint = counts.get('eligible'), counts.get('joint')
+            if (type(eligible) is not int or eligible <= 0 or type(joint) is not int or not 0 <= joint <= eligible
+                    or eligible != filing.get(filing_total) or eligible != shares.get(share_total)
+                    or group == 'top100' and eligible > min(100, row['overall']['eligible'])
+                    or not math.isclose(row[percent], 100 * joint / eligible, abs_tol=1e-8)
+                    or any(type(counts.get(key)) is not int or not joint <= counts[key] <= eligible
+                           for key in ('usable_filings', 'verified_shares', 'filings_and_shares', 'complete_blocks'))):
+                raise ValueError('Joint coverage requires consistent counts and shared cutoff denominators')
     return reports
 
 
@@ -126,7 +161,7 @@ def freeze_specification(spec, output, *, coverage_reports=None, governance_revi
     from quant.research.data_interval import require_data_interval
     from quant.governance.review import require_review
     require_data_interval(data_interval or {}, coverage_reports['filings'], coverage_reports['shares'],
-        matrix=coverage_reports.get('matrix'))
+        matrix=coverage_reports['matrix'])
     require_review(governance_review, review_type='V2_SPEC_APPROVAL',
                    subject_sha256=specification_subject(spec, coverage_reports, data_interval),
                    subject_id=spec['spec_version'], decision='APPROVE')
@@ -165,7 +200,7 @@ def load_specification(path):
     from quant.research.data_interval import require_data_interval
     from quant.governance.review import require_review
     require_data_interval(record.get('data_interval', {}), reports['filings'], reports['shares'],
-        matrix=reports.get('matrix'))
+        matrix=reports['matrix'])
     require_review(record.get('governance_review'), review_type='V2_SPEC_APPROVAL',
         subject_sha256=specification_subject(spec, reports, record['data_interval']),
         subject_id=spec['spec_version'], decision='APPROVE')

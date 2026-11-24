@@ -156,7 +156,7 @@ def test_v2_freeze_rejects_free_text_review_even_with_certified_shared_interval(
     from quant.research.specification import freeze_specification
     spec = reviewed_spec()
     reports = synthetic_coverage_reports(spec)
-    interval = certify_data_interval(reports['filings'], reports['shares'])
+    interval = certify_data_interval(reports['filings'], reports['shares'], matrix=reports['matrix'])
     with pytest.raises(ValueError, match='human governance'):
         freeze_specification(spec, tmp_path/'spec.json', coverage_reports=reports, data_interval=interval)
     assert not list(tmp_path.rglob('spec.json'))
