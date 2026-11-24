@@ -122,7 +122,7 @@ export function verifyRankingPage(bytes: Buffer, manifest: RankingManifest, page
   if (!Array.isArray(rows) || rows.length !== length || !rows.every((row: unknown, index) => {
     if (!exact(row, rowKeys) || !matches(row.instrumentId, instrument) || instruments.has(row.instrumentId)
       || !matches(row.symbol, /^[A-Z0-9&.\-]{1,30}$/) || row.rank !== offset + index + 1
-      || !numberIn(row.percentile, 0, 100) || !numberIn(row.advInr, 0) || !numberIn(row.volatility, 0)
+      || !numberIn(row.percentile, 0, 100) || !numberIn(row.advInr, 0) || !numberIn(row.volatility, 0, Number.MAX_VALUE / 100)
       || !exact(row.blocks, rankingBlocks) || !Object.values(row.blocks).every(n => numberIn(n, -Number.MAX_VALUE))) return false;
     instruments.add(row.instrumentId);
     return true;

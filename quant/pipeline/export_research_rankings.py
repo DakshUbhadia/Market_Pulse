@@ -128,6 +128,7 @@ def publish_rankings(config, *, output, registry_path, model_id, release, price,
     if len({row['instrumentId'] for row in rows}) != len(rows) or any(
             row['rank'] != index or not 0 <= row['percentile'] <= 100
             or not all(isfinite(row[key]) and row[key] >= 0 for key in ('advInr', 'volatility'))
+            or not isfinite(row['volatility'] * 100)
             for index, row in enumerate(rows, 1)):
         raise ValueError('Ranking rows do not match the certified universe')
     now = datetime.now(timezone.utc)

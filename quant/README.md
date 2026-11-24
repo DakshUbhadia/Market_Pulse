@@ -1145,7 +1145,8 @@ absolute `QUANT_INVESTMENT_FILE`, `QUANT_INVESTMENT_REGISTRY_EVENTS`, and
 minutes from export and the next scheduled open. A changed registry,
 governance, incident or market state invalidates it. The owner APIs for real
 forward and portfolio access return locked status while their evidence is
-unavailable. The status API continues to serve research metadata.
+unavailable. Investment API reads are limited per server process. The status
+API continues to serve research metadata.
 
 Hosted status sync uses `QUANT_STATUS_SYNC=true`, a separate random 32-byte
 `QUANT_STATUS_SYNC_TOKEN`, and a MongoDB account scoped to the `quant_status`

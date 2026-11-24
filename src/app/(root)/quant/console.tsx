@@ -225,7 +225,7 @@ async function Rankings({ status, requestedPage }: {
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <caption className="sr-only">Research rankings and weighted factor contributions</caption>
-        <thead><tr>{["Rank", "Symbol", "Percentile", "ADV (INR)", "63-session volatility", "Momentum", "Relative strength", "Low risk", "Liquidity"].map(label =>
+        <thead><tr>{["Rank", "Symbol", "Percentile", "ADV (INR)", "63-session annualized volatility", "Momentum", "Relative strength", "Low risk", "Liquidity"].map(label =>
           <th scope="col" key={label} className="whitespace-nowrap px-3 py-2 text-slate-200">{label}</th>)}</tr></thead>
         <tbody>{result.rows.map(row => <tr key={row.instrumentId} className="border-t border-slate-800">
           <td className="px-3 py-2 tabular-nums">{row.rank}</td><th scope="row" className="px-3 py-2">{row.symbol}</th>
