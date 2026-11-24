@@ -6,9 +6,9 @@ import pandas as pd
 
 from quant.config import Config
 from quant.pipeline.cli import completed_day
-from quant.pipeline.state import PipelineState
+from quant.pipeline.state import PipelineState, market_writer_lock
 from quant.pipeline.update_calendar import refresh_calendar
-from quant.pipeline.update_all import update_all
+from quant.pipeline.update_all import _update_all
 from quant.storage.parquet_store import read_parquet_file
 
 
@@ -29,6 +29,11 @@ def calculate_update_window(calendar, state, *, target=None, overlap=5):
 
 
 def scheduled_update(config, *, target=None):
+    with market_writer_lock(config):
+        return _scheduled_update(config, target=target)
+
+
+def _scheduled_update(config, *, target=None):
     target = target or completed_day(config)
     state = PipelineState(config)
     if config.calendar_path.exists():
@@ -39,7 +44,7 @@ def scheduled_update(config, *, target=None):
     else:
         calendar, _ = refresh_calendar(config, date(2018, 1, 1), target)
     start, end = calculate_update_window(calendar, state.data, target=target)
-    result = update_all(config, start, end, incremental=bool(state.data.get('market_eod')))
+    result = _update_all(config, start, end, incremental=bool(state.data.get('market_eod')))
     result['update_window'] = {'from': str(start), 'to': str(end)}
     return result
 

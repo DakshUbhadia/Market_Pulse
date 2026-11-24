@@ -40,12 +40,21 @@ def run_v2_diagnostics(config, *, prices, price_features, fundamental_features, 
     append_record(folder/'diagnostic-authority.json', context)
     code, hashes = research_code_hashes(), {str(p): digest_file(p) for p in input_files}
     try:
-        certificate = require_certified_implementation(config)
         ranked, matrix_status = prepare_v2_matrix(price_features, fundamental_features,
                                                    min_group_size=draft_spec['min_group_size'])
         write_json(folder/'matrix-status.json', matrix_status)
         if matrix_status['status'] != 'COMPLETE_RESEARCH_INPUTS':
             raise ValueError('Full V2 diagnostic matrix is INCOMPLETE; Value/coverage gates remain required')
+        if input_scope == 'ARCHIVED_DIAGNOSTIC_INPUTS':
+            if code != research_code_hashes() or hashes != {str(p): digest_file(p) for p in input_files}:
+                raise ValueError('Diagnostic source or input bytes changed')
+            write_json(folder/'input-manifest.json', dict(input_scope=input_scope, input_sha256=hashes,
+                source_code_sha256=code, data_content_sha256=content_hash(matrix_status)))
+            write_json(folder/'outcome.json', dict(context, status='DIAGNOSTIC_COMPLETE',
+                output_scope='STRUCTURAL_ONLY', historical_v2_decision_created=False))
+            complete_diagnostic(folder, reason='STRUCTURAL_ONLY', governance_status=gates['human_review_status'])
+            return folder
+        certificate = require_certified_implementation(config)
         risk_features = price_features[['as_of', 'instrument_id', 'adv60']].copy()
         portfolio, costs = PortfolioConfig(**draft_spec['portfolio']), CostModel(**draft_spec['costs'])
         policy = RiskPolicy(**draft_spec['risk']['constraints'])

@@ -1,5 +1,6 @@
 param(
     [string]$From = '2018-01-01',
+    [string]$DataDir,
     [switch]$CorporateOnly,
     [switch]$FullAudit
 )
@@ -11,5 +12,7 @@ if (-not (Test-Path -LiteralPath $pythonPath)) {
     throw 'Create quant/.venv and install quant/requirements.txt first.'
 }
 $moduleName = if ($FullAudit) { 'quant.pipeline.weekly_audit' } elseif ($CorporateOnly) { 'quant.pipeline.update_corporate' } else { 'quant.pipeline.scheduled_update' }
-& $pythonPath -m $moduleName --from $From
+$arguments = @('-m', $moduleName, '--from', $From)
+if ($DataDir) { $arguments += @('--data-dir', $DataDir) }
+& $pythonPath @arguments
 exit $LASTEXITCODE

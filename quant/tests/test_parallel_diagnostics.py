@@ -80,7 +80,11 @@ def test_pending_review_allows_diagnostic_run(tmp_path, monkeypatch, total_retur
     indices = pd.concat([benchmark.assign(index_name=name) for name in ('NIFTY 50', 'NIFTY 500')])
     actions = pd.DataFrame(columns=['event_id', 'action_type', 'ex_date', 'instrument_id', 'cash_amount', 'parse_status'])
     tri = indices.assign(index_name=indices.index_name+' TRI')
-    # Mock external source/software attestations only; run all actual model/accounting paths.
+    # Any attempt to compute performance on a fallback diagnostic is a regression.
+    def performance_forbidden(*args, **kwargs):
+        pytest.fail('Fallback diagnostics must stop before performance measurement')
+    monkeypatch.setattr(runner, 'performance_metrics', performance_forbidden)
+    monkeypatch.setattr(runner, 'forward_labels', performance_forbidden)
     monkeypatch.setattr(runner, 'require_research_ready', lambda *a: dict(status='SYNTHETIC_TEST_ONLY'))
     monkeypatch.setattr(runner, 'require_certified_implementation', lambda *a: dict(scope='SYNTHETIC_TEST_ONLY'))
     monkeypatch.setattr(runner, 'input_manifest', lambda *a: dict(files=[], input_sha256='synthetic'))
@@ -109,7 +113,10 @@ def test_pending_review_allows_diagnostic_run(tmp_path, monkeypatch, total_retur
     assert evidence['status'] == 'DIAGNOSTIC_ONLY'
     assert verify_diagnostic_completion(path)['seal_eligible'] is False
     assert not list(path.rglob('completion.json')) and not (path/'v1-decision.json').exists()
-    assert (path/'diagnostic-decision.json').exists() and list((path/'walk_forward').rglob('metrics.json'))
+    assert evidence['output_scope'] == 'STRUCTURAL_ONLY'
+    assert {f.name for f in path.iterdir()} == {
+        'diagnostic-authority.json', 'input-manifest.json', 'structural-summary.json', 'diagnostic-completion.json'}
+    assert not list((tmp_path/'research').rglob('prepared-scores.parquet'))
 
 
 def test_risk_caps_bind_individually_and_turnover_penalty_preserves_holdings():

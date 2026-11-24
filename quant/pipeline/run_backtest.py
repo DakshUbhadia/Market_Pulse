@@ -26,7 +26,7 @@ from quant.pipeline.certify_implementation import require_certified_implementati
 from quant.storage.research_store import input_manifest, load_research_data, write_json, verify_manifest
 from quant.version import MODEL_VERSION, FEATURE_VERSION, COST_MODEL_VERSION
 from quant.version import PORTFOLIO_ACCOUNTING_VERSION
-from quant.version import EVIDENCE_POLICY_VERSION
+from quant.version import EVIDENCE_POLICY_VERSION, LABEL_CONTRACT_VERSION
 from quant.backtest.lifecycle import LIFECYCLE_POLICY_VERSION, SCENARIOS
 from quant.pipeline.backfill_lifecycle import load_lifecycle
 from quant.risk.clusters import rebalance_cluster_diagnostics, cluster_sensitivity, CLUSTER_VERSION
@@ -87,7 +87,7 @@ def run_research(config, start, end, *, estimate_historical_costs=False, full_ro
         append_experiment(config, record)
         raise
     record.update(result_summary=str(path), decision=evidence['status'],
-        outcome='INCONCLUSIVE' if research_authority == DIAGNOSTIC_ONLY else
+        outcome='DIAGNOSTIC_COMPLETE' if research_authority == DIAGNOSTIC_ONLY else
             {'PASS_RESEARCH': 'PASS', 'NO_GO': 'NO_GO', 'INCONCLUSIVE': 'INCONCLUSIVE'}[
                 json.loads((path/'v1-decision.json').read_text(encoding='utf-8'))['research_outcome']])
     write_json(experiment_path / 'outcome.json', record)
@@ -106,6 +106,7 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
     if evaluation_window is not None and research_authority == RESEARCH:
         from quant.research.evaluation_window import require_window_admission
         require_window_admission(evaluation_window)
+    structural_only = research_authority == DIAGNOSTIC_ONLY
     data_config = corpus_config or config
     if corpus_config is not None:
         from quant.pipeline.research_proof import cached_readiness
@@ -120,6 +121,11 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
     implementation = require_certified_implementation(config)
     manifest = input_manifest(data_config, end)
     prices, benchmark_frame, sessions, delivery, indices = load_research_data(data_config, end)
+    if evaluation_window is not None:
+        selection = pd.DatetimeIndex(pd.to_datetime(evaluation_window['selection_calendar']))
+        actual = pd.DatetimeIndex(pd.to_datetime(sessions))
+        if not selection.equals(actual[(actual >= selection.min()) & (actual <= selection.max())]):
+            raise ValueError('Evaluation window calendar differs from the actual research calendar')
     lifecycle_events = load_lifecycle(data_config)
     from quant.identity.transitions import load_transitions, TRANSITION_VERSION
     transitions = load_transitions(data_config)
@@ -131,8 +137,7 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         tri = query_dataset(data_config.data_dir, 'index_tri', end=end)
     features = build_feature_matrix(prices, benchmark_frame, sessions, universe_config=universe, delivery=delivery, eligible_only=True, lifecycle_events=lifecycle_events)
     scores = score_factor_v1(features)
-    labels = forward_labels(prices, benchmark_frame, sessions, signal_keys=scores[['as_of','instrument_id']])
-    if prepared_root is not None:
+    if prepared_root is not None and not structural_only:
         # A held-event stop must not discard the historical review population.
         # These are input diagnostics, never completed or forward evidence.
         verify_manifest(data_config,manifest)
@@ -149,6 +154,23 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         lifecycle_records=result.lifecycle,scores=scores,portfolio_sessions=result.equity_curve.trade_date,write=False)
     if lifecycle_report['status'] == 'BLOCKED' or lifecycle_report['held_events_unresolved']:
         raise ValueError('Held lifecycle events remain unresolved; baseline cannot be sealed')
+    if structural_only:
+        from quant.backtest.artifacts import complete_diagnostic
+        from uuid import uuid4
+
+        verify_manifest(data_config, manifest)
+        path = config.data_dir/'artifacts/diagnostics/factor_v1'/uuid4().hex
+        evidence = dict(status=DIAGNOSTIC_ONLY, output_scope='STRUCTURAL_ONLY', seal_eligible=False,
+            historical_validation=False, promotion_eligible=False, real_forward_evidence=False)
+        write_json(path/'diagnostic-authority.json', dict(evidence, research_authority=DIAGNOSTIC_ONLY,
+            governance_status=gates['human_review_status']))
+        write_json(path/'input-manifest.json', manifest)
+        write_json(path/'structural-summary.json', dict(evidence, start=str(start), end=str(end),
+            return_basis='TOTAL_RETURN' if total_return else 'PRICE', sessions=len(result.equity_curve),
+            lifecycle_status=lifecycle_report['status'], unresolved_held_events=0))
+        complete_diagnostic(path, reason='STRUCTURAL_ONLY', governance_status=gates['human_review_status'])
+        return path, evidence
+    labels = forward_labels(prices, benchmark_frame, sessions, signal_keys=scores[['as_of','instrument_id']])
     market = (total_return_index_returns(tri[tri.index_name.eq('NIFTY 500 TRI')], result.equity_curve.trade_date, sessions)
               if total_return else index_returns(benchmark_frame, result.equity_curve.trade_date))
     metrics, rolling = performance_metrics(result.equity_curve, market, result.trades)
@@ -177,9 +199,6 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         result.equity_curve, market, costs_verified=all(costs.schedule(day).verified for day in result.equity_curve.trade_date), baselines=baselines,
         cluster_concentration=float(exposure.max_cluster_weight.max()) if not exposure.empty else None,
         clusters_assessed=assessed, pit_data_verified=readiness['status']=='READY' and readiness.get('lifecycle_data_ready',False))
-    if research_authority == DIAGNOSTIC_ONLY:
-        evidence.update(status=DIAGNOSTIC_ONLY, highest_validation_level='NOT_VALIDATED',
-            historical_validation=False, promotion_eligible=False, public_recommendations_allowed=False)
     verify_manifest(data_config, manifest)
     run_config = dict(**manifest, implementation_certification=implementation,
         manifest=manifest,
@@ -188,6 +207,7 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         universe_settings=universe, portfolio_settings=portfolio, cost_settings=vars(costs),
         cost_sources=SOURCES,
         return_basis='TOTAL_RETURN' if total_return else 'PRICE', label_return_basis='PRICE',
+        label_contract_version=LABEL_CONTRACT_VERSION,
         portfolio_accounting_version=PORTFOLIO_ACCOUNTING_VERSION if total_return else 'price_1.0.0',
         cluster_version=CLUSTER_VERSION, security_transition_version=TRANSITION_VERSION, lifecycle_policy_version=LIFECYCLE_POLICY_VERSION,
         evidence_policy_version=EVIDENCE_POLICY_VERSION,
@@ -201,12 +221,8 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         seal_eligible=research_authority == RESEARCH, promotion_eligible=False,
         historical_validation=False, source_data_dir=str(data_config.data_dir))
     if evaluation_window is not None:
-        selection = pd.DatetimeIndex(pd.to_datetime(evaluation_window['selection_calendar']))
-        actual = pd.DatetimeIndex(pd.to_datetime(sessions))
-        if not selection.equals(actual[(actual >= selection.min()) & (actual <= selection.max())]):
-            raise ValueError('Evaluation window calendar differs from the actual research calendar')
         run_config['evaluation_window'] = evaluation_window
-    root = config.data_dir / ('artifacts/diagnostics/factor_v1' if research_authority == DIAGNOSTIC_ONLY else 'artifacts/backtests/factor_v1')
+    root = config.data_dir / 'artifacts/backtests/factor_v1'
     path = save_backtest(root, config=run_config, metrics=metrics, result=result, ic=ic, deciles=deciles,
                           rolling=rolling, evidence=evidence, extra=stress)
     write_json(path/'input-manifest.json', manifest)
@@ -214,15 +230,9 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
         write_json(path/'specification.json', json.loads((prepared_root/'frozen-baseline.json').read_text(encoding='utf-8')))
     if evaluation_window is not None:
         write_json(path/'evaluation-window.json', evaluation_window)
-    if research_authority == DIAGNOSTIC_ONLY:
-        write_parquet(test_scores, path/'diagnostic-scores.parquet')
     write_json(path / 'benchmarks.json', baselines)
     write_json(path / 'baseline-comparison.json',evidence['baseline_comparison'])
-    if research_authority == RESEARCH:
-        write_json(path / 'v1-decision.json', v1_research_decision(evidence, metrics, baselines))
-    else:
-        write_json(path/'diagnostic-decision.json', dict(decision=DIAGNOSTIC_ONLY,
-            seal_eligible=False, historical_validation=False, promotion_eligible=False))
+    write_json(path / 'v1-decision.json', v1_research_decision(evidence, metrics, baselines))
     write_parquet(pd.DataFrame(evidence['baseline_comparison']),path/'baseline-comparison.parquet')
     write_json(path / 'cost-schedule.json', costs.schedule_table())
     write_parquet(clusters, path / 'clusters.parquet')
@@ -256,12 +266,7 @@ def _run_research(config, start, end, *, estimate_historical_costs=False, full_r
             ic=ic_window, deciles=deciles_window, rolling=rolling_window,
             evidence={'status':'WINDOW_ONLY_NOT_INDEPENDENT_VALIDATION','checks':{}})
     verify_manifest(data_config, manifest)
-    if research_authority == DIAGNOSTIC_ONLY:
-        from quant.backtest.artifacts import complete_diagnostic
-        complete_diagnostic(path, reason='GOVERNANCE_REVIEW_PENDING' if gates['human_review_status'] == 'PENDING' else 'DIAGNOSTIC_ONLY',
-                            governance_status=gates['human_review_status'])
-    else:
-        seal_backtest(path)
+    seal_backtest(path)
     return path, evidence
 
 
@@ -287,7 +292,8 @@ def main():
             evaluation_window=args.evaluation_window, research_authority=args.research_authority,
             corpus_config=replace(args.config(config), data_dir=args.corpus_data_dir) if args.corpus_data_dir else None)
     except (ValueError, OSError) as error:
-        write_json(args.config(config).data_dir / 'reports' / f'backtest-blocked-{args.end}.json',
+        prefix = 'diagnostic-backtest' if args.research_authority == DIAGNOSTIC_ONLY else 'backtest'
+        write_json(args.config(config).data_dir / 'reports' / f'{prefix}-blocked-{args.end}.json',
             dict(status='BLOCKED', outcome=blocked_outcome(error), research_authority=args.research_authority,
                  governance_status=GateRegistry(args.config(config).data_dir).snapshot()['human_review_status'],
                  date_range={'from':str(args.start),'to':str(args.end)}, reason=str(error),

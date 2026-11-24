@@ -3,14 +3,22 @@ from datetime import datetime, timezone
 import json
 import subprocess
 from pathlib import Path
-from quant.storage.research_store import write_json, git_commit, digest_file
+from quant.storage.research_store import write_json, git_commit
+from quant.data.http import sha256
 from quant import version
 
 
 def read_report(path):
     if not path.exists():
         return dict(status='UNASSESSED',path=str(path))
-    return dict(path=str(path),sha256=digest_file(path),report=json.loads(path.read_text(encoding='utf-8')))
+    try:
+        payload = path.read_bytes()
+        value = json.loads(payload)
+        if not isinstance(value, dict):
+            raise ValueError('Report must be a JSON object')
+        return dict(path=str(path), sha256=sha256(payload), report=value)
+    except (OSError, ValueError):
+        return dict(status='INVALID', path=str(path))
 
 
 def write_current_status(config, *, public_state=None, evidence_dir=None):
@@ -55,10 +63,10 @@ def write_current_status(config, *, public_state=None, evidence_dir=None):
     certificate = report['implementation_certification'].get('report', {})
     report.update(PUBLIC_MAIN_SHA=(public_state or {}).get('PUBLIC_MAIN_SHA') or certificate.get('PUBLIC_MAIN_SHA'),
         LOCAL_IMPLEMENTATION_SHA=git_commit(), RESEARCH_CERTIFIED_SHA=certificate.get('RESEARCH_CERTIFIED_SHA'))
-    report['fundamental_coverage_ceiling'] = read_report(root/'reports/fundamental-coverage-ceiling.json')
+    report['fundamental_coverage_ceiling'] = evidence('fundamental-coverage-ceiling.json')
     report['fundamental_discovery_expansion'] = read_report(root/'reports/fundamental-discovery-expansion.json')
     report['share_evidence_plan'] = read_report(root/'reports/share-evidence-plan.json')
-    report['fundamental_discovery_gap'] = read_report(root/'reports/fundamental-discovery-gap.json')
+    report['fundamental_discovery_gap'] = evidence('fundamental-discovery-gap.json')
     report['capital_event_ledger'] = read_report(root/'reports/capital-event-candidates.json')
     report['historical_certification_phase'] = read_report(root/'reports/historical-certification-phase.json')
     report['filing_coverage'] = evidence('fundamental-universe-coverage.json')
@@ -105,6 +113,9 @@ def write_current_status(config, *, public_state=None, evidence_dir=None):
             report['test_only_cohorts'].append(dict(root=str(path.parent), real_forward_evidence=False,
                                                    promotion_eligible=False, signal_sessions=len(batches)))
     report['v2_matrix'] = evidence('v2-matrix-status.json')
+    report['capital_event_verification'] = evidence('capital-events-reviewed.json')
+    report['market_input_manifest'] = evidence('market-input-manifest.json')
+    report['completion_source_pilot'] = evidence('official-source-pilot.json')
     report['parallel_evidence_phase'] = evidence('parallel-evidence-completion-phase.json')
     report['production_recommendation_publishing'] = dict(status='BLOCKED', governance_status=gates['human_review_status'])
     write_json(root/'reports/current-status.json',report)

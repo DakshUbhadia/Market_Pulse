@@ -15,10 +15,8 @@ def state_lock(path):
     with path.open('a+b') as stream:
         if os.name == 'nt':
             import msvcrt
-            stream.seek(0)
-            if not stream.read(1):
-                stream.write(b'0')
-                stream.flush()
+            # The CRT can lock past EOF. Reading the first byte before
+            # acquiring the lock fails if an existing writer holds it.
             stream.seek(0)
             msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
         else:
@@ -32,6 +30,10 @@ def state_lock(path):
                 msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
             else:
                 fcntl.flock(stream, fcntl.LOCK_UN)
+
+
+def market_writer_lock(config):
+    return state_lock(config.data_dir / 'state' / 'market-writer.lock')
 
 
 class PipelineState:

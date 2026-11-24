@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useCallback, useMemo, type ReactNo
  * Pages that require exclusive access to Yahoo Finance API to prevent
  * rate-limiting and ensure smooth real-time price updates.
  */
-export type ExclusivePage = "simulator" | "market-scope" | "stock-detail" | null
+export type ExclusivePage = "simulator" | "market-scope" | "stock-detail" | "options" | null
 
 type PageContextType = {
   /**

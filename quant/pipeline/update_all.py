@@ -2,7 +2,7 @@
 import json
 
 from quant.pipeline.audit_prices import audit_prices
-from quant.pipeline.state import PipelineState
+from quant.pipeline.state import PipelineState, market_writer_lock
 from quant.pipeline.update_calendar import refresh_calendar
 from quant.pipeline.update_market_eod import update_market_eod
 from quant.pipeline.update_corporate import update_corporate_actions, update_corporate_filings
@@ -13,6 +13,11 @@ from quant.pipeline.update_lifecycle import update_lifecycle
 
 
 def update_all(config, start, end, *, incremental=False):
+    with market_writer_lock(config):
+        return _update_all(config, start, end, incremental=incremental)
+
+
+def _update_all(config, start, end, *, incremental=False):
     errors, results = {}, {}
     core = ('nse_bhavcopy', 'nse_security_master', 'nse_indices', 'nse_vix', 'security_history')
     state = PipelineState(config)

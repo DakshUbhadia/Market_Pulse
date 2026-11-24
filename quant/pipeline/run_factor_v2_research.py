@@ -13,7 +13,7 @@ from quant.backtest.engine import monthly_signal_dates
 from quant.features.matrix import build_feature_matrix
 from quant.features.labels import forward_labels
 from quant.forward.gate import require_completed_baselines
-from quant.models.factor_v2 import same_universe_scores
+from quant.pipeline.prepare_v2_matrix import prepare_v2_matrix
 from quant.pipeline.build_fundamental_features import build_fundamental_features
 from quant.pipeline.audit_fundamental_coverage import verify_filing_archives, audit_fundamental_coverage, coverage_dates
 from quant.pipeline.check_research_ready import require_research_ready
@@ -84,17 +84,13 @@ def run_factor_v2_research(config, *, spec_path, price_baseline, total_return_ba
         fundamentals=build_fundamental_features(keys,filings,anchors,events,share_coverage)
         from quant.research.factor_evidence import missingness_attribution
         write_parquet(missingness_attribution(features, fundamentals), folder/'block-missingness.parquet')
-        ranked=same_universe_scores(features,fundamentals,min_group_size=spec['min_group_size'])
+        ranked, matrix = prepare_v2_matrix(features, fundamentals, min_group_size=spec['min_group_size'],
+            coverage_inputs=(filings, anchors, events, share_coverage))
+        write_json(folder/'feature-coverage.json', matrix)
+        if matrix['status'] != 'COMPLETE_RESEARCH_INPUTS':
+            raise ValueError('V2 feature completeness fails the per-cutoff 80% / 90% gate')
         for name,scores in ranked.items():
             write_parquet(scores,folder/(name+'-scores.parquet'))
-        coverage_rows=[]
-        for day,group in features[features.eligible].groupby('as_of'):
-            covered=set(ranked['factor_v2'].loc[ranked['factor_v2'].as_of.eq(day),'instrument_id'])
-            liquid=group.sort_values(['adv60','instrument_id'],ascending=[False,True]).head(100)
-            coverage_rows.append(dict(as_of=day,overall=group.instrument_id.isin(covered).mean(),liquid=liquid.instrument_id.isin(covered).mean()))
-        write_json(folder/'feature-coverage.json',coverage_rows)
-        if not coverage_rows or any(r['overall']<.8 or r['liquid']<.9 for r in coverage_rows):
-            raise ValueError('V2 feature completeness fails the per-cutoff 80% / 90% gate')
         labels=forward_labels(prices,benchmark,sessions,signal_keys=ranked['full_v1'][['as_of','instrument_id']])
         execution=dict(lifecycle_events=lifecycle,security_transitions=load_transitions(config),transition_data_dir=config.data_dir)
         return_basis=spec.get('return_basis','PRICE')
